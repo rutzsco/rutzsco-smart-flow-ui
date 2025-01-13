@@ -1,0 +1,60 @@
+# Required Variables to be defined on the pipeline:
+# - ContainerRegistryUrl
+# - ContainerRegistryUsername
+# - ContainerRegistryPassword (secret)
+# NOTE: The service principal used to run this pipeline must have the "acrpush" role on the Container registry.
+
+trigger:
+  branches:
+    include:
+    - main
+  paths:
+    include:
+    - app/*
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+parameters:
+  - name: environmentName
+    displayName: 'Environment'
+    type: string
+    default: 'CI'
+    values:
+      - 'CI'
+      - 'QA'
+      - 'PROD'
+  - name: region
+    displayName: 'Azure Region'
+    type: string
+    default: 'eastus2'
+  - name: resourceGroupPrefix
+    displayName: 'Resource Group Prefix'
+    type: string
+    default: 'rg-copilot-demo'
+
+variables:
+  rootDirectory: 'app'
+  serviceConnectionName: 'DEMO_ACCOUNT'
+  resourceGroupName: '${{ parameters.resourceGroupPrefix }}-${{ parameters.environmentName }}'
+  appName: 'chat-app'
+  imageName: custom-chat-copilot/$(appName):$(Build.BuildId)
+  fullImageName: $(ContainerRegistryUrl)/$(imageName)
+
+stages:
+- template: templates/build-app-template.yml
+  parameters:
+    ContainerRegistryPassword: $(ContainerRegistryPassword)
+    ContainerRegistryUrl: $(ContainerRegistryUrl)
+    ContainerRegistryUsername: $(ContainerRegistryUsername)
+    imageName: $(imageName)
+    rootDirectory: $(rootDirectory)
+
+- template: templates/deploy-app-template.yml
+  parameters:
+    environmentName: ${{ parameters.environmentName }}
+    serviceConnectionName: ${{ variables.serviceConnectionName }}
+    resourceGroupName:  $(resourceGroupName)
+    region: ${{ parameters.region }}
+    appName: $(appName)
+    imageName: $(fullImageName)

@@ -1,0 +1,9 @@
+name: custom-chat-copilot-sk-base
+services:
+    web:
+        project: ./app/backend
+        host: containerapp
+        language: dotnet
+        docker:
+            path: ../Dockerfile
+            context: ../
