@@ -21,6 +21,8 @@ param chatGpt_Standard object = {}
 param chatGpt_Premium object = {}
 
 // --------------------------------------------------------------------------------------------------------------
+// Variables
+// --------------------------------------------------------------------------------------------------------------
 var resourceGroupName = resourceGroup().name
 var cognitiveServicesKeySecretName = 'cognitive-services-key'
 var deployments = [
@@ -126,11 +128,14 @@ module privateEndpoint '../networking/private-endpoint.bicep' =
     }
   }
 
+// --------------------------------------------------------------------------------------------------------------
+// Outputs
+// --------------------------------------------------------------------------------------------------------------
 output endpoint string = !empty(existing_CogServices_Name)
   ? existingAccount.properties.endpoint
   : account.properties.endpoint
 output id string = !empty(existing_CogServices_Name) ? existingAccount.id : account.id
 output name string = !empty(existing_CogServices_Name) ? existingAccount.name : account.name
 output resourceGroupName string = !empty(existing_CogServices_Name) ? existing_CogServices_RG_Name : resourceGroupName
-output keyVaultSecretName string = cognitiveServicesKeySecretName
+output cognitiveServicesKeySecretName string = cognitiveServicesKeySecretName
 output privateEndpointName string = privateEndpointName

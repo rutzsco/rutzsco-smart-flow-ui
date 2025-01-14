@@ -3,7 +3,7 @@
 // --------------------------------------------------------------------------------------------------------------
 // You can test it with these commands:
 //   Deploy with existing resources specified in a parameter file:
-//     az deployment group create -n manual --resource-group rg_smart_flow_ui_test --template-file 'main.bicep' --parameters main-existing.bicepparam
+//     az deployment group create -n manual-ui --resource-group rg-ai-docs-114-dev --template-file 'main.bicep' --parameters main.existing.bicepparam
 // --------------------------------------------------------------------------------------------------------------
 targetScope = 'resourceGroup'
 
@@ -310,7 +310,7 @@ module app './app/app.bicep' = {
         [
           {
             name: 'acrpassword'
-            value: 'https://${keyVault.outputs.name}${environment().suffixes.keyvaultDns}/secrets/${registry.outputs.registrySecretName}'
+            value: 'https://${keyVault.outputs.name}${environment().suffixes.keyvaultDns}/secrets/${containerRegistry.outputs.registrySecretName}'
             secretRef: 'acrpassword'
             secret: true
           }
@@ -373,7 +373,7 @@ module app './app/app.bicep' = {
               }
               {
                 name: 'AzureSearchServiceKey'
-                value: 'https://${keyVault.outputs.name}${environment().suffixes.keyvaultDns}/secrets/${search.outputs.searchKeySecretName}'
+                value: 'https://${keyVault.outputs.name}${environment().suffixes.keyvaultDns}/secrets/${searchService.outputs.searchKeySecretName}'
                 secretRef: 'azuresearchservicekey'
                 secret: true
               }

@@ -10,12 +10,7 @@ param targetPort int
 param imageName string
 param imageTag string
 
-// var cleanAppName = replace(replace(name, '-', ''), '_', '')
-
-// var containerImage = toLower('${registryName}.azurecr.io/${imageName}:${imageTag}')
-// var acrPullDefinitionId = '7f951dda-4ed3-4680-a7ca-43fe172d538d'
-// var acrpullCaName = guid(registry.id, cleanAppName, acrPullDefinitionId)
-
+// --------------------------------------------------------------------------------------------------------------
 resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
   name: name
   location: location
@@ -84,7 +79,9 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
   }
 }
 
-// output id string = containerApp.id
+// --------------------------------------------------------------------------------------------------------------
+// Outputs
+// --------------------------------------------------------------------------------------------------------------
 output name string = containerApp.name
 output id string = containerApp.id
 output ip string = containerApp.properties.outboundIpAddresses[0]

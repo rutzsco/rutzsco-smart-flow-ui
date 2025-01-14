@@ -18,9 +18,14 @@ param privateEndpointName string = ''
 param location string = resourceGroup().location
 param tags object = {}
 
+// --------------------------------------------------------------------------------------------------------------
+// Variables
+// --------------------------------------------------------------------------------------------------------------
+var registrySecretName = 'acr-registry-secret'
 var useExistingResource = !empty(existingRegistryName)
 var resourceGroupName = resourceGroup().name
 
+// --------------------------------------------------------------------------------------------------------------
 resource existingContainerRegistry 'Microsoft.ContainerRegistry/registries@2023-01-01-preview' existing = if (useExistingResource) {
   name: existingRegistryName
   scope: resourceGroup(existing_ACR_ResourceGroupName)
@@ -68,3 +73,4 @@ output name string = useExistingResource ? existingContainerRegistry.name : newC
 output resourceGroupName string = useExistingResource ? existing_ACR_ResourceGroupName : resourceGroupName
 output loginServer string = useExistingResource ? existingContainerRegistry.properties.loginServer : newContainerRegistry.properties.loginServer
 output privateEndpointName string = privateEndpointName
+output registrySecretName string = registrySecretName

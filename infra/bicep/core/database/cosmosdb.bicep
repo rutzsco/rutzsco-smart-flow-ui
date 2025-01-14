@@ -21,6 +21,8 @@ param managedIdentityPrincipalId string = ''
 param userPrincipalId string = ''
 
 // --------------------------------------------------------------------------------------------------------------
+// Variables
+// --------------------------------------------------------------------------------------------------------------
 var connectionStringSecretName = 'azure-cosmos-connection-string'
 var chatContainerName = 'AgentLog'
 var useExistingAccount = !empty(existingAccountName)
@@ -229,3 +231,4 @@ output keyVaultSecretName string = connectionStringSecretName
 output privateEndpointName string = privateEndpointName
 output databaseName string = databaseName
 output containerName string = chatContainer.name
+output connectionStringSecretName string = connectionStringSecretName

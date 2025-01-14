@@ -21,6 +21,7 @@ param sku object = { name: 'Standard_LRS' }
 // Variables
 // --------------------------------------------------------------------------------------------------------------
 var useExistingStorageAccount = !empty(existingStorageAccountName)
+var storageAccountConnectionStringSecretName = 'storage-account-connection-string'
 
 // --------------------------------------------------------------------------------------------------------------
 // If using existing storage account, just add the missing containers
@@ -139,3 +140,4 @@ output containerNames array = [
 output privateEndpointBlobName string = privateEndpointBlobName
 output privateEndpointTableName string = privateEndpointTableName
 output privateEndpointQueueName string = privateEndpointQueueName
+output storageAccountConnectionStringSecretName string = storageAccountConnectionStringSecretName
