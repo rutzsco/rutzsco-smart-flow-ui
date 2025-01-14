@@ -26,7 +26,7 @@ var storageAccountConnectionStringSecretName = 'storage-account-connection-strin
 // --------------------------------------------------------------------------------------------------------------
 // If using existing storage account, just add the missing containers
 // --------------------------------------------------------------------------------------------------------------
-resource existingStorageAccount 'Microsoft.Storage/storageAccounts@2022-05-01' existing = if (useExistingStorageAccount) {
+resource existingStorageAccount 'Microsoft.Storage/storageAccounts@2023-05-01' existing = if (useExistingStorageAccount) {
   name: existingStorageAccountName
 }
 resource existingStorageAccountBlobServices 'Microsoft.Storage/storageAccounts/blobServices@2023-05-01' = if (useExistingStorageAccount && !empty(containers)) {
@@ -36,7 +36,7 @@ resource existingStorageAccountBlobServices 'Microsoft.Storage/storageAccounts/b
 resource blobServices 'Microsoft.Storage/storageAccounts/blobServices/containers@2023-05-01' = if (useExistingStorageAccount && !empty(containers)) {
   parent: existingStorageAccountBlobServices
   name: 'default'
-  resource container 'containers' = [
+  resource existingContainer 'containers' = [
     for container in containers: {
       name: container
       properties: {
@@ -49,7 +49,7 @@ resource blobServices 'Microsoft.Storage/storageAccounts/blobServices/containers
 // --------------------------------------------------------------------------------------------------------------
 // If creating the storage account...
 // --------------------------------------------------------------------------------------------------------------
-resource storage 'Microsoft.Storage/storageAccounts@2022-05-01' = if (!useExistingStorageAccount) {
+resource storage 'Microsoft.Storage/storageAccounts@2023-05-01' = if (!useExistingStorageAccount) {
   name: name
   location: location
   tags: tags
@@ -132,7 +132,7 @@ output name string = useExistingStorageAccount ? existingStorageAccount.name : s
 output id string = useExistingStorageAccount ? existingStorageAccount.id : storage.id
 output primaryEndpoints object = useExistingStorageAccount ? existingStorageAccount.properties.primaryEndpoints : storage.properties.primaryEndpoints
 output containerNames array = [
-  for (name, i) in containers: {
+  for (name, i) in containers: useExistingStorageAccount ? null :  {
     name: name
     url: useExistingStorageAccount ? '${existingStorageAccount.properties.primaryEndpoints.blob}/${name}' : '${storage.properties.primaryEndpoints.blob}/${name}'
   }

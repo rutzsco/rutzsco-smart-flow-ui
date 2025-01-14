@@ -1,5 +1,6 @@
 param newEnvironmentName string = ''
 param existingEnvironmentName string = ''
+param existingEnvironmentResourceGroup string = ''
 param location string = resourceGroup().location
 param tags object = {}
 
@@ -26,6 +27,7 @@ var logAnalyticsCustomerId = logAnalyticsResource.properties.customerId
 // App Environment
 resource existingAppEnvironmentResource 'Microsoft.App/managedEnvironments@2024-03-01' existing = if (useExistingEnvironment) {
   name: existingEnvironmentName
+  scope: resourceGroup(existingEnvironmentResourceGroup)
 }
 resource newAppEnvironmentResource 'Microsoft.App/managedEnvironments@2024-03-01' = if (!useExistingEnvironment) {
   name: cleanAppEnvName

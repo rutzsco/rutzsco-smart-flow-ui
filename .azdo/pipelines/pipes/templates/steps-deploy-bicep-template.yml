@@ -1,0 +1,50 @@
+# ------------------------------------------------------------------------------------------------------------------------
+# Pipeline Steps Template -- steps to build and deploy Azure Resources via Bicep File
+# ------------------------------------------------------------------------------------------------------------------------
+parameters:
+  - name: serviceConnectionName
+    default: ''
+  - name: deploymentMode
+    default: 'Incremental' # 'Incremental' | 'Complete' | 'Validation'
+  - name: createResourceGroup
+    default: true
+  - name: deployToResourceGroup
+    default: true
+
+# ------------------------------------------------------------------------------------------------------------------------
+steps:
+  - ${{ if parameters.deployToResourceGroup }}:
+    - ${{ if parameters.createResourceGroup }}:
+      - task: AzureCLI@2
+        displayName: 'Create $(environmentName) Resource Group'
+        inputs:
+          azureSubscription: ${{ parameters.serviceConnectionName }}
+          scriptType: bash
+          scriptLocation: inlineScript
+          inlineScript: az group create --name $(resourceGroupName) --location $(location) --tags LastDeployed=$(runDateTime) Application=$(appName) Environment=$(environmentName)
+
+    - task: AzureResourceManagerTemplateDeployment@3
+      displayName: 'Publish $(environmentName) Bicep Resources (RG)'
+      inputs:
+        csmFile: $(templateFile)
+        csmParametersFile: $(parameterFile)
+        deploymentScope: 'Resource Group'
+        resourceGroupName: $(resourceGroupName)
+        azureResourceManagerConnection: ${{ parameters.serviceConnectionName }}
+        action: 'Create Or Update Resource Group'
+        location: $(location)
+        templateLocation: 'Linked artifact'
+        deploymentMode: ${{ parameters.deploymentMode }}
+
+  - ${{ if ne(parameters.deployToResourceGroup, true) }}:
+      - task: AzureResourceManagerTemplateDeployment@3
+        displayName: 'Publish $(environmentName) Bicep Resources (Sub)'
+        inputs:
+          csmFile: $(templateFile)
+          csmParametersFile: $(parameterFile)
+          deploymentScope: 'Subscription'
+          azureResourceManagerConnection: ${{ parameters.serviceConnectionName }}
+          action: 'Create Or Update Resource Group'
+          location: $(location)
+          templateLocation: 'Linked artifact'
+          deploymentMode: ${{ parameters.deploymentMode }}

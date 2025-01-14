@@ -10,8 +10,8 @@ targetScope = 'resourceGroup'
 // you can supply a full application name, or you don't it will append resource tokens to a default suffix
 @description('Full Application Name (supply this or use default of prefix+token)')
 param applicationName string = ''
-@description('If you do not supply Application Name, this prefix will be combined with a token to create a unique applicationName')
-param applicationPrefix string = 'ai_doc'
+// @description('If you do not supply Application Name, this prefix will be combined with a token to create a unique applicationName')
+// param applicationPrefix string = 'ai_doc'
 
 @description('The environment code (i.e. dev, qa, prod)')
 param environmentName string = 'dev'
@@ -24,44 +24,46 @@ param location string = resourceGroup().location
 // --------------------------------------------------------------------------------------------------------------
 // You need an existing monitoring environment
 // --------------------------------------------------------------------------------------------------------------
-@description('The name of an existing Log Analytics Workspace')
+@description('Name of an existing Log Analytics Workspace to use')
 param existing_LogAnalytics_Name string
-@description('The resource group of an existing Log Analytics Workspace')
+@description('Name of ResourceGroup for an existing Log Analytics Workspace')
 param existing_LogAnalytics_ResourceGroupName string
-@description('If you provide this is will be used instead of creating a new App Insights')
+@description('Name of an existing App Insights to use')
 param existing_AppInsights_Name string
 
 // --------------------------------------------------------------------------------------------------------------
 // You need an existing Container Registry
 // --------------------------------------------------------------------------------------------------------------
-@description('If you provide this is will be used instead of creating a new Registry')
+@description('Name of an existing Container Registry to use')
 param existing_ACR_Name string
-@description('If you provide this is will be used instead of creating a new Registry')
+@description('Name of ResourceGroup for an existing Container Registry')
 param existing_ACR_ResourceGroupName string
 
 // --------------------------------------------------------------------------------------------------------------
 // You need an existing Managed Identity
 // --------------------------------------------------------------------------------------------------------------
-@description('Existing Managed Identity to use')
+@description('Name of an existing Managed Identity to use')
 param existing_Identity_Name string
 
 // --------------------------------------------------------------------------------------------------------------
 // You need an existing Key Vault
 // --------------------------------------------------------------------------------------------------------------
-@description('Existing Key Vault to use')
+@description('Name of an existing Key Vault to use')
 param existing_KeyVault_Name string
 
 // --------------------------------------------------------------------------------------------------------------
 // You need an existing Container App Environment
 // --------------------------------------------------------------------------------------------------------------
-@description('If you provide this is will be used instead of creating a new Container App Environment')
+@description('Name of an existing Container App Environment to use')
 param existing_ManagedAppEnv_Name string
-param existing_ManagedAppEnv_WorkloadProfile_Name string
+@description('Name of ResourceGroup for an existing Container App Environment')
+param existing_ManagedAppEnv_ResourceGroupName string
+//param existing_ManagedAppEnv_WorkloadProfile_Name string
 
 // --------------------------------------------------------------------------------------------------------------
 // You need an existing Cosmos DB
 // --------------------------------------------------------------------------------------------------------------
-@description('Existing CosmosDb to use')
+@description('Name of an existing CosmosDb to use')
 param existing_Cosmos_Name string
 
 // --------------------------------------------------------------------------------------------------------------
@@ -69,8 +71,16 @@ param existing_Cosmos_Name string
 // --------------------------------------------------------------------------------------------------------------
 @description('Name of an existing Cognitive Services account to use')
 param existing_OpenAI_Name string
-@description('Name of ResourceGroup for an existing  Cognitive Services account to use')
+@description('Name of ResourceGroup for an existing Cognitive Services account')
 param existing_OpenAI_ResourceGroupName string
+
+// --------------------------------------------------------------------------------------------------------------
+// You need an existing Document Intelligence Deploy
+// --------------------------------------------------------------------------------------------------------------
+@description('Name of an existing Document Intelligence Service to use')
+param existing_DocumentIntelligence_Name string
+@description('Name of ResourceGroup for an existing Document Intelligence Service')
+param existing_DocumentIntelligence_RG_Name string
 
 // --------------------------------------------------------------------------------------------------------------
 // You need an existing Storage Account
@@ -87,31 +97,32 @@ param existing_SearchService_Name string
 // --------------------------------------------------------------------------------------------------------------
 // You need an existing network
 // --------------------------------------------------------------------------------------------------------------
-@description('If you provide this is will be used instead of creating a new VNET')
+@description('Name of an existing VNET to use')
 param existing_Vnet_Name string = ''
-@description('If you provide this is will be used instead of creating a new VNET')
+@description('This is the existing VNET prefix')
 param vnetPrefix string = '10.2.0.0/16'
-@description('If new VNET, this is the Subnet name for the private endpoints')
+@description('This is the existing Subnet name for the private endpoints')
 param subnet1Name string = ''
-@description('If new VNET, this is the Subnet addresses for the private endpoints, i.e. 10.2.0.0/26, must have a size of at least /23')
+@description('This is the existing Subnet addresses for the private endpoints, i.e. 10.2.0.0/26, must have a size of at least /23')
 param subnet1Prefix string = '10.2.0.0/23'
-@description('If new VNET, this is the Subnet name for the application')
+@description('This is the existing Subnet name for the application')
 param subnet2Name string = ''
-@description('If new VNET, this is the Subnet addresses for the application, i.e. 10.2.2.0/23, must have a size of at least /23')
+@description('This is the existing Subnet addresses for the application, i.e. 10.2.2.0/23, must have a size of at least /23')
 param subnet2Prefix string = '10.2.2.0/23'
 
 // --------------------------------------------------------------------------------------------------------------
 // UI Application Switches
 // --------------------------------------------------------------------------------------------------------------
 param backendExists bool
-@secure()
-param backendDefinition object
+//@secure()
+// param backendDefinition object
 
-param useManagedIdentityResourceAccess bool = true
-@description('Name of the text embedding model deployment')
-param azureEmbeddingDeploymentName string = 'text-embedding'
-@description('Name of the chat GPT deployment')
-param azureChatGptStandardDeploymentName string = 'gpt-4o'
+// param useManagedIdentityResourceAccess bool = true
+// @description('Name of the text embedding model deployment')
+// param azureEmbeddingDeploymentName string = 'text-embedding'
+// @description('Name of the chat GPT deployment')
+// param azureChatGptStandardDeploymentName string = 'gpt-4o'
+
 
 // --------------------------------------------------------------------------------------------------------------
 // Parameter used as a variable
@@ -121,11 +132,11 @@ param runDateTime string = utcNow()
 // --------------------------------------------------------------------------------------------------------------
 // -- Variables -------------------------------------------------------------------------------------------------
 // --------------------------------------------------------------------------------------------------------------
-var resourceToken = toLower(uniqueString(resourceGroup().id, location))
+// var resourceToken = toLower(uniqueString(resourceGroup().id, location))
 var resourceGroupName = resourceGroup().name
 
 // if user supplied a full application name, use that, otherwise use default prefix and a unique token
-var appName = applicationName != '' ? applicationName : '${applicationPrefix}_${resourceToken}'
+var appName = applicationName // != '' ? applicationName : '${applicationPrefix}_${resourceToken}'
 
 var deploymentSuffix = '-${runDateTime}'
 
@@ -229,6 +240,24 @@ module azureOpenAi './core/ai/cognitive-services.bicep' = {
   params: {
     existing_CogServices_Name: existing_OpenAI_Name
     existing_CogServices_RG_Name: existing_OpenAI_ResourceGroupName
+    textEmbedding: {
+      DeploymentName: 'text-embedding'
+      ModelName: 'text-embedding-ada-002'
+      ModelVersion: '2'
+      DeploymentCapacity: 30
+    }
+    chatGpt_Standard: {
+      DeploymentName: 'gpt-4o'
+      ModelName: 'gpt-4o'
+      ModelVersion: '2024-05-13'
+      DeploymentCapacity: 10
+    }
+    chatGpt_Premium: {
+      DeploymentName: 'gpt-4o'
+      ModelName: 'gpt-4o'
+      ModelVersion: '2024-05-13'
+      DeploymentCapacity: 10
+    }
   }
 }
 
@@ -239,6 +268,7 @@ module managedEnvironment './core/host/managedEnvironment.bicep' = {
   name: 'caenv${deploymentSuffix}'
   params: {
     existingEnvironmentName: existing_ManagedAppEnv_Name
+    existingEnvironmentResourceGroup: existing_ManagedAppEnv_ResourceGroupName
     location: location
     logAnalyticsWorkspaceName: logAnalytics.outputs.logAnalyticsWorkspaceName
     logAnalyticsRgName: resourceGroupName
@@ -272,6 +302,17 @@ module searchService './core/search/search-services.bicep' = {
 }
 
 // --------------------------------------------------------------------------------------------------------------
+// -- Existing Document Intelligence Resource -------------------------------------------------------------------
+// --------------------------------------------------------------------------------------------------------------
+module documentIntelligence './core/ai/document-intelligence.bicep' = {
+  name: 'doc-intelligence${deploymentSuffix}'
+  params: {
+    existing_CogServices_Name: existing_DocumentIntelligence_Name
+    existing_CogServices_RG_Name: existing_DocumentIntelligence_RG_Name
+  }
+}
+
+// --------------------------------------------------------------------------------------------------------------
 // -- Is this needed or desired? --------------------------------------------------------------------------------
 // --------------------------------------------------------------------------------------------------------------
 // module dashboard './app/dashboard-web.bicep' = {
@@ -287,6 +328,20 @@ module searchService './core/search/search-services.bicep' = {
 // --------------------------------------------------------------------------------------------------------------
 // -- UI Application Definition ---------------------------------------------------------------------------------
 // --------------------------------------------------------------------------------------------------------------
+var settings = [
+  { name: 'AnalysisApiEndpoint', value: 'https://${resourceNames.outputs.containerAppAPIName}.${managedEnvironment.outputs.defaultDomain}' }
+  { name: 'AnalysisApiKey', secretRef: 'apikey' }
+  { name: 'AOAIStandardServiceEndpoint', value: azureOpenAi.outputs.endpoint }
+  { name: 'AOAIStandardChatGptDeployment', value: 'gpt-4o' }
+  { name: 'ApiKey', secretRef: 'apikey' }
+  { name: 'APPLICATIONINSIGHTS_CONNECTION_STRING', value: logAnalytics.outputs.appInsightsConnectionString }
+  { name: 'AZURE_CLIENT_ID', value: managedIdentity.outputs.managedIdentityClientId }
+  { name: 'AzureDocumentIntelligenceEndpoint', value: documentIntelligence.outputs.endpoint }
+  { name: 'AzureAISearchEndpoint', value: searchService.outputs.endpoint }
+  { name: 'ContentStorageContainer', value: storageAccount.outputs.containerNames[0].name }
+  { name: 'CosmosDbEndpoint', value: cosmos.outputs.endpoint }
+  { name: 'StorageAccountName', value: storageAccount.outputs.name }
+]
 module app './app/app.bicep' = {
   name: 'app${deploymentSuffix}'
   params: {
@@ -294,97 +349,19 @@ module app './app/app.bicep' = {
     location: location
     tags: tags
     applicationInsightsName: logAnalytics.outputs.applicationInsightsName
-    containerAppsEnvironmentName: managedEnvironment.outputs.name
-    containerAppsEnvironmentWorkloadProfileName:  existing_ManagedAppEnv_WorkloadProfile_Name
+    managedEnvironmentName: managedEnvironment.outputs.name
+    managedEnvironmentRg: existing_ManagedAppEnv_ResourceGroupName
     containerRegistryName: containerRegistry.outputs.name
-    containerRegistryResourceGroup: containerRegistry.outputs.resourceGroupName
+    imageName: resourceNames.outputs.containerAppUIName
     exists: backendExists
     identityName: managedIdentity.outputs.managedIdentityName
-    clientId: ''
-    clientIdScope: ''
-    clientSecretSecretName: ''
-    tokenStoreSasSecretName: ''
-    appDefinition: {
-      settings: (union(
-        array(backendDefinition.settings),
-        [
-          {
-            name: 'acrpassword'
-            value: 'https://${keyVault.outputs.name}${environment().suffixes.keyvaultDns}/secrets/${containerRegistry.outputs.registrySecretName}'
-            secretRef: 'acrpassword'
-            secret: true
-          }
-          {
-            name: 'AzureStorageAccountEndpoint'
-            value: storageAccount.outputs.primaryEndpoints.blob
-          }
-          {
-            name: 'AzureStorageContainer'
-            value: storageAccountContainerName
-          }
-          {
-            name: 'AzureSearchServiceEndpoint'
-            value: searchService.outputs.endpoint
-          }
-          {
-            name: 'AOAIStandardServiceEndpoint'
-            value: azureOpenAi.outputs.endpoint
-          }
-          {
-            name: 'AOAIStandardChatGptDeployment'
-            value: azureChatGptStandardDeploymentName
-          }
-          {
-            name: 'AOAIEmbeddingsDeployment'
-            value: azureEmbeddingDeploymentName
-          }
-          {
-            name: 'EnableDataProtectionBlobKeyStorage'
-            value: string(false)
-          }
-          {
-            name: 'UseManagedIdentityResourceAccess'
-            value: string(useManagedIdentityResourceAccess)
-          }
-          {
-            name: 'UseManagedManagedIdentityClientId'
-            value: managedIdentity.outputs.managedIdentityClientId
-          }
-        ],
-        (useManagedIdentityResourceAccess)
-          ? [
-              {
-                name: 'CosmosDBEndpoint'
-                value: cosmos.outputs.endpoint
-              }
-            ]
-          : [
-              {
-                name: 'CosmosDBConnectionString'
-                value: 'https://${keyVault.outputs.name}${environment().suffixes.keyvaultDns}/secrets/${cosmos.outputs.connectionStringSecretName}'
-                secretRef: 'cosmosdbconnectionstring'
-                secret: true
-              }
-              {
-                name: 'AzureStorageAccountConnectionString'
-                value: 'https://${keyVault.outputs.name}${environment().suffixes.keyvaultDns}/secrets/${storageAccount.outputs.storageAccountConnectionStringSecretName}'
-                secretRef: 'azurestorageconnectionstring'
-                secret: true
-              }
-              {
-                name: 'AzureSearchServiceKey'
-                value: 'https://${keyVault.outputs.name}${environment().suffixes.keyvaultDns}/secrets/${searchService.outputs.searchKeySecretName}'
-                secretRef: 'azuresearchservicekey'
-                secret: true
-              }
-              {
-                name: 'AOAIStandardServiceKey'
-                value: 'https://${keyVault.outputs.name}${environment().suffixes.keyvaultDns}/secrets/${azureOpenAi.outputs.cognitiveServicesKeySecretName}'
-                secretRef: 'aoaistandardservicekey'
-                secret: true
-              }
-            ]
-      ))
+    env: settings
+    secrets: {
+      cosmos: 'https://${keyVault.outputs.name}${environment().suffixes.keyvaultDns}/secrets/${cosmos.outputs.connectionStringSecretName}'
+      aikey: 'https://${keyVault.outputs.name}${environment().suffixes.keyvaultDns}/secrets/${storageAccount.outputs.storageAccountConnectionStringSecretName}'
+      searchkey: 'https://${keyVault.outputs.name}${environment().suffixes.keyvaultDns}/secrets/${searchService.outputs.searchKeySecretName}'
+      docintellikey: 'https://${keyVault.outputs.name}${environment().suffixes.keyvaultDns}/secrets/${documentIntelligence.outputs.keyVaultSecretName}'
+      apikey: 'https://${keyVault.outputs.name}${environment().suffixes.keyvaultDns}/secrets/api-key'
     }
   }
 }

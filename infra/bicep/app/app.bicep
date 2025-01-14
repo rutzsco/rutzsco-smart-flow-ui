@@ -2,96 +2,99 @@ param name string
 param location string = resourceGroup().location
 param tags object = {}
 param containerRegistryName string
-param containerRegistryResourceGroup string = resourceGroup().name
-param containerAppsEnvironmentName string
-param containerAppsEnvironmentWorkloadProfileName string
+param imageName string
+param managedEnvironmentName string
+param managedEnvironmentRg string
 param applicationInsightsName string
 param exists bool
-@secure()
-param appDefinition object
+// @secure()
+// param appDefinition object
 param identityName string
-param clientId string
-param clientIdScope string
-param clientSecretSecretName string
-param tokenStoreSasSecretName string
 
-var appSettingsArray = filter(array(appDefinition.settings), i => i.name != '')
-var secrets = map(
-  filter(appSettingsArray, i => i.?secret != null),
-  i => {
-    name: i.name
-    value: i.value
-    secretRef: i.?secretRef ?? take(replace(replace(toLower(i.name), '_', '-'), '.', '-'), 32)
-  }
-)
-var env = map(
-  filter(appSettingsArray, i => i.?secret == null),
-  i => {
-    name: i.name
-    value: i.value
-  }
-)
+param clientId string = ''
+param clientIdScope string = ''
+param clientSecretSecretName string = ''
+param tokenStoreSasSecretName string = ''
+
+@description('The secrets required for the container, with the key being the secret name and the value being the key vault URL')
+@secure()
+param secrets object = {}
+@description('The environment variables for the container')
+param env array = []
+
+//var appSettingsArray = filter(array(appDefinition.settings), i => i.name != '')
+// var secrets = map(
+//   filter(appSettingsArray, i => i.?secret != null),
+//   i => {
+//     name: i.name
+//     value: i.value
+//     secretRef: i.?secretRef ?? take(replace(replace(toLower(i.name), '_', '-'), '.', '-'), 32)
+//   }
+// )
+// var env = map(
+//   filter(appSettingsArray, i => i.?secret == null),
+//   i => {
+//     name: i.name
+//     value: i.value
+//   }
+// )
 var port = 8080
 
-resource containerRegistry 'Microsoft.ContainerRegistry/registries@2023-01-01-preview' existing = {
-  scope: resourceGroup(containerRegistryResourceGroup)
-  name: containerRegistryName
-}
+// resource containerRegistry 'Microsoft.ContainerRegistry/registries@2023-11-01-preview' existing = {
+//   scope: resourceGroup(containerRegistryResourceGroup)
+//   name: containerRegistryName
+// }
 
-resource containerAppsEnvironment 'Microsoft.App/managedEnvironments@2023-05-01' existing = {
-  name: containerAppsEnvironmentName
+resource containerAppEnvironmentResource 'Microsoft.App/managedEnvironments@2024-10-02-preview' existing = {
+  name: managedEnvironmentName
+  scope: resourceGroup(managedEnvironmentRg)
 }
 
 resource applicationInsights 'Microsoft.Insights/components@2020-02-02' existing = {
   name: applicationInsightsName
 }
 
-resource userIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-31' existing = {
+resource userIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-07-31-preview' existing = {
   name: identityName
 }
 
 module fetchLatestImage './fetch-container-image.bicep' = {
-  name: '${name}-fetch-image'
+  name: '${imageName}-fetch-image'
   params: {
     exists: exists
-    name: name
+    name: imageName
   }
 }
 
-resource app 'Microsoft.App/containerApps@2023-05-02-preview' = {
+resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
   name: name
   location: location
   tags: union(tags, { 'azd-service-name': 'web' })
   identity: {
     type: 'UserAssigned'
-    userAssignedIdentities: { '${userIdentity.id}': {} }
+    userAssignedIdentities: {
+      '${userIdentity.id}': {}
+    }
   }
   properties: {
-    managedEnvironmentId: containerAppsEnvironment.id
+    managedEnvironmentId: containerAppEnvironmentResource.id
     configuration: {
       ingress: {
         external: true
         targetPort: port
         transport: 'auto'
       }
+      secrets: [for secret in items(secrets): {
+        name: secret.key
+        identity: userIdentity.id
+        keyVaultUrl: secret.value
+      }]
       registries: [
         {
-          server: containerRegistry.properties.loginServer
-          username: containerRegistry.listCredentials().username
-          passwordSecretRef: 'acrpassword'
+          identity: userIdentity.id
+          server: '${containerRegistryName}.azurecr.io'
         }
       ]
-      secrets: union(
-        [],
-        map(
-          secrets,
-          secret => {
-            name: secret.secretRef
-            keyVaultUrl: secret.value
-            identity: userIdentity.id
-          }
-        )
-      )
     }
     template: {
       containers: [
@@ -109,14 +112,14 @@ resource app 'Microsoft.App/containerApps@2023-05-02-preview' = {
                 value: '${port}'
               }
             ],
-            env,
-            map(
-              secrets,
-              secret => {
-                name: secret.name
-                secretRef: secret.secretRef
-              }
-            )
+            env
+            // map(
+            //   secrets,
+            //   secret => {
+            //     name: secret.name
+            //     secretRef: secret.secretRef
+            //   }
+            // )
           )
           resources: {
             cpu: json('1.0')
@@ -152,7 +155,7 @@ resource app 'Microsoft.App/containerApps@2023-05-02-preview' = {
         maxReplicas: 10
       }
     }
-    workloadProfileName: containerAppsEnvironmentWorkloadProfileName
+    //  workloadProfileName: containerAppsEnvironmentWorkloadProfileName
   }
 }
 
@@ -160,7 +163,7 @@ module appAuthorization './app-authorization.bicep' =
   if (!empty(clientId)) {
     name: 'app-authorization'
     params: {
-      appName: app.name
+      appName: containerApp.name
       clientId: clientId
       clientIdScope: clientIdScope
       clientSecretSecretName: clientSecretSecretName
@@ -168,7 +171,7 @@ module appAuthorization './app-authorization.bicep' =
     }
   }
 
-output defaultDomain string = containerAppsEnvironment.properties.defaultDomain
-output name string = app.name
-output uri string = 'https://${app.properties.configuration.ingress.fqdn}'
-output id string = app.id
+output defaultDomain string = containerAppEnvironmentResource.properties.defaultDomain
+output name string = containerApp.name
+output uri string = 'https://${containerApp.properties.configuration.ingress.fqdn}'
+output id string = containerApp.id

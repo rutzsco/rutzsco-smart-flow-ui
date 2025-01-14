@@ -1,0 +1,84 @@
+# ----------------------------------------------------------------------------------------------------
+# Pipeline to build and deploy one Container App Module
+# ----------------------------------------------------------------------------------------------------
+name: $(date:yyyy).$(date:MM).$(date:dd)$(rev:.r)
+pool:
+  vmImage: 'ubuntu-latest'
+# ----------------------------------------------------------------------------------------------------
+trigger: none
+
+# ----------------------------------------------------------------------------------------------------
+parameters:
+- name: apps
+  displayName: Which Apps to build and deploy?
+  type: string
+  values:
+    - API
+    - BATCH
+    - API-BATCH
+  default: 'API'
+- name: buildApps
+  displayName: Build Docker Images
+  type: boolean
+  default: true
+- name: pushApps
+  displayName: Push Images to ACR
+  type: boolean
+  default: true
+- name: deployApps
+  displayName: Deploy from ACR to CA
+  type: boolean
+  default: true
+- name: runMSDevSecOpsScan
+  displayName: Run Scan
+  type: boolean
+  default: false
+
+# ----------------------------------------------------------------------------------------------------
+variables:
+  - group: AI.Doc.Review.Keys
+  - template: vars/var-service-connections.yml
+
+# ----------------------------------------------------------------------------------------------------
+stages:
+- ${{ if parameters.runMSDevSecOpsScan }}:
+    - stage: ScanApplication
+      displayName: Scan Application
+      jobs:
+        - template: pipes/templates/scan-code-template.yml
+          parameters:
+            environmentName: 'DEV'
+            runMSDevSecOpsScan: ${{ parameters.runMSDevSecOpsScan }}
+            runGHASScan: false
+
+# ----------------------------------------------------------------------------------------------------
+- ${{ if and(parameters.buildApps, contains(parameters.apps, 'API')) }}:
+  - template: pipes/aca-build-one-pipe.yml
+    parameters:
+      pushToACR: ${{ parameters.pushApps }}
+      apps: [ 
+        { containerAppName: 'api',   acrAppName: 'assistantapi',   projectFolderName: 'app/Assistant.Hub.Api',       port: '8080' }
+      ] 
+
+- ${{ if and(parameters.buildApps, contains(parameters.apps, 'BATCH')) }}:
+  - template: pipes/aca-build-one-pipe.yml
+    parameters:
+      pushToACR: ${{ parameters.pushApps }}
+      apps: [ 
+        { containerAppName: 'batch', acrAppName: 'assistantbatch', projectFolderName: 'app/Assistant.Hub.Api.Batch', port: '80' }
+      ] 
+
+# ----------------------------------------------------------------------------------------------------
+- ${{ if and(parameters.deployApps, contains(parameters.apps, 'API')) }}:
+  - template: pipes/aca-deploy-pipe.yml
+    parameters:
+      apps: [ 
+        { containerAppName: 'api',   acrAppName: 'assistantapi',   projectFolderName: 'app/Assistant.Hub.Api',       port: '8080' }
+      ] 
+
+- ${{ if and(parameters.deployApps, contains(parameters.apps, 'BATCH')) }}:
+  - template: pipes/aca-deploy-pipe.yml
+    parameters:
+      apps: [ 
+        { containerAppName: 'batch', acrAppName: 'assistantbatch', projectFolderName: 'app/Assistant.Hub.Api.Batch', port: '80' }
+      ] 

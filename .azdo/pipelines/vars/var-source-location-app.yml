@@ -1,0 +1,24 @@
+# ----------------------------------------------------------------------------------------------------
+# Variables for location of source for application and ACA configuration settings for each app
+# ----------------------------------------------------------------------------------------------------
+variables:
+  - name: ACR_REPO_NAME
+    value: 'aiflows'
+
+  - name: API_CONTAINER_APP_NAME
+    value: 'api'
+  - name: API_PROJECT_FOLDER_NAME
+    value: 'app/Assistant.Hub.UI'
+  - name: API_ACR_APP_NAME
+    value: 'assistantui'
+  - name: API_PORT
+    value: '8080'
+
+  - name: BATCH_CONTAINER_APP_NAME
+    value: 'batch'
+  - name: BATCH_PROJECT_FOLDER_NAME
+    value: 'app/Assistant.Hub.Api.Batch'
+  - name: BATCH_ACR_APP_NAME
+    value: 'assistantbatch'
+  - name: BATCH_PORT
+    value: '80'
