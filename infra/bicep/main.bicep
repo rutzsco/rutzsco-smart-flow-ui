@@ -166,7 +166,7 @@ module resourceNames 'resourcenames.bicep' = {
 // -- Existing Monitoring Resources -----------------------------------------------------------------------------
 // --------------------------------------------------------------------------------------------------------------
 module logAnalytics './core/monitor/loganalytics.bicep' = {
-  name: 'law${deploymentSuffix}'
+  name: 'existing_law${deploymentSuffix}'
   params: {
     existingLogAnalyticsName: existing_LogAnalytics_Name
     existingLogAnalyticsRgName: existing_LogAnalytics_ResourceGroupName
@@ -178,7 +178,7 @@ module logAnalytics './core/monitor/loganalytics.bicep' = {
 // -- Existing Identity Resource --------------------------------------------------------------------------------
 // --------------------------------------------------------------------------------------------------------------
 module managedIdentity './core/iam/identity.bicep' = {
-  name: 'identity${deploymentSuffix}'
+  name: 'existing_identity${deploymentSuffix}'
   params: {
     existingIdentityName: existing_Identity_Name
   }
@@ -188,7 +188,7 @@ module managedIdentity './core/iam/identity.bicep' = {
 // -- Existing VNET Resource ------------------------------------------------------------------------------------
 // --------------------------------------------------------------------------------------------------------------
 module vnet './core/networking/vnet.bicep' = {
-  name: 'vnet${deploymentSuffix}'
+  name: 'existing_vnet${deploymentSuffix}'
   params: {
     location: location
     existingVirtualNetworkName: existing_Vnet_Name
@@ -204,7 +204,7 @@ module vnet './core/networking/vnet.bicep' = {
 // -- Existing KeyVault Resource --------------------------------------------------------------------------------
 // --------------------------------------------------------------------------------------------------------------
 module keyVault './core/security/keyvault.bicep' = {
-  name: 'keyvault${deploymentSuffix}'
+  name: 'existing_keyvault${deploymentSuffix}'
   params: {
     existingKeyVaultName: existing_KeyVault_Name
   }
@@ -214,7 +214,7 @@ module keyVault './core/security/keyvault.bicep' = {
 // -- Existing Container Registry Resource ----------------------------------------------------------------------
 // --------------------------------------------------------------------------------------------------------------
 module containerRegistry './core/host/containerregistry.bicep' = {
-  name: 'containerregistry${deploymentSuffix}'
+  name: 'existing_containerregistry${deploymentSuffix}'
   params: {
     existingRegistryName: existing_ACR_Name
     existing_ACR_ResourceGroupName: existing_ACR_ResourceGroupName
@@ -225,7 +225,7 @@ module containerRegistry './core/host/containerregistry.bicep' = {
 // -- Existing Cosmos Resources ---------------------------------------------------------------------------------
 // --------------------------------------------------------------------------------------------------------------
 module cosmos './core/database/cosmosdb.bicep' = {
-  name: 'cosmos${deploymentSuffix}'
+  name: 'existing_cosmos${deploymentSuffix}'
   params: {
     existingAccountName: existing_Cosmos_Name
     databaseName: 'ChatHistory'
@@ -236,7 +236,7 @@ module cosmos './core/database/cosmosdb.bicep' = {
 // -- Existing OpenAI Resources ---------------------------------------------------------------------------------
 // --------------------------------------------------------------------------------------------------------------
 module azureOpenAi './core/ai/cognitive-services.bicep' = {
-  name: 'openai${deploymentSuffix}'
+  name: 'existing_openai${deploymentSuffix}'
   params: {
     existing_CogServices_Name: existing_OpenAI_Name
     existing_CogServices_RG_Name: existing_OpenAI_ResourceGroupName
@@ -265,7 +265,7 @@ module azureOpenAi './core/ai/cognitive-services.bicep' = {
 // -- Existing Container App Environment Resource ---------------------------------------------------------------
 // --------------------------------------------------------------------------------------------------------------
 module managedEnvironment './core/host/managedEnvironment.bicep' = {
-  name: 'caenv${deploymentSuffix}'
+  name: 'existing_ca_env${deploymentSuffix}'
   params: {
     existingEnvironmentName: existing_ManagedAppEnv_Name
     existingEnvironmentResourceGroup: existing_ManagedAppEnv_ResourceGroupName
@@ -281,7 +281,7 @@ module managedEnvironment './core/host/managedEnvironment.bicep' = {
 var storageAccountContainerName = 'content'
 var dataProtectionKeysContainerName = 'dataprotectionkeys'
 module storageAccount './core/storage/storage-account.bicep' = {
-  name: 'storage${deploymentSuffix}'
+  name: 'existing_storage${deploymentSuffix}'
   params: {
     name: existing_StorageAccount_Name
     containers: [
@@ -295,7 +295,7 @@ module storageAccount './core/storage/storage-account.bicep' = {
 // -- Existing Search Service Resource --------------------------------------------------------------------------
 // --------------------------------------------------------------------------------------------------------------
 module searchService './core/search/search-services.bicep' = {
-  name: 'search${deploymentSuffix}'
+  name: 'existing_search${deploymentSuffix}'
   params: {
     existingSearchServiceName: existing_SearchService_Name
   }
@@ -305,7 +305,7 @@ module searchService './core/search/search-services.bicep' = {
 // -- Existing Document Intelligence Resource -------------------------------------------------------------------
 // --------------------------------------------------------------------------------------------------------------
 module documentIntelligence './core/ai/document-intelligence.bicep' = {
-  name: 'doc-intelligence${deploymentSuffix}'
+  name: 'existing_doc_intelligence${deploymentSuffix}'
   params: {
     existing_CogServices_Name: existing_DocumentIntelligence_Name
     existing_CogServices_RG_Name: existing_DocumentIntelligence_RG_Name

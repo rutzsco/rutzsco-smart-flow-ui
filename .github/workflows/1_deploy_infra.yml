@@ -19,22 +19,22 @@ on:
         description: 'Parameter File'
         required: true
         default: 'main.gh.bicepparam'
-      createResourceGroup:
-        description: Create Resource Group?
-        type: boolean
-        default: true
-      publicAccessEnabled:
-        description: Public Access Enabled?
-        type: boolean
-        default: true
-      createDnsZones:
-        description: Create DNS Zones?
-        type: boolean
-        default: true
-      addRoleAssignments:
-        description: Add Role Assignments?
-        type: boolean
-        default: true
+      # createResourceGroup:
+      #   description: Create Resource Group?
+      #   type: boolean
+      #   default: true
+      # publicAccessEnabled:
+      #   description: Public Access Enabled?
+      #   type: boolean
+      #   default: true
+      # createDnsZones:
+      #   description: Create DNS Zones?
+      #   type: boolean
+      #   default: true
+      # addRoleAssignments:
+      #   description: Add Role Assignments?
+      #   type: boolean
+      #   default: true
             
 jobs:
   Deploy_Bicep:
@@ -52,7 +52,7 @@ jobs:
       templateFile: 'main.bicep'
       parameterFile: ${{ inputs.parameterFile }}
       parameterFileReplaceTokens: 'true'
-      createResourceGroup: ${{ inputs.createResourceGroup }}
-      publicAccessEnabled: ${{ inputs.publicAccessEnabled }}
-      createDnsZones: ${{ inputs.createDnsZones }}
-      addRoleAssignments: ${{ inputs.addRoleAssignments }}
+      createResourceGroup: false # ${{ inputs.createResourceGroup }}
+      publicAccessEnabled: false # ${{ inputs.publicAccessEnabled }}
+      createDnsZones: false # ${{ inputs.createDnsZones }}
+      addRoleAssignments: false # ${{ inputs.addRoleAssignments }}
