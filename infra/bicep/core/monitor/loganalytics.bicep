@@ -2,6 +2,7 @@ param newLogAnalyticsName string = ''
 param newApplicationInsightsName string = ''
 
 param existingLogAnalyticsName string = ''
+param existingLogAnalyticsRgName string
 param existingApplicationInsightsName string = ''
 
 param location string = resourceGroup().location
@@ -18,6 +19,7 @@ var useExistingAppInsights = !empty(existingApplicationInsightsName)
 
 resource existingLogAnalyticsResource 'Microsoft.OperationalInsights/workspaces@2023-09-01' existing = if (useExistingLogAnalytics) {
   name: existingLogAnalyticsName
+  scope: resourceGroup(existingLogAnalyticsRgName)
 }
 
 resource newLogAnalyticsResource 'Microsoft.OperationalInsights/workspaces@2023-09-01' = if (!useExistingLogAnalytics){

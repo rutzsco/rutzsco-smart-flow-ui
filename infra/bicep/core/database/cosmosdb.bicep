@@ -26,10 +26,64 @@ var chatContainerName = 'AgentLog'
 var useExistingAccount = !empty(existingAccountName)
 
 // --------------------------------------------------------------------------------------------------------------
+// Use existing Cosmos DB account
+// --------------------------------------------------------------------------------------------------------------
 resource existingCosmosAccount 'Microsoft.DocumentDB/databaseAccounts@2024-08-15' existing = if (useExistingAccount) {
   name: existingAccountName
 }
+resource cosmosDatabaseExisting 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases@2024-08-15' = if (useExistingAccount) {
+  parent: existingCosmosAccount
+  name: databaseName
+  tags: tags
+  properties: {
+    resource: {
+      id: databaseName
+    }
+    options: {}
+  }
+}
+resource chatContainerExisting 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers@2024-08-15' = if (!useExistingAccount) {
+  parent: cosmosDatabaseExisting
+  name: chatContainerName
+  tags: tags
+  properties: {
+    resource: {
+      id: chatContainerName
+      indexingPolicy: {
+        indexingMode: 'consistent'
+        automatic: true
+        includedPaths: [
+          {
+            path: '/*'
+          }
+        ]
+        excludedPaths: [
+          {
+            path: '/"_etag"/?'
+          }
+        ]
+      }
+      partitionKey: {
+        paths: [
+          '/requestId'
+        ]
+        kind: 'Hash'
+      }
+      uniqueKeyPolicy: {
+        uniqueKeys: []
+      }
+      conflictResolutionPolicy: {
+        mode: 'LastWriterWins'
+        conflictResolutionPath: '/_ts'
+      }
+    }
+    options: {}
+  }
+}
 
+// --------------------------------------------------------------------------------------------------------------
+// Create new Cosmos DB account
+// --------------------------------------------------------------------------------------------------------------
 resource cosmosAccount 'Microsoft.DocumentDB/databaseAccounts@2024-08-15' = if (!useExistingAccount) {
   name: toLower(accountName)
   location: location
@@ -165,6 +219,9 @@ resource cosmosDbUserAccessRoleAssignment 'Microsoft.DocumentDB/databaseAccounts
   }
 }
 
+// --------------------------------------------------------------------------------------------------------------
+// Outputs
+// --------------------------------------------------------------------------------------------------------------
 output id string = useExistingAccount ? existingCosmosAccount.id : cosmosAccount.id
 output name string = useExistingAccount ? existingCosmosAccount.name : cosmosAccount.name
 output endpoint string = useExistingAccount ? existingCosmosAccount.properties.documentEndpoint : cosmosAccount.properties.documentEndpoint

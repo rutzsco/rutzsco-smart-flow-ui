@@ -1,12 +1,14 @@
-param name string
+param name string = ''
 param location string = resourceGroup().location
 param tags object = {}
 
+param existingStorageAccountName string = ''
+
 //param publicNetworkAccess bool
-param privateEndpointSubnetId string
-param privateEndpointBlobName string
-param privateEndpointQueueName string
-param privateEndpointTableName string
+param privateEndpointSubnetId string = ''
+param privateEndpointBlobName string = ''
+param privateEndpointQueueName string = ''
+param privateEndpointTableName string = ''
 @description('Provide the IP address to allow access to the Azure Container Registry')
 param myIpAddress string = ''
 
@@ -15,7 +17,38 @@ param kind string = 'StorageV2'
 param minimumTlsVersion string = 'TLS1_2'
 param sku object = { name: 'Standard_LRS' }
 
-resource storage 'Microsoft.Storage/storageAccounts@2022-05-01' = {
+// --------------------------------------------------------------------------------------------------------------
+// Variables
+// --------------------------------------------------------------------------------------------------------------
+var useExistingStorageAccount = !empty(existingStorageAccountName)
+
+// --------------------------------------------------------------------------------------------------------------
+// If using existing storage account, just add the missing containers
+// --------------------------------------------------------------------------------------------------------------
+resource existingStorageAccount 'Microsoft.Storage/storageAccounts@2022-05-01' existing = if (useExistingStorageAccount) {
+  name: existingStorageAccountName
+}
+resource existingStorageAccountBlobServices 'Microsoft.Storage/storageAccounts/blobServices@2023-05-01' = if (useExistingStorageAccount && !empty(containers)) {
+  parent: existingStorageAccount
+  name: 'default'
+}
+resource blobServices 'Microsoft.Storage/storageAccounts/blobServices/containers@2023-05-01' = if (useExistingStorageAccount && !empty(containers)) {
+  parent: existingStorageAccountBlobServices
+  name: 'default'
+  resource container 'containers' = [
+    for container in containers: {
+      name: container
+      properties: {
+        publicAccess: 'None'
+      }
+    }
+  ]
+}
+
+// --------------------------------------------------------------------------------------------------------------
+// If creating the storage account...
+// --------------------------------------------------------------------------------------------------------------
+resource storage 'Microsoft.Storage/storageAccounts@2022-05-01' = if (!useExistingStorageAccount) {
   name: name
   location: location
   tags: tags
@@ -52,7 +85,7 @@ resource storage 'Microsoft.Storage/storageAccounts@2022-05-01' = {
   }
 }
 
-module privateEndpointBlob '../networking/private-endpoint.bicep' = if (!empty(privateEndpointSubnetId)) {
+module privateEndpointBlob '../networking/private-endpoint.bicep' =  if (!useExistingStorageAccount && !empty(privateEndpointSubnetId)) {
   name: '${name}-blob-private-endpoint'
   params: {
     location: location
@@ -65,8 +98,7 @@ module privateEndpointBlob '../networking/private-endpoint.bicep' = if (!empty(p
   }
 }
 
-module privateEndpointTable '../networking/private-endpoint.bicep' =
-  if (!empty(privateEndpointSubnetId)) {
+module privateEndpointTable '../networking/private-endpoint.bicep' =  if (!useExistingStorageAccount && !empty(privateEndpointSubnetId)) {
     name: '${name}-table-private-endpoint'
     params: {
       location: location
@@ -79,8 +111,7 @@ module privateEndpointTable '../networking/private-endpoint.bicep' =
     }
   }
 
-  module privateEndpointQueue '../networking/private-endpoint.bicep' =
-  if (!empty(privateEndpointSubnetId)) {
+  module privateEndpointQueue '../networking/private-endpoint.bicep' =  if (!useExistingStorageAccount && !empty(privateEndpointSubnetId)) {
     name: '${name}-queue-private-endpoint'
     params: {
       location: location
@@ -93,13 +124,16 @@ module privateEndpointTable '../networking/private-endpoint.bicep' =
     }
   }
 
-output name string = storage.name
-output id string = storage.id
-output primaryEndpoints object = storage.properties.primaryEndpoints
+// --------------------------------------------------------------------------------------------------------------
+// Outputs
+// --------------------------------------------------------------------------------------------------------------
+output name string = useExistingStorageAccount ? existingStorageAccount.name : storage.name
+output id string = useExistingStorageAccount ? existingStorageAccount.id : storage.id
+output primaryEndpoints object = useExistingStorageAccount ? existingStorageAccount.properties.primaryEndpoints : storage.properties.primaryEndpoints
 output containerNames array = [
   for (name, i) in containers: {
     name: name
-    url: '${storage.properties.primaryEndpoints.blob}/${name}'
+    url: useExistingStorageAccount ? '${existingStorageAccount.properties.primaryEndpoints.blob}/${name}' : '${storage.properties.primaryEndpoints.blob}/${name}'
   }
 ]
 output privateEndpointBlobName string = privateEndpointBlobName

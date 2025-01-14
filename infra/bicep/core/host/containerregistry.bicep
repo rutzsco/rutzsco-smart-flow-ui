@@ -19,6 +19,7 @@ param location string = resourceGroup().location
 param tags object = {}
 
 var useExistingResource = !empty(existingRegistryName)
+var resourceGroupName = resourceGroup().name
 
 resource existingContainerRegistry 'Microsoft.ContainerRegistry/registries@2023-01-01-preview' existing = if (useExistingResource) {
   name: existingRegistryName
@@ -60,8 +61,10 @@ module privateEndpoint '../networking/private-endpoint.bicep' =
   }
 
 
-@description('Output the name for later use')
+// --------------------------------------------------------------------------------------------------------------
+// Outputs
+// --------------------------------------------------------------------------------------------------------------
 output name string = useExistingResource ? existingContainerRegistry.name : newContainerRegistry.name
-@description('Output the login server property for later use')
+output resourceGroupName string = useExistingResource ? existing_ACR_ResourceGroupName : resourceGroupName
 output loginServer string = useExistingResource ? existingContainerRegistry.properties.loginServer : newContainerRegistry.properties.loginServer
 output privateEndpointName string = privateEndpointName

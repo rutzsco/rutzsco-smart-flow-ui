@@ -1,6 +1,8 @@
-param name string
+param name string = ''
 param location string = resourceGroup().location
 param tags object = {}
+
+param existingSearchServiceName string = ''
 
 param sku object = {
   name: 'standard'
@@ -14,19 +16,26 @@ param partitionCount int = 1
   'enabled'
   'disabled'
 ])
-param publicNetworkAccess string
+param publicNetworkAccess string = 'disabled'
 param replicaCount int = 1
 
-param privateEndpointSubnetId string
-param privateEndpointName string
-param managedIdentityId string
+param privateEndpointSubnetId string = ''
+param privateEndpointName string = ''
+param managedIdentityId string = ''
 
 // --------------------------------------------------------------------------------------------------------------
+// Variables
+// --------------------------------------------------------------------------------------------------------------
+var useExistingSearchService = !empty(existingSearchServiceName)
 var resourceGroupName = resourceGroup().name
 var searchKeySecretName = 'search-key'
 
 // --------------------------------------------------------------------------------------------------------------
-resource search 'Microsoft.Search/searchServices@2024-06-01-preview' = {
+resource existingSearchService 'Microsoft.Search/searchServices@2024-06-01-preview' existing = if (!useExistingSearchService) {
+  name: existingSearchServiceName
+}
+
+resource search 'Microsoft.Search/searchServices@2024-06-01-preview' = if (!useExistingSearchService) {
   name: name
   location: location
   tags: tags
@@ -59,8 +68,7 @@ resource search 'Microsoft.Search/searchServices@2024-06-01-preview' = {
   sku: sku
 }
 
-module privateEndpoint '../networking/private-endpoint.bicep' =
-  if (!empty(privateEndpointSubnetId)) {
+module privateEndpoint '../networking/private-endpoint.bicep' = if (!useExistingSearchService && !empty(privateEndpointSubnetId)) {
     name: '${name}-private-endpoint'
     params: {
       location: location
@@ -71,10 +79,12 @@ module privateEndpoint '../networking/private-endpoint.bicep' =
     }
   }
 
-
-output id string = search.id
-output endpoint string = 'https://${name}.search.windows.net/'
-output name string = search.name
+// --------------------------------------------------------------------------------------------------------------
+// Outputs
+// --------------------------------------------------------------------------------------------------------------
+output id string = useExistingSearchService ? existingSearchService.id : search.id
+output name string = useExistingSearchService ? existingSearchService.name : search.name
+output endpoint string = useExistingSearchService ? 'https://${existingSearchServiceName}.search.windows.net/' : 'https://${name}.search.windows.net/'
 output resourceGroupName string = resourceGroupName
 output searchKeySecretName string = searchKeySecretName
 output keyVaultSecretName string = searchKeySecretName
