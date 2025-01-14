@@ -15,7 +15,7 @@ param privateEndpointName string = ''
 @description('Provide the IP address to allow access to the Azure Container Registry')
 param myIpAddress string = ''
 param managedIdentityId string = ''
-//param deployments array = []
+
 param textEmbedding object = {}
 param chatGpt_Standard object = {}
 param chatGpt_Premium object = {}

@@ -20,7 +20,6 @@ param secrets object = {}
 param env array = []
 
 // --------------------------------------------------------------------------------------------------------------
-
 resource containerAppEnvironmentResource 'Microsoft.App/managedEnvironments@2024-03-01' existing = {
   name: managedEnvironmentName
   scope: resourceGroup(managedEnvironmentRg)
@@ -30,12 +29,19 @@ resource userIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-01-
   name: userAssignedIdentityName
 }
 
+module fetchLatestImage './fetch-container-image.bicep' = {
+  name: '${imageName}-fetch-image'
+  params: {
+    exists: true
+    name: imageName
+  }
+}
 
 resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
   name: appName
   location: location
-  tags: tags
-  identity:{
+  tags: union(tags, { 'azd-service-name': 'web' })
+  identity: {
     type: 'UserAssigned'
     userAssignedIdentities: {
       '${userIdentity.id}': {}
@@ -69,7 +75,7 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
       containers: [
         {
           name: 'app'
-          image: !empty(imageName) ? imageName : 'mcr.microsoft.com/azuredocs/containerapps-helloworld:latest'
+          image: fetchLatestImage.outputs.?containers[?0].?image ?? 'mcr.microsoft.com/azuredocs/containerapps-helloworld:latest'
           resources: {
               cpu: json('0.5')
               memory: '1.0Gi'
@@ -110,7 +116,9 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
   }
 }
 
-// output id string = containerApp.id
+// --------------------------------------------------------------------------------------------------------------
+// Outputs
+// --------------------------------------------------------------------------------------------------------------
 output name string = containerApp.name
 output id string = containerApp.id
 output fqdn string = containerApp.properties.configuration.ingress.fqdn

@@ -7,8 +7,6 @@ param managedEnvironmentName string
 param managedEnvironmentRg string
 param applicationInsightsName string
 param exists bool
-// @secure()
-// param appDefinition object
 param identityName string
 
 param clientId string = ''
@@ -22,29 +20,9 @@ param secrets object = {}
 @description('The environment variables for the container')
 param env array = []
 
-//var appSettingsArray = filter(array(appDefinition.settings), i => i.name != '')
-// var secrets = map(
-//   filter(appSettingsArray, i => i.?secret != null),
-//   i => {
-//     name: i.name
-//     value: i.value
-//     secretRef: i.?secretRef ?? take(replace(replace(toLower(i.name), '_', '-'), '.', '-'), 32)
-//   }
-// )
-// var env = map(
-//   filter(appSettingsArray, i => i.?secret == null),
-//   i => {
-//     name: i.name
-//     value: i.value
-//   }
-// )
-var port = 8080
+param port int = 8080
 
-// resource containerRegistry 'Microsoft.ContainerRegistry/registries@2023-11-01-preview' existing = {
-//   scope: resourceGroup(containerRegistryResourceGroup)
-//   name: containerRegistryName
-// }
-
+// --------------------------------------------------------------------------------------------------------------
 resource containerAppEnvironmentResource 'Microsoft.App/managedEnvironments@2024-10-02-preview' existing = {
   name: managedEnvironmentName
   scope: resourceGroup(managedEnvironmentRg)
@@ -58,7 +36,7 @@ resource userIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-07-
   name: identityName
 }
 
-module fetchLatestImage './fetch-container-image.bicep' = {
+module fetchLatestImage '../core/host/fetch-container-image.bicep' = {
   name: '${imageName}-fetch-image'
   params: {
     exists: exists
@@ -171,7 +149,10 @@ module appAuthorization './app-authorization.bicep' =
     }
   }
 
-output defaultDomain string = containerAppEnvironmentResource.properties.defaultDomain
-output name string = containerApp.name
-output uri string = 'https://${containerApp.properties.configuration.ingress.fqdn}'
+// --------------------------------------------------------------------------------------------------------------
+// Outputs
+// --------------------------------------------------------------------------------------------------------------
 output id string = containerApp.id
+output name string = containerApp.name
+output defaultDomain string = containerAppEnvironmentResource.properties.defaultDomain
+output uri string = 'https://${containerApp.properties.configuration.ingress.fqdn}'

@@ -86,7 +86,7 @@ resource storage 'Microsoft.Storage/storageAccounts@2023-05-01' = if (!useExisti
   }
 }
 
-module privateEndpointBlob '../networking/private-endpoint.bicep' =  if (!useExistingStorageAccount && !empty(privateEndpointSubnetId)) {
+module privateEndpointBlob '../networking/private-endpoint.bicep' = if (!useExistingStorageAccount && !empty(privateEndpointSubnetId)) {
   name: '${name}-blob-private-endpoint'
   params: {
     location: location
