@@ -397,6 +397,9 @@ FodyWeavers.xsd
 # JetBrains Rider
 *.sln.iml
 
+.env
+.venv
+
 # Ignore local dev settings
 appsettings.Development.json
 app/Assistant.UI/appsettings.Development.json
