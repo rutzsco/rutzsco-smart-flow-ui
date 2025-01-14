@@ -31,22 +31,22 @@ parameters:
       - PROD
       - DEV-QA-PROD
     default: DEV
-  - name: createResourceGroup
-    displayName: Create Resource Group?
-    type: boolean
-    default: true
-  - name: publicAccessEnabled
-    displayName: Public Access Enabled?
-    type: boolean
-    default: true
-  - name: createDnsZones
-    displayName: Create DNS Zones?
-    type: boolean
-    default: true
-  - name: addRoleAssignments
-    displayName: Add Role Assignments?
-    type: boolean
-    default: true
+  # - name: createResourceGroup
+  #   displayName: Create Resource Group?
+  #   type: boolean
+  #   default: true
+  # - name: publicAccessEnabled
+  #   displayName: Public Access Enabled?
+  #   type: boolean
+  #   default: true
+  # - name: createDnsZones
+  #   displayName: Create DNS Zones?
+  #   type: boolean
+  #   default: true
+  # - name: addRoleAssignments
+  #   displayName: Add Role Assignments?
+  #   type: boolean
+  #   default: true
   - name: runGHASScan
     displayName: Run GHAS Scan?
     type: boolean
@@ -70,10 +70,10 @@ stages:
           runMSDevSecOpsScan: ${{ parameters.runMSDevSecOpsScan }}
           runGHASScan: ${{ parameters.runGHASScan }}
           singleEnvironment: 'true'
-          createResourceGroup: ${{ parameters.createResourceGroup }}
-          publicAccessEnabled: ${{ parameters.publicAccessEnabled }}
-          createDnsZones: ${{ parameters.createDnsZones }}
-          addRoleAssignments: ${{ parameters.addRoleAssignments }}
+          createResourceGroup: false # ${{ parameters.createResourceGroup }}
+          publicAccessEnabled: false # ${{ parameters.publicAccessEnabled }}
+          createDnsZones: false # ${{ parameters.createDnsZones }}
+          addRoleAssignments: false # ${{ parameters.addRoleAssignments }}
 
   - ${{ if eq(parameters.deployToEnvironment, 'DEV-QA-PROD') }}:
       - template: pipes/infra-only-pipe.yml
@@ -81,7 +81,7 @@ stages:
           environments: ['DEV', 'QA', 'PROD']
           runMSDevSecOpsScan: ${{ parameters.runMSDevSecOpsScan }}
           runGHASScan: ${{ parameters.runGHASScan }}
-          createResourceGroup: ${{ parameters.createResourceGroup }}
-          publicAccessEnabled: ${{ parameters.publicAccessEnabled }}
-          createDnsZones: ${{ parameters.createDnsZones }}
-          addRoleAssignments: ${{ parameters.addRoleAssignments }}
+          createResourceGroup: false # ${{ parameters.createResourceGroup }}
+          publicAccessEnabled: false # ${{ parameters.publicAccessEnabled }}
+          createDnsZones: false # ${{ parameters.createDnsZones }}
+          addRoleAssignments: false # ${{ parameters.addRoleAssignments }}
