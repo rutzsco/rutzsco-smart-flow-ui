@@ -29,6 +29,10 @@ on:
         required: false
         type: string
         default: 'Incremental'
+      backendExists:
+        required: true
+        type: boolean
+        default: true
       runCreateInfra:
         required: false
         default: true
@@ -95,6 +99,7 @@ jobs:
           echo "vars.RESOURCEGROUP_PREFIX=${{ vars.RESOURCEGROUP_PREFIX }}"
           echo "vars.RESOURCEGROUP_LOCATION=${{ vars.RESOURCEGROUP_LOCATION }}"
 
+          echo "backendExists=${{ inputs.backendExists }}"
           echo "templatePath=${{ inputs.templatePath }}"
           echo "templateFile=${{ inputs.templateFile }}"
           echo "templateFilePath=${{ inputs.templatePath }}${{ inputs.templateFile }}"

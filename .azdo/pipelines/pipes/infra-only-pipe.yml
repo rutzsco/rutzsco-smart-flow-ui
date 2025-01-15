@@ -7,6 +7,8 @@ parameters:
     default: ['DEV']
   - name: singleEnvironment
     default: 'false'
+  - name: backendExists
+    default: true
   - name: createResourceGroup
     default: true
   - name: publicAccessEnabled
@@ -48,6 +50,7 @@ stages:
           - template: templates/create-infra-template.yml
             parameters:
               environmentName: ${{ environmentName }}
+              backendExists: ${{ parameters.backendExists }}
               createResourceGroup: ${{ parameters.createResourceGroup }}
               publicAccessEnabled: ${{ parameters.publicAccessEnabled }}
               createDnsZones: ${{ parameters.createDnsZones }}

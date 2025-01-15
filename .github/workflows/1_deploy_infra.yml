@@ -19,6 +19,10 @@ on:
         description: 'Parameter File'
         required: true
         default: 'main.gh.bicepparam'
+      backendExists:
+        description: Does Container Image Exist?
+        type: boolean
+        default: true
       # createResourceGroup:
       #   description: Create Resource Group?
       #   type: boolean
@@ -52,6 +56,7 @@ jobs:
       templateFile: 'main.bicep'
       parameterFile: ${{ inputs.parameterFile }}
       parameterFileReplaceTokens: 'true'
+      backendExists: ${{ inputs.backendExists }}
       createResourceGroup: false # ${{ inputs.createResourceGroup }}
       publicAccessEnabled: false # ${{ inputs.publicAccessEnabled }}
       createDnsZones: false # ${{ inputs.createDnsZones }}

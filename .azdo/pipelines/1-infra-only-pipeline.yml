@@ -31,6 +31,10 @@ parameters:
       - PROD
       - DEV-QA-PROD
     default: DEV
+  - name: backendExists
+    displayName: Does Container Image Exist?
+    type: boolean
+    default: true
   # - name: createResourceGroup
   #   displayName: Create Resource Group?
   #   type: boolean
@@ -70,6 +74,7 @@ stages:
           runMSDevSecOpsScan: ${{ parameters.runMSDevSecOpsScan }}
           runGHASScan: ${{ parameters.runGHASScan }}
           singleEnvironment: 'true'
+          backendExists: ${{ parameters.backendExists }}
           createResourceGroup: false # ${{ parameters.createResourceGroup }}
           publicAccessEnabled: false # ${{ parameters.publicAccessEnabled }}
           createDnsZones: false # ${{ parameters.createDnsZones }}
@@ -81,6 +86,7 @@ stages:
           environments: ['DEV', 'QA', 'PROD']
           runMSDevSecOpsScan: ${{ parameters.runMSDevSecOpsScan }}
           runGHASScan: ${{ parameters.runGHASScan }}
+          backendExists: ${{ parameters.backendExists }}
           createResourceGroup: false # ${{ parameters.createResourceGroup }}
           publicAccessEnabled: false # ${{ parameters.publicAccessEnabled }}
           createDnsZones: false # ${{ parameters.createDnsZones }}

@@ -17,7 +17,7 @@ param existing_KeyVault_Name = '#{APP_NAME_NO_DASHES}#kvdev'
 param existing_StorageAccount_Name = '#{APP_NAME_NO_DASHES}#stdev'
 param existing_ACR_Name = '#{APP_NAME_NO_DASHES}#crdev'
 
-param existing_LogAnalytics_Name = '#{}#-log-dev'
+param existing_LogAnalytics_Name = '#{APP_NAME_NO_DASHES}#-log-dev'
 param existing_AppInsights_Name = '#{APP_NAME_NO_DASHES}#-appi-dev'
 param existing_Identity_Name = '#{APP_NAME_NO_DASHES}#-app-id'
 param existing_ManagedAppEnv_Name = '#{APP_NAME_NO_DASHES}#-cae-dev'
@@ -33,4 +33,5 @@ param subnet1Prefix = '10.2.0.64/26'
 param subnet2Name = 'snet-app'
 param subnet2Prefix = '10.2.2.0/23'
 
-param backendExists = true
+param backendExists ='#{backendExists}#'
+
