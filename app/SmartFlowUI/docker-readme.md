@@ -17,7 +17,11 @@ docker run -it --rm smi
 Run with a parameter:
 
 ``` bash
-docker run -it --rm smi AzureStorageAccountEndpoint="https://xxxxxx.blob.core.windows.net/"
+# the id of the user assigned managed identity
+docker run -it --rm smi AzureStorageAccountEndpoint="https://llgh114stdev.blob.core.windows.net/" UseManagedIdentityResourceAccess="true" UserAssignedManagedIdentityClientId="c601bb86-0b2d-4c20-88af-453d99175c48"
+
+#my id
+docker run -it --rm smi AzureStorageAccountEndpoint="https://llgh114stdev.blob.core.windows.net/" UseManagedIdentityResourceAccess="false" UserAssignedManagedIdentityClientId="af35198e-8dc7-4a2e-a41e-b2ba79bebd51"
 ```
 
 ## View list of images
@@ -42,6 +46,40 @@ docker create --name smi-container smi
 
 ``` bash
 docker ps -a
+```
+
+## Brig's Developer Notes
+
+``` bash
+# Update the file:  ./app/Assistant.Hub.Api/appsettings.Development.json
+# load .env vars
+[ ! -f .env ] || export $(grep -v '^#' .env | xargs)
+# or this version allows variable substitution and quoted long values
+[ -f .env ] && while IFS= read -r line; do [[ $line =~ ^[^#]*= ]] && eval "export $line"; done < .env
+
+# Build Docker image
+project_root=$(git rev-parse --show-toplevel)
+dockerfile_root="${project_root}/app/Assistant.Hub.Api"
+dockerfile_path="${dockerfile_root}/Dockerfile"
+image_name="ai.doc.eval.dotnet_app"
+docker build --build-arg "BUILD_CONFIGURATION=Development" -t "${image_name}.dev" -f "${dockerfile_path}" "${dockerfile_root}"
+
+# Run container locally
+docker run -p 8080:8080 -p 8081:8081 -p 32771:32771 "${image_name}.dev"
+
+# Interactive shell
+docker run -it --entrypoint /bin/bash -p 8080:8080 -p 8081:8081 -p 32771:32771 "${image_name}.dev"
+# Start service in container
+$ dotnet Assistant.Hub.Api.dll
+
+# Connect to running image
+docker exec -it $(docker ps --filter "ancestor=${image_name}.dev"  -q ) /bin/bash
+
+# Test endpoint
+curl -X POST -v http://localhost:8080/api/chat/weather \
+     -H "X-Api-key: $DOTNET_APP_API_KEY" \
+     -H "Content-Type: application/json" \
+     -d '[{ "user": "What is the forecast for Mankato MN" }]'
 ```
 
 ## Connect to a running container to see the output and peek at the output stream
