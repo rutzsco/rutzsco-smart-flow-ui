@@ -114,15 +114,13 @@ param subnet2Prefix string = '10.2.2.0/23'
 // UI Application Switches
 // --------------------------------------------------------------------------------------------------------------
 param backendExists string = 'false'
-//@secure()
-// param backendDefinition object
-
-// param useManagedIdentityResourceAccess bool = true
+param useManagedIdentityResourceAccess bool = true
 // @description('Name of the text embedding model deployment')
 // param azureEmbeddingDeploymentName string = 'text-embedding'
 // @description('Name of the chat GPT deployment')
 // param azureChatGptStandardDeploymentName string = 'gpt-4o'
-
+//@secure()
+// param backendDefinition object
 
 // --------------------------------------------------------------------------------------------------------------
 // Parameter used as a variable
@@ -338,13 +336,14 @@ var settings = [
   { name: 'ApiKey', secretRef: 'apikey' }
   { name: 'APPLICATIONINSIGHTS_CONNECTION_STRING', value: logAnalytics.outputs.appInsightsConnectionString }
   { name: 'AZURE_CLIENT_ID', value: managedIdentity.outputs.managedIdentityClientId }
-  { name: 'UserAssignedManagedIdentityClientId', value: managedIdentity.outputs.managedIdentityClientId }
   { name: 'AzureDocumentIntelligenceEndpoint', value: documentIntelligence.outputs.endpoint }
   { name: 'AzureAISearchEndpoint', value: searchService.outputs.endpoint }
   { name: 'ContentStorageContainer', value: storageAccount.outputs.containerNames[0].name }
   { name: 'CosmosDbEndpoint', value: cosmos.outputs.endpoint }
-  { name: 'StorageAccountName', value: storageAccount.outputs.name }
   { name: 'AzureStorageAccountEndPoint', value: 'https://${storageAccount.outputs.name}.blob.${environment().suffixes.storage}' }
+  { name: 'StorageAccountName', value: storageAccount.outputs.name }
+  { name: 'UserAssignedManagedIdentityClientId', value: managedIdentity.outputs.managedIdentityClientId }
+  { name: 'UseManagedIdentityResourceAccess', value: useManagedIdentityResourceAccess }
 ]
 module app './app/app.bicep' = {
   name: 'app${deploymentSuffix}'
