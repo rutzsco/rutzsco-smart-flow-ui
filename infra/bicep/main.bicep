@@ -338,6 +338,7 @@ var settings = [
   { name: 'ApiKey', secretRef: 'apikey' }
   { name: 'APPLICATIONINSIGHTS_CONNECTION_STRING', value: logAnalytics.outputs.appInsightsConnectionString }
   { name: 'AZURE_CLIENT_ID', value: managedIdentity.outputs.managedIdentityClientId }
+  { name: 'UserAssignedManagedIdentityClientId', value: managedIdentity.outputs.managedIdentityClientId }
   { name: 'AzureDocumentIntelligenceEndpoint', value: documentIntelligence.outputs.endpoint }
   { name: 'AzureAISearchEndpoint', value: searchService.outputs.endpoint }
   { name: 'ContentStorageContainer', value: storageAccount.outputs.containerNames[0].name }
