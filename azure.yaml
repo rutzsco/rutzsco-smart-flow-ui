@@ -1,0 +1,79 @@
+# ----------------------------------------------------------------------------------------------------
+# Pipeline for AZD process
+# ----------------------------------------------------------------------------------------------------
+name: AI-Document-Review-UI
+
+metadata:
+  template: azd-init@1.11.0
+
+infra:
+  provider: bicep
+  path: infra/bicep
+  module: main
+
+services:
+  ui:
+    project: ./app/SmartFlowUI
+    host: containerapp
+    language: dotnet
+    docker:
+      path: ./Dockerfile
+      context: .
+
+hooks:
+  # This script gets my IP address
+  preprovision:
+    shell: pwsh
+    run: |
+      $myIP = $(Invoke-WebRequest -Uri "https://api.ipify.org").Content
+      azd env set MY_IP $myIP
+    continueOnError: false
+    interactive: false
+  postprovision:
+    shell: pwsh
+    run: |
+      Write-Host "Loading azd .env file from current environment"
+
+      # Use the `get-values` azd command to retrieve environment variables from the `.env` file
+      $envValues = azd env get-values
+
+      $envDict = @{}
+
+      foreach ($line in $envValues -split "`n") {
+          if ($line -match '^(.*?)=(.*)$') {
+              $key = $Matches[1]
+              $value = $Matches[2].Trim('"') # Remove surrounding quotes
+              $envDict[$key] = $value
+          }
+      }
+
+      $json_content = @{
+        AOAIPremiumServiceEndpoint = $envDict['AI_ENDPOINT']
+        AOAIPremiumChatGptDeployment = "gpt-4o"
+        AOAIStandardServiceEndpoint = $envDict['AI_ENDPOINT']
+        AOAIStandardChatGptDeployment = "gpt-4o"
+        AzureDocumentIntelligenceEndpoint = $envDict['DOCUMENT_INTELLIGENCE_ENDPOINT']
+        AzureAISearchEndpoint = $envDict['AI_SEARCH_ENDPOINT']
+        StorageAccountName = $envDict['STORAGE_ACCOUNT_NAME']
+        ContentStorageContainer = $envDict['STORAGE_ACCOUNT_CONTAINER']
+        ApiKey = $envDict['API_KEY']
+        CosmosDbEndpoint = $envDict['COSMOS_ENDPOINT']
+        Values = @{
+            AnalysisApiKey = $envDict['API_KEY']
+            AnalysisApiEndpoint = "https://$($envDict['API_CONTAINER_APP_FQDN'])"
+            AzureWebJobsStorage = 'UseDevelopmentStorage=true'
+            FUNCTIONS_WORKER_RUNTIME = 'dotnet-isolated'
+            BatchAnalysisStorageAccountName = $envDict['STORAGE_ACCOUNT_NAME']
+            BatchAnalysisStorageInputContainerName = $envDict['STORAGE_ACCOUNT_BATCH_IN_CONTAINER']
+            BatchAnalysisStorageOutputContainerName = $envDict['STORAGE_ACCOUNT_BATCH_OUT_CONTAINER']
+            CosmosDbEndpoint = $envDict['COSMOS_ENDPOINT']
+            CosmosDbDatabaseName = $envDict['COSMOS_DATABASE_NAME']
+            CosmosDbContainerName = $envDict['COSMOS_CONTAINER_NAME']
+            MaxBatchSize = 10
+        }
+        IsEncrypted = $false
+      } | ConvertTo-Json -Depth 5
+
+      $json_content | Set-Content ./app/SmartFlowUI/appsettings.Development.json
+    continueOnError: false
+    interactive: false

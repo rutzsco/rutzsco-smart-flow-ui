@@ -1,0 +1,63 @@
+# ------------------------------------------------------------------------------------------------------------------------
+# Action: Deploy Azure Resources via Bicep Files
+# ------------------------------------------------------------------------------------------------------------------------
+name: 1 - Deploy Complete Infrastructure
+
+on:
+  workflow_dispatch:
+    inputs:
+      deployEnvironment:
+        description: 'Environment'
+        required: true
+        default: 'dev'
+        type: choice
+        options:
+          - dev
+          - qa
+          - prod
+      parameterFile:
+        description: 'Parameter File'
+        required: true
+        default: 'main.gh.bicepparam'
+      backendExists:
+        description: Does Container Image Exist?
+        type: boolean
+        default: true
+      # createResourceGroup:
+      #   description: Create Resource Group?
+      #   type: boolean
+      #   default: true
+      # publicAccessEnabled:
+      #   description: Public Access Enabled?
+      #   type: boolean
+      #   default: true
+      # createDnsZones:
+      #   description: Create DNS Zones?
+      #   type: boolean
+      #   default: true
+      # addRoleAssignments:
+      #   description: Add Role Assignments?
+      #   type: boolean
+      #   default: true
+            
+jobs:
+  Deploy_Bicep:
+    name: Deploy ${{ inputs.deployEnvironment }} Bicep
+    uses: ./.github/workflows/template-create-infra.yml
+    secrets: inherit
+    permissions:
+      id-token: write
+      contents: read
+      actions: read
+      pages: write
+    with:
+      envCode: ${{ inputs.deployEnvironment }}
+      templatePath: './infra/bicep/'
+      templateFile: 'main.bicep'
+      parameterFile: ${{ inputs.parameterFile }}
+      parameterFileReplaceTokens: 'true'
+      backendExists: ${{ inputs.backendExists }}
+      createResourceGroup: false # ${{ inputs.createResourceGroup }}
+      publicAccessEnabled: false # ${{ inputs.publicAccessEnabled }}
+      createDnsZones: false # ${{ inputs.createDnsZones }}
+      addRoleAssignments: false # ${{ inputs.addRoleAssignments }}
