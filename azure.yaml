@@ -53,7 +53,7 @@ hooks:
         AOAIStandardServiceEndpoint = $envDict['AI_ENDPOINT']
         AOAIStandardChatGptDeployment = "gpt-4o"
         AzureDocumentIntelligenceEndpoint = $envDict['DOCUMENT_INTELLIGENCE_ENDPOINT']
-        AzureAISearchEndpoint = $envDict['AI_SEARCH_ENDPOINT']
+        AzureSearchServiceEndpoint = $envDict['AI_SEARCH_ENDPOINT']
         StorageAccountName = $envDict['STORAGE_ACCOUNT_NAME']
         ContentStorageContainer = $envDict['STORAGE_ACCOUNT_CONTAINER']
         ApiKey = $envDict['API_KEY']

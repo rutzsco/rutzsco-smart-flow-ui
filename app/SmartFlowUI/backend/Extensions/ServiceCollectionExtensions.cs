@@ -289,8 +289,8 @@ internal static class ServiceCollectionExtensions
         });
         services.AddSingleton((sp) => {
             var config = sp.GetRequiredService<IConfiguration>();
-            var cosmosDBEndpoint = config[AppConfigurationSetting.CosmosDBEndpoint];
-            var client = new CosmosClient(cosmosDBEndpoint, azureCredential);
+            var cosmosDbEndpoint = config[AppConfigurationSetting.CosmosDbEndpoint];
+            var client = new CosmosClient(cosmosDbEndpoint, azureCredential);
             return client;
         });
 
@@ -300,11 +300,11 @@ internal static class ServiceCollectionExtensions
             return new SearchClientFactory(config, azureCredential);
         });
 
-        if (!string.IsNullOrEmpty(configuration[AppConfigurationSetting.CosmosDBEndpoint]))
+        if (!string.IsNullOrEmpty(configuration[AppConfigurationSetting.CosmosDbEndpoint]))
         {
             services.AddSingleton((sp) => {
                 var config = sp.GetRequiredService<IConfiguration>();
-                var endpoint = config[AppConfigurationSetting.CosmosDBEndpoint];
+                var endpoint = config[AppConfigurationSetting.CosmosDbEndpoint];
                 CosmosClientBuilder configurationBuilder = new CosmosClientBuilder(endpoint,azureCredential);
                 return configurationBuilder
                         .Build();
@@ -321,7 +321,7 @@ internal static class ServiceCollectionExtensions
 
 
         // Add ChatHistory and document upload services if the connection string is provided
-        if (string.IsNullOrEmpty(configuration[AppConfigurationSetting.CosmosDBConnectionString]) && string.IsNullOrEmpty(configuration[AppConfigurationSetting.CosmosDBEndpoint]))
+        if (string.IsNullOrEmpty(configuration[AppConfigurationSetting.CosmosDBConnectionString]) && string.IsNullOrEmpty(configuration[AppConfigurationSetting.CosmosDbEndpoint]))
         {
             services.AddScoped<IChatHistoryService, ChatHistoryServiceStub>();
             services.AddScoped<IDocumentService, DocumentServiceSub>();

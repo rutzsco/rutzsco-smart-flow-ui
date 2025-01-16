@@ -26,7 +26,7 @@ public class DocumentServiceAzureNative : IDocumentService
         _searchClientFactory = searchClientFactory;
 
         // Create database if it doesn't exist
-        var db = _cosmosClient.CreateDatabaseIfNotExistsAsync(DefaultSettings.CosmosDBDatabaseName).GetAwaiter().GetResult();
+        var db = _cosmosClient.CreateDatabaseIfNotExistsAsync(DefaultSettings.CosmosDbDatabaseName).GetAwaiter().GetResult();
 
         // Create get container if it doesn't exist
         _cosmosContainer = db.Database.CreateContainerIfNotExistsAsync(DefaultSettings.CosmosDBUserDocumentsCollectionName, "/userId").GetAwaiter().GetResult();

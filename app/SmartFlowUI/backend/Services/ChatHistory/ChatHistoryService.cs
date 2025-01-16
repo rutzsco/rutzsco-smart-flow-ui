@@ -16,8 +16,8 @@ public class ChatHistoryService : IChatHistoryService
     {
         _cosmosClient = cosmosClient;
 
-        var db = _cosmosClient.GetDatabase(DefaultSettings.CosmosDBDatabaseName);
-        _cosmosContainer = db.GetContainer(DefaultSettings.CosmosDBCollectionName);
+        var db = _cosmosClient.GetDatabase(DefaultSettings.CosmosDbDatabaseName);
+        _cosmosContainer = db.GetContainer(DefaultSettings.CosmosDbCollectionName);
     }
 
     public async Task RecordChatMessageAsync(UserInformation user, ChatRequest chatRequest, ApproachResponse response)

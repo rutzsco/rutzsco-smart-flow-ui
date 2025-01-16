@@ -31,15 +31,15 @@ public class CosmosDbReadinessHealthCheck(CosmosClient cosmosClient) : IHealthCh
 #pragma warning disable CA1031 // Do not catch general exception types
         try
         {
-            database = _cosmosClient.GetDatabase(DefaultSettings.CosmosDBDatabaseName);
+            database = _cosmosClient.GetDatabase(DefaultSettings.CosmosDbDatabaseName);
 
             await database.ReadAsync(cancellationToken: cancellationToken).ConfigureAwait(false);
 
-            data.Add("Database", $"CosmosDB database is accessible: {DefaultSettings.CosmosDBDatabaseName}");
+            data.Add("Database", $"CosmosDB database is accessible: {DefaultSettings.CosmosDbDatabaseName}");
         }
         catch (Exception ex)
         {
-            data.Add("Database", $"CosmosDB database is not accessible: {DefaultSettings.CosmosDBDatabaseName}");
+            data.Add("Database", $"CosmosDB database is not accessible: {DefaultSettings.CosmosDbDatabaseName}");
             return new HealthCheckResult(HealthStatus.Unhealthy, description: "CosmosDB is not accessible", exception: ex, data: data);
         }
 #pragma warning restore CA1031 // Do not catch general exception types
@@ -49,12 +49,12 @@ public class CosmosDbReadinessHealthCheck(CosmosClient cosmosClient) : IHealthCh
 #pragma warning disable CA1031 // Do not catch general exception types
             try
             {
-                await database.GetContainer(DefaultSettings.CosmosDBCollectionName).ReadContainerAsync(cancellationToken: cancellationToken).ConfigureAwait(false);
-                data.Add("Container", $"CosmosDB container is accessible: {DefaultSettings.CosmosDBCollectionName}");
+                await database.GetContainer(DefaultSettings.CosmosDbCollectionName).ReadContainerAsync(cancellationToken: cancellationToken).ConfigureAwait(false);
+                data.Add("Container", $"CosmosDB container is accessible: {DefaultSettings.CosmosDbCollectionName}");
             }
             catch (Exception ex)
             {
-                data.Add("Container", $"CosmosDB container is not accessible: {DefaultSettings.CosmosDBCollectionName}");
+                data.Add("Container", $"CosmosDB container is not accessible: {DefaultSettings.CosmosDbCollectionName}");
                 return new HealthCheckResult(HealthStatus.Unhealthy, description: "CosmosDB is not accessible", exception: ex, data: data);
             }
 #pragma warning restore CA1031 // Do not catch general exception types

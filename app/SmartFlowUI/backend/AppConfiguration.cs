@@ -38,7 +38,7 @@ public static class AppConfigurationSetting
     public static string UserAssignedManagedIdentityClientId { get; } = "UserAssignedManagedIdentityClientId";
 
     // CosmosDB
-    public static string CosmosDBEndpoint { get; } = "CosmosDBEndpoint";
+    public static string CosmosDbEndpoint { get; } = "CosmosDbEndpoint";
     public static string CosmosDBConnectionString { get; } = "CosmosDBConnectionString";
 
     // Azure Search

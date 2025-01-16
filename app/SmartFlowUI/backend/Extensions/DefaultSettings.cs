@@ -27,8 +27,8 @@ public static class DefaultSettings
     public static string DocumentRetrievalPluginName = "DocumentRetrieval";
     public static string DocumentRetrievalPluginNameKM = "DocumentRetrievalKM";
 
-    public static string CosmosDBDatabaseName = "ChatHistory";
-    public static string CosmosDBCollectionName = "ChatTurn";
+    public static string CosmosDbDatabaseName = "ChatHistory";
+    public static string CosmosDbCollectionName = "ChatTurn";
     public static string CosmosDBUserDocumentsCollectionName = "UserDocuments";
 
     public static string GenerateSearchQueryPluginName = "GenerateSearchQuery";

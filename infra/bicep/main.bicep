@@ -119,8 +119,6 @@ param useManagedIdentityResourceAccess bool = true
 // param azureEmbeddingDeploymentName string = 'text-embedding'
 // @description('Name of the chat GPT deployment')
 // param azureChatGptStandardDeploymentName string = 'gpt-4o'
-//@secure()
-// param backendDefinition object
 
 // --------------------------------------------------------------------------------------------------------------
 // Parameter used as a variable
@@ -329,21 +327,38 @@ module documentIntelligence './core/ai/document-intelligence.bicep' = {
 // -- UI Application Definition ---------------------------------------------------------------------------------
 // --------------------------------------------------------------------------------------------------------------
 var settings = [
+  { name: 'AOAIStandardServiceEndpoint', value: azureOpenAi.outputs.endpoint }
+  { name: 'AOAIPremiumServiceEndpoint', value: azureOpenAi.outputs.endpoint }
+  { name: 'AOAIStandardChatGptDeployment', value: 'gpt-4o' }
+  { name: 'AOAIPremiumChatGptDeployment', value: 'gpt-4o' }
+  { name: 'AOAIEmbeddingsDeployment', value: 'text-embedding' }
+
+  { name: 'AzureSearchServiceEndpoint', value: searchService.outputs.endpoint }
+
+  { name: 'CosmosDbEndpoint', value: cosmos.outputs.endpoint }
+  { name: 'CosmosDbDatabaseName', value: 'ChatHistory' }
+  { name: 'CosmosDbCollectionName', value: 'ChatTurn' }
+
+  { name: 'DocumentUploadStrategy', value: 'AzureNative' }
+  { name: 'EnableDataProtectionBlobKeyStorage', value: 'true' }
+  { name: 'StorageAccountName', value: storageAccount.outputs.name }
+  { name: 'AzureStorageAccountEndPoint', value: 'https://${storageAccount.outputs.name}.blob.${environment().suffixes.storage}' }
+  { name: 'ContentStorageContainer', value: storageAccount.outputs.containerNames[0].name }
+  { name: 'AzureStorageUserUploadContainer', value: 'content' }
+
+  { name: 'UserAssignedManagedIdentityClientId', value: managedIdentity.outputs.managedIdentityClientId }
+  { name: 'UseManagedIdentityResourceAccess', value: useManagedIdentityResourceAccess }
+  { name: 'ProfileFileName', value: 'profiles' }
+
+  { name: 'ShowCollectionsSelection', value: 'true' }
+  { name: 'ShowFileUploadSelection', value: 'true' }
+
   { name: 'AnalysisApiEndpoint', value: 'https://${resourceNames.outputs.containerAppAPIName}.${managedEnvironment.outputs.defaultDomain}' }
   { name: 'AnalysisApiKey', secretRef: 'apikey' }
-  { name: 'AOAIStandardServiceEndpoint', value: azureOpenAi.outputs.endpoint }
-  { name: 'AOAIStandardChatGptDeployment', value: 'gpt-4o' }
+  { name: 'AzureDocumentIntelligenceEndpoint', value: documentIntelligence.outputs.endpoint }
   { name: 'ApiKey', secretRef: 'apikey' }
   { name: 'APPLICATIONINSIGHTS_CONNECTION_STRING', value: logAnalytics.outputs.appInsightsConnectionString }
   { name: 'AZURE_CLIENT_ID', value: managedIdentity.outputs.managedIdentityClientId }
-  { name: 'AzureDocumentIntelligenceEndpoint', value: documentIntelligence.outputs.endpoint }
-  { name: 'AzureAISearchEndpoint', value: searchService.outputs.endpoint }
-  { name: 'ContentStorageContainer', value: storageAccount.outputs.containerNames[0].name }
-  { name: 'CosmosDbEndpoint', value: cosmos.outputs.endpoint }
-  { name: 'AzureStorageAccountEndPoint', value: 'https://${storageAccount.outputs.name}.blob.${environment().suffixes.storage}' }
-  { name: 'StorageAccountName', value: storageAccount.outputs.name }
-  { name: 'UserAssignedManagedIdentityClientId', value: managedIdentity.outputs.managedIdentityClientId }
-  { name: 'UseManagedIdentityResourceAccess', value: useManagedIdentityResourceAccess }
 ]
 module app './app/app.bicep' = {
   name: 'app${deploymentSuffix}'
