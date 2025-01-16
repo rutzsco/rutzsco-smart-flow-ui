@@ -114,7 +114,7 @@ param subnet2Prefix string = '10.2.2.0/23'
 // UI Application Switches
 // --------------------------------------------------------------------------------------------------------------
 param backendExists string = 'false'
-param useManagedIdentityResourceAccess bool = true
+param useManagedIdentityResourceAccess string = 'true'
 // @description('Name of the text embedding model deployment')
 // param azureEmbeddingDeploymentName string = 'text-embedding'
 // @description('Name of the chat GPT deployment')
