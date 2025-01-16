@@ -113,7 +113,7 @@ param subnet2Prefix string = '10.2.2.0/23'
 // --------------------------------------------------------------------------------------------------------------
 // UI Application Switches
 // --------------------------------------------------------------------------------------------------------------
-param backendExists bool
+param backendExists string = 'false'
 //@secure()
 // param backendDefinition object
 
@@ -150,6 +150,8 @@ var commonTags = {
   Environment: environmentName
 }
 var tags = union(commonTags, azdTag)
+
+var backendExistsBool = toLower(backendExists) == 'true'
 
 // --------------------------------------------------------------------------------------------------------------
 // -- Generate Resource Names -----------------------------------------------------------------------------------
@@ -341,6 +343,7 @@ var settings = [
   { name: 'ContentStorageContainer', value: storageAccount.outputs.containerNames[0].name }
   { name: 'CosmosDbEndpoint', value: cosmos.outputs.endpoint }
   { name: 'StorageAccountName', value: storageAccount.outputs.name }
+  { name: 'AzureStorageAccountEndPoint', value: 'https://${storageAccount.outputs.name}.blob.${environment().suffixes.storage}' }
 ]
 module app './app/app.bicep' = {
   name: 'app${deploymentSuffix}'
@@ -353,12 +356,12 @@ module app './app/app.bicep' = {
     managedEnvironmentRg: existing_ManagedAppEnv_ResourceGroupName
     containerRegistryName: containerRegistry.outputs.name
     imageName: resourceNames.outputs.containerAppUIName
-    exists: backendExists
+    exists: backendExistsBool
     identityName: managedIdentity.outputs.managedIdentityName
     env: settings
     secrets: {
       cosmos: 'https://${keyVault.outputs.name}${environment().suffixes.keyvaultDns}/secrets/${cosmos.outputs.connectionStringSecretName}'
-      aikey: 'https://${keyVault.outputs.name}${environment().suffixes.keyvaultDns}/secrets/${storageAccount.outputs.storageAccountConnectionStringSecretName}'
+      aikey: 'https://${keyVault.outputs.name}${environment().suffixes.keyvaultDns}/secrets/${azureOpenAi.outputs.cognitiveServicesKeySecretName}'
       searchkey: 'https://${keyVault.outputs.name}${environment().suffixes.keyvaultDns}/secrets/${searchService.outputs.searchKeySecretName}'
       docintellikey: 'https://${keyVault.outputs.name}${environment().suffixes.keyvaultDns}/secrets/${documentIntelligence.outputs.keyVaultSecretName}'
       apikey: 'https://${keyVault.outputs.name}${environment().suffixes.keyvaultDns}/secrets/api-key'

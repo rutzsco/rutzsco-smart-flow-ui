@@ -48,12 +48,12 @@ stages:
   parameters:
     pushToACR: ${{ parameters.pushApps }}
     apps: [ 
-      { containerAppName: 'ui',   acrAppName: 'assistantui',   projectFolderName: 'app/Assistant.UI',       port: '8080' }
+      { containerAppName: 'ui',   acrAppName: 'smartflowui',   projectFolderName: 'app/SmartFlowUI',       port: '8080' }
     ] 
 
 # ----------------------------------------------------------------------------------------------------
 - template: pipes/aca-deploy-pipe.yml
   parameters:
     apps: [ 
-      { containerAppName: 'ui',   acrAppName: 'assistantui',   projectFolderName: 'app/Assistant.UI',       port: '8080' }
+      { containerAppName: 'ui',   acrAppName: 'smartflowui',   projectFolderName: 'app/SmartFlowUI',       port: '8080' }
     ] 

@@ -33,5 +33,4 @@ param subnet1Prefix = '10.2.0.64/26'
 param subnet2Name = 'snet-app'
 param subnet2Prefix = '10.2.2.0/23'
 
-param backendExists ='#{backendExists}#'
-
+param backendExists = '#{backendExists}#'

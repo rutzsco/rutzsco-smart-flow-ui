@@ -33,18 +33,14 @@ resource existingStorageAccountBlobServices 'Microsoft.Storage/storageAccounts/b
   parent: existingStorageAccount
   name: 'default'
 }
-resource blobServices 'Microsoft.Storage/storageAccounts/blobServices/containers@2023-05-01' = if (useExistingStorageAccount && !empty(containers)) {
+
+resource storageAccountBlobContainerResource 'Microsoft.Storage/storageAccounts/blobServices/containers@2023-05-01' = [for container in containers: if (useExistingStorageAccount) {
   parent: existingStorageAccountBlobServices
-  name: 'default'
-  resource existingContainer 'containers' = [
-    for container in containers: {
-      name: container
-      properties: {
-        publicAccess: 'None'
-      }
+  name: container
+  properties: {
+      publicAccess: 'None'
     }
-  ]
-}
+}]
 
 // --------------------------------------------------------------------------------------------------------------
 // If creating the storage account...

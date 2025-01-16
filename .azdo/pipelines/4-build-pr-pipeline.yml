@@ -32,9 +32,6 @@ stages:
   - template: pipes/aca-build-all-pipe.yml
     parameters:
       pushToACR: false
-      deployAPI: false
-      apiConfig: 
-        { containerAppName: 'api',   acrAppName: 'assistantapi',   projectFolderName: 'app/Assistant.Hub.Api',       port: '8080' }
-      deployBatch: false
-      batchConfig: 
-        { containerAppName: 'batch', acrAppName: 'assistantbatch', projectFolderName: 'app/Assistant.Hub.Api.Batch', port: '4001' }
+      deployUI: false
+      uiConfig: 
+      { containerAppName: 'ui',   acrAppName: 'smartflowui',   projectFolderName: 'app/SmartFlowUI',       port: '8080' }

@@ -402,13 +402,13 @@ FodyWeavers.xsd
 
 # Ignore local dev settings
 appsettings.Development.json
-app/Assistant.UI/appsettings.Development.json
-app/Assistant.UI/frontend/wwwroot/appsettings.development.json
-app/Assistant.UI/frontend/wwwroot/appsettings.json
-app/Assistant.UI/backend/appsettings.Development-v1.json
+app/SmartFlowUI/appsettings.Development.json
+app/SmartFlowUI/frontend/wwwroot/appsettings.development.json
+app/SmartFlowUI/frontend/wwwroot/appsettings.json
+app/SmartFlowUI/backend/appsettings.Development-v1.json
+app/SmartFlowUI/backend/Properties/launchSettings.json
 
 infra/bicep/*.parameters.json
 !infra/bicep/main.parameters.json
 .vscode/settings.json
 .azure
-

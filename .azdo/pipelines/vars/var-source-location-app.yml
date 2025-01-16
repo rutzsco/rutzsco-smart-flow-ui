@@ -3,22 +3,13 @@
 # ----------------------------------------------------------------------------------------------------
 variables:
   - name: ACR_REPO_NAME
-    value: 'aiflows'
+    value: 'smartflow'
 
-  - name: API_CONTAINER_APP_NAME
-    value: 'api'
-  - name: API_PROJECT_FOLDER_NAME
-    value: 'app/Assistant.Hub.UI'
-  - name: API_ACR_APP_NAME
-    value: 'assistantui'
-  - name: API_PORT
+  - name: UI_CONTAINER_APP_NAME
+    value: 'ui'
+  - name: UI_PROJECT_FOLDER_NAME
+    value: 'app/SmartFlowUI'
+  - name: UI_ACR_APP_NAME
+    value: 'smartflowui'
+  - name: UI_PORT
     value: '8080'
-
-  - name: BATCH_CONTAINER_APP_NAME
-    value: 'batch'
-  - name: BATCH_PROJECT_FOLDER_NAME
-    value: 'app/Assistant.Hub.Api.Batch'
-  - name: BATCH_ACR_APP_NAME
-    value: 'assistantbatch'
-  - name: BATCH_PORT
-    value: '80'

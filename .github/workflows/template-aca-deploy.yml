@@ -21,6 +21,10 @@ on:
       CONTAINER_NAME:
         required: true
         type: string
+      APP_CONTAINER_NAME:
+        required: false
+        default: 'app'
+        type: string
       IMAGE_NAME:
         required: true
         type: string
@@ -42,6 +46,7 @@ jobs:
           echo "inputs.ACR_NAME=${{ inputs.ACR_NAME }}"
           echo "inputs.CONTAINER_APP_ENV_NAME=${{ inputs.CONTAINER_APP_ENV_NAME }}"
           echo "inputs.CONTAINER_NAME=${{ inputs.CONTAINER_NAME }}"
+          echo "inputs.APP_CONTAINER_NAME=${{ inputs.APP_CONTAINER_NAME }}"
           echo "inputs.RESOURCE_GROUP=${{ inputs.RESOURCE_GROUP }}"
           echo "inputs.IMAGE_NAME=${{ inputs.IMAGE_NAME }}"
           echo "inputs.PORT=${{ inputs.PORT }}"
@@ -72,5 +77,5 @@ jobs:
           az containerapp update \
             --name ${{ inputs.CONTAINER_NAME }} \
             --resource-group ${{ inputs.RESOURCE_GROUP }} \
-            --container-name app \
+            --container-name ${{ inputs.APP_CONTAINER_NAME }} \
             --image '${{ inputs.ACR_NAME }}.azurecr.io/${{ inputs.IMAGE_NAME }}'

@@ -8,7 +8,7 @@ param managedEnvironmentRg string
 param applicationInsightsName string
 param exists bool
 param identityName string
-
+param appContainerName string = 'app'
 param clientId string = ''
 param clientIdScope string = ''
 param clientSecretSecretName string = ''
@@ -78,7 +78,7 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
       containers: [
         {
           image: fetchLatestImage.outputs.?containers[?0].?image ?? 'mcr.microsoft.com/azuredocs/containerapps-helloworld:latest'
-          name: 'main'
+          name: appContainerName
           env: union(
             [
               {
