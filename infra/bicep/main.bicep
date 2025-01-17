@@ -373,6 +373,7 @@ module app './app/app.bicep' = {
     imageName: resourceNames.outputs.containerAppUIName
     exists: backendExistsBool
     identityName: managedIdentity.outputs.managedIdentityName
+    deploymentSuffix: deploymentSuffix
     env: settings
     secrets: {
       cosmos: 'https://${keyVault.outputs.name}${environment().suffixes.keyvaultDns}/secrets/${cosmos.outputs.connectionStringSecretName}'

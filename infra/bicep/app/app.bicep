@@ -13,6 +13,7 @@ param clientId string = ''
 param clientIdScope string = ''
 param clientSecretSecretName string = ''
 param tokenStoreSasSecretName string = ''
+param deploymentSuffix string = ''
 
 @description('The secrets required for the container, with the key being the secret name and the value being the key vault URL')
 @secure()
@@ -37,7 +38,7 @@ resource userIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-07-
 }
 
 module fetchLatestImage '../core/host/fetch-container-image.bicep' = {
-  name: '${imageName}-fetch-image'
+  name: 'app-fetch-image-${deploymentSuffix}'
   params: {
     exists: exists
     name: imageName
