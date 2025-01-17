@@ -20,16 +20,13 @@ parameters:
     default: 'appImages'
     type: string
 
-  - name: apiAcrAppName
+  - name: uiAcrAppName
     default: ''
     type: string
-  - name: apiProjectFolderName
+  - name: uiProjectFolderName
     default: ''
     type: string
 
-  - name: batchAcrAppName
-    default: ''
-    type: string
   - name: batchProjectFolderName
     default: ''
     type: string
@@ -78,19 +75,12 @@ jobs:
             $agentIpAddress = $(Invoke-WebRequest -Uri "https://api.ipify.org").Content
             echo "##vso[task.setvariable variable=agentIpAddress]$agentIpAddress"
 
-            $apiAcrAppNameLower="${{ parameters.apiAcrAppName }}".ToLower()
-            echo "##vso[task.setvariable variable=apiAcrAppNameLower]$apiAcrAppNameLower"
-            $apiImageName="$($acrFolderNameLower)/$($apiAcrAppNameLower):$(Build.BuildId)"
-            echo "##vso[task.setvariable variable=apiImageName]$apiImageName"
-            $apiImageNameBranch="$($acrFolderNameLower)/$($apiAcrAppNameLower):$(Build.SourceBranchName)"
-            echo "##vso[task.setvariable variable=apiImageNameBranch]$apiImageNameBranch"
-
-            $batchAcrAppNameLower="${{ parameters.batchAcrAppName }}".ToLower()
-            echo "##vso[task.setvariable variable=batchAcrAppNameLower]$batchAcrAppNameLower"
-            $batchImageName="$($acrFolderNameLower)/$($batchAcrAppNameLower):$(Build.BuildId)"
-            echo "##vso[task.setvariable variable=batchImageName]$batchImageName"
-            $batchImageNameBranch="$($acrFolderNameLower)/$($batchAcrAppNameLower):$(Build.SourceBranchName)"
-            echo "##vso[task.setvariable variable=batchImageNameBranch]$batchImageNameBranch"
+            $uiAcrAppNameLower="${{ parameters.uiAcrAppName }}".ToLower()
+            echo "##vso[task.setvariable variable=uiAcrAppNameLower]$uiAcrAppNameLower"
+            $uiImageName="$($acrFolderNameLower)/$($uiAcrAppNameLower):$(Build.BuildId)"
+            echo "##vso[task.setvariable variable=uiImageName]$uiImageName"
+            $uiImageNameBranch="$($acrFolderNameLower)/$($uiAcrAppNameLower):$(Build.SourceBranchName)"
+            echo "##vso[task.setvariable variable=uiImageNameBranch]$uiImageNameBranch"
 
             echo "appNameLower=$appNameLower"
             echo "appNameNoDashesLower=$appNameNoDashesLower"
@@ -100,15 +90,10 @@ jobs:
             echo "agentIpAddress=$agentIpAddress"
             echo "serviceConnectionName=$(serviceConnectionName)"
 
-            echo "parameters.apiAcrAppName=${{ parameters.apiAcrAppName }}"
-            echo "apiAcrAppNameLower=$apiAcrAppNameLower"
-            echo "apiImageName=$apiImageName"
-            echo "apiImageNameBranch=$apiImageNameBranch"
-
-            echo "parameters.batchAcrAppName=${{ parameters.batchAcrAppName }}"
-            echo "batchAcrAppNameLower=$batchAcrAppNameLower"
-            echo "batchImageName=$batchImageName"
-            echo "batchImageNameBranch=$batchImageNameBranch"
+            echo "parameters.uiAcrAppName=${{ parameters.uiAcrAppName }}"
+            echo "uiAcrAppNameLower=$uiAcrAppNameLower"
+            echo "uiImageName=$uiImageName"
+            echo "uiImageNameBranch=$uiImageNameBranch"
 
             echo "----------------------------------------"
             echo "##[group]Display All Environment Variables:"
@@ -124,24 +109,14 @@ jobs:
       # Build the images
       # ----------------------------------------------------------------------------------------------------
       - task: PowerShell@2
-        displayName: Docker API Build
+        displayName: Docker UI Build
         inputs:
           targetType: 'inline'
           script: |
-            echo "Executing: docker build . $(apiImageName)"
-            docker build . -t $(apiImageName) -t $(apiImageNameBranch)
+            echo "Executing: docker build . $(uiImageName)"
+            docker build . -t $(uiImageName) -t $(uiImageNameBranch)
             docker images
-          workingDirectory: '$(System.DefaultWorkingDirectory)/${{ parameters.apiProjectFolderName }}'
-
-      - task: PowerShell@2
-        displayName: Docker Batch Build
-        inputs:
-          targetType: 'inline'
-          script: |
-            echo "Executing: docker build . $(batchImageName)"
-            docker build . -t $(batchImageName) -t $(batchImageNameBranch)
-            docker images
-          workingDirectory: '$(System.DefaultWorkingDirectory)/${{ parameters.batchProjectFolderName }}'
+          workingDirectory: '$(System.DefaultWorkingDirectory)/${{ parameters.uiProjectFolderName }}'
 
       # ----------------------------------------------------------------------------------------------------
       # ACR Push: Push to ACR, add/remove firewall rules and remove if requested
@@ -159,8 +134,8 @@ jobs:
         - template: steps-container-registry-template.yml
           parameters:
             action: 'push'
-            imageName: $(apiImageName)
-            imageNameLatest: $(apiImageNameBranch)
+            imageName: $(uiImageName)
+            imageNameLatest: $(uiImageNameBranch)
             serviceConnectionName: ${{ parameters.serviceConnectionName }}
             registryName: $(containerRegistryName)
             registryResourceGroup: $(resourceGroupName)
