@@ -24,6 +24,17 @@ docker run -it --rm smi AzureStorageAccountEndpoint="https://llgh114stdev.blob.c
 docker run -it --rm smi AzureStorageAccountEndpoint="https://llgh114stdev.blob.core.windows.net/" UseManagedIdentityResourceAccess="false" UserAssignedManagedIdentityClientId="af35198e-8dc7-4a2e-a41e-b2ba79bebd51"
 ```
 
+## Docker Auth Notes from Piotr
+
+Docker won't work with user assigned identity when you run locally - it has no good way to get the token
+
+Workarounds:
+
+- Run docker from full Visual Studio, and with right dependencies (something like visual studio containers nuget package) - it may work
+- Do multi-layer build like I do in DOW, where for local runs I install azure CLI in the container
+- There's another way where you can provide certain env variables, but it's little hacky - it was - something with docker compose
+- You can create a service principal and inject client id/secret into the container
+
 ## View list of images
 
 ``` bash

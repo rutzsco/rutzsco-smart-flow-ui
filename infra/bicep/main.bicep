@@ -222,11 +222,17 @@ module containerRegistry './core/host/containerregistry.bicep' = {
 // --------------------------------------------------------------------------------------------------------------
 // -- Existing Cosmos Resources ---------------------------------------------------------------------------------
 // --------------------------------------------------------------------------------------------------------------
+var cosmosContainerArray = [
+  { name: 'AgentLog', partitionKey: '/requestId' }
+  { name: 'UserDocuments', partitionKey: '/userId' }
+  { name: 'ChatTurn', partitionKey: '/chatId' }
+]
 module cosmos './core/database/cosmosdb.bicep' = {
   name: 'existing_cosmos${deploymentSuffix}'
   params: {
     existingAccountName: existing_Cosmos_Name
     databaseName: 'ChatHistory'
+    containerArray: cosmosContainerArray
   }
 }
 

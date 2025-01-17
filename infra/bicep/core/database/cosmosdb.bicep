@@ -5,6 +5,9 @@ param existingAccountName string = ''
 @description('The name for the SQL database')
 param databaseName string
 
+@description('The collection of containers to create')
+param containerArray array = []
+
 @description('Location for the Cosmos DB account.')
 param location string = resourceGroup().location
 
@@ -24,7 +27,7 @@ param userPrincipalId string = ''
 // Variables
 // --------------------------------------------------------------------------------------------------------------
 var connectionStringSecretName = 'azure-cosmos-connection-string'
-var chatContainerName = 'AgentLog'
+//var chatContainerName = 'AgentLog'
 var useExistingAccount = !empty(existingAccountName)
 
 // --------------------------------------------------------------------------------------------------------------
@@ -44,13 +47,13 @@ resource cosmosDatabaseExisting 'Microsoft.DocumentDB/databaseAccounts/sqlDataba
     options: {}
   }
 }
-resource chatContainerExisting 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers@2024-08-15' = if (!useExistingAccount) {
+resource chatContainerExisting 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers@2024-08-15' = [for container in containerArray: if (!useExistingAccount) {
   parent: cosmosDatabaseExisting
-  name: chatContainerName
+  name: container.name
   tags: tags
   properties: {
     resource: {
-      id: chatContainerName
+      id: container.name
       indexingPolicy: {
         indexingMode: 'consistent'
         automatic: true
@@ -67,7 +70,7 @@ resource chatContainerExisting 'Microsoft.DocumentDB/databaseAccounts/sqlDatabas
       }
       partitionKey: {
         paths: [
-          '/requestId'
+          container.partitionKey
         ]
         kind: 'Hash'
       }
@@ -81,7 +84,7 @@ resource chatContainerExisting 'Microsoft.DocumentDB/databaseAccounts/sqlDatabas
     }
     options: {}
   }
-}
+}]
 
 // --------------------------------------------------------------------------------------------------------------
 // Create new Cosmos DB account
@@ -144,13 +147,13 @@ resource cosmosDatabase 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases@2024
   }
 }
 
-resource chatContainer 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers@2024-08-15' = if (!useExistingAccount) {
+resource chatContainer 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers@2024-08-15' = [for container in containerArray: if (!useExistingAccount) {
   parent: cosmosDatabase
-  name: chatContainerName
+  name: container.Name
   tags: tags
   properties: {
     resource: {
-      id: chatContainerName
+      id: container.Name
       indexingPolicy: {
         indexingMode: 'consistent'
         automatic: true
@@ -167,7 +170,7 @@ resource chatContainer 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/conta
       }
       partitionKey: {
         paths: [
-          '/requestId'
+          container.partitionKey
         ]
         kind: 'Hash'
       }
@@ -181,7 +184,7 @@ resource chatContainer 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/conta
     }
     options: {}
   }
-}
+}]
 
 module privateEndpoint '../networking/private-endpoint.bicep' = if (!useExistingAccount && !empty(privateEndpointSubnetId)) {
   name: '${accountName}-private-endpoint'
@@ -230,5 +233,9 @@ output endpoint string = useExistingAccount ? existingCosmosAccount.properties.d
 output keyVaultSecretName string = connectionStringSecretName
 output privateEndpointName string = privateEndpointName
 output databaseName string = databaseName
-output containerName string = chatContainer.name
 output connectionStringSecretName string = connectionStringSecretName
+output containerNames array = [
+  for (name, i) in containerArray: {
+    name: name
+  }
+]
