@@ -81,8 +81,12 @@ jobs:
             $appNameNoDashesLower="$(appName)".ToLower().Replace("-", "")
             echo "##vso[task.setvariable variable=appNameNoDashesLower]$appNameNoDashesLower"
 
+            $resourceGroupName="$(resourceGroupPrefix)-$(environmentNameLower)".ToLower()
+            echo "##vso[task.setvariable variable=resourceGroupName]$resourceGroupName"
+
             $runDateTime=Get-Date -Format "yyyyMMddHHmmss"
             echo "##vso[task.setvariable variable=runDateTime]$runDateTime"
+
             $runDateTimeZ=$runDateTime+"Z"
             echo "##vso[task.setvariable variable=runDateTimeZ]$runDateTimeZ"
 
@@ -90,6 +94,7 @@ jobs:
             echo "appNameNoDashesLower=$appNameNoDashesLower"
             echo "runDateTime=$runDateTime"
             echo "runDateTimeZ=$runDateTimeZ"
+            echo "resourceGroupName=$resourceGroupName"
             echo "environmentName=$(environmentName)"
             echo "environmentNameLower=$(environmentNameLower)"
 
@@ -149,18 +154,21 @@ jobs:
               serviceConnectionName: $(serviceConnectionDEV)
               createResourceGroup: ${{ parameters.createResourceGroup }}
               deployToResourceGroup: ${{ parameters.deployToResourceGroup }}
+              resourceGroupName: $(resourceGroupName)
       - ${{ if eq(variables.environmentNameUpper, 'QA') }}:
           - template: steps-deploy-bicep-template.yml
             parameters:
               serviceConnectionName: $(serviceConnectionQA)
               createResourceGroup: ${{ parameters.createResourceGroup }}
               deployToResourceGroup: ${{ parameters.deployToResourceGroup }}
+              resourceGroupName: $(resourceGroupName)
       - ${{ if eq(variables.environmentNameUpper, 'PROD') }}:
           - template: steps-deploy-bicep-template.yml
             parameters:
               serviceConnectionName: $(serviceConnectionPROD)
               createResourceGroup: ${{ parameters.createResourceGroup }}
               deployToResourceGroup: ${{ parameters.deployToResourceGroup }}
+              resourceGroupName: $(resourceGroupName)
 
       - bash: |
           echo "WIPED!" > $(parameterFile)

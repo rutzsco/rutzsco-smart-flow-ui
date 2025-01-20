@@ -61,6 +61,10 @@ jobs:
             echo "##vso[task.setvariable variable=appNameLower]$appNameLower"
             $appNameNoDashesLower="$(appName)".ToLower().Replace("-", "")
             echo "##vso[task.setvariable variable=appNameNoDashesLower]$appNameNoDashesLower"
+
+            $resourceGroupName="$(resourceGroupPrefix)-$environmentNameLower".ToLower()
+            echo "##vso[task.setvariable variable=resourceGroupName]$resourceGroupName"
+            
             $acrAppNameLower="${{ parameters.acrAppName }}".ToLower()
             echo "##vso[task.setvariable variable=acrAppNameLower]$acrAppNameLower"
             $acrFolderNameLower="${{ parameters.acrFolderName }}".ToLower()
@@ -78,6 +82,7 @@ jobs:
 
             echo "appNameLower=$appNameLower"
             echo "appNameNoDashesLower=$appNameNoDashesLower"
+            echo "resourceGroupName=$resourceGroupName"
             echo "containerRegistryName=$containerRegistryName"
             echo "containerRegistryUrl=$containerRegistryUrl"
             echo "acrAppNameLower=$acrAppNameLower"

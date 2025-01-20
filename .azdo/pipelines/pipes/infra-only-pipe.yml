@@ -5,6 +5,8 @@ parameters:
   - name: environments
     type: object
     default: ['DEV']
+  - name: deploymentMode
+    default: 'Incremental'
   - name: singleEnvironment
     default: 'false'
   - name: backendExists
@@ -55,3 +57,4 @@ stages:
               publicAccessEnabled: ${{ parameters.publicAccessEnabled }}
               createDnsZones: ${{ parameters.createDnsZones }}
               addRoleAssignments: ${{ parameters.addRoleAssignments }}
+              deploymentMode: ${{ parameters.deploymentMode }}

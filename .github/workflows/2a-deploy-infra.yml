@@ -23,22 +23,15 @@ on:
         description: Does Container Image Exist?
         type: boolean
         default: true
-      # createResourceGroup:
-      #   description: Create Resource Group?
-      #   type: boolean
-      #   default: true
-      # publicAccessEnabled:
-      #   description: Public Access Enabled?
-      #   type: boolean
-      #   default: true
-      # createDnsZones:
-      #   description: Create DNS Zones?
-      #   type: boolean
-      #   default: true
-      # addRoleAssignments:
-      #   description: Add Role Assignments?
-      #   type: boolean
-      #   default: true
+      deploymentMode:
+        description: 'Bicep Deploy Mode'
+        required: true
+        default: 'dev'
+        type: choice
+        options:
+          - Incremental
+          - Validation
+          - Complete
             
 jobs:
   Deploy_Bicep:
@@ -57,6 +50,7 @@ jobs:
       parameterFile: ${{ inputs.parameterFile }}
       parameterFileReplaceTokens: 'true'
       backendExists: ${{ inputs.backendExists }}
+      deploymentMode: ${{ inputs.deploymentMode }}
       createResourceGroup: false # ${{ inputs.createResourceGroup }}
       publicAccessEnabled: false # ${{ inputs.publicAccessEnabled }}
       createDnsZones: false # ${{ inputs.createDnsZones }}

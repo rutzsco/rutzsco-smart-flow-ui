@@ -5,8 +5,8 @@
 # common file if you want to make them different for each environment, like the SKU or location.
 # ----------------------------------------------------------------------------------------------------
 variables:
-  - name: resourceGroupName
-    value: 'rg-ai-docs-dev'
+  # - name: resourceGroupName
+  #   value: 'rg-ai-label-dev'
   - name: existingVnetName
     value: '' # 'vnet-ai-label-dev'
   - name: subnet1Name    # Subnet name for the private endpoints

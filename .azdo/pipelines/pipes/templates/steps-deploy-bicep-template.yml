@@ -10,6 +10,8 @@ parameters:
     default: true
   - name: deployToResourceGroup
     default: true
+  - name: resourceGroupName
+    default: ''
 
 # ------------------------------------------------------------------------------------------------------------------------
 steps:
@@ -21,7 +23,7 @@ steps:
           azureSubscription: ${{ parameters.serviceConnectionName }}
           scriptType: bash
           scriptLocation: inlineScript
-          inlineScript: az group create --name $(resourceGroupName) --location $(location) --tags LastDeployed=$(runDateTime) Application=$(appName) Environment=$(environmentName)
+          inlineScript: az group create --name ${{ parameters.resourceGroupName }} --location $(location) --tags LastDeployed=$(runDateTime) Application=$(appName) Environment=$(environmentName)
 
     - task: AzureResourceManagerTemplateDeployment@3
       displayName: 'Publish $(environmentName) Bicep Resources (RG)'
@@ -29,7 +31,7 @@ steps:
         csmFile: $(templateFile)
         csmParametersFile: $(parameterFile)
         deploymentScope: 'Resource Group'
-        resourceGroupName: $(resourceGroupName)
+        resourceGroupName: ${{ parameters.resourceGroupName }}
         azureResourceManagerConnection: ${{ parameters.serviceConnectionName }}
         action: 'Create Or Update Resource Group'
         location: $(location)

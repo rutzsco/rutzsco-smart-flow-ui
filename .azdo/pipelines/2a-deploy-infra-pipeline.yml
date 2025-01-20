@@ -35,22 +35,14 @@ parameters:
     displayName: Does Container Image Exist?
     type: boolean
     default: true
-  # - name: createResourceGroup
-  #   displayName: Create Resource Group?
-  #   type: boolean
-  #   default: true
-  # - name: publicAccessEnabled
-  #   displayName: Public Access Enabled?
-  #   type: boolean
-  #   default: true
-  # - name: createDnsZones
-  #   displayName: Create DNS Zones?
-  #   type: boolean
-  #   default: true
-  # - name: addRoleAssignments
-  #   displayName: Add Role Assignments?
-  #   type: boolean
-  #   default: true
+  - name: deploymentMode
+    displayName: Deploy Mode
+    type: string
+    values:
+      - Incremental
+      - Validation
+      - Complete
+    default: Incremental
   - name: runGHASScan
     displayName: Run GHAS Scan?
     type: boolean
@@ -75,6 +67,7 @@ stages:
           runGHASScan: ${{ parameters.runGHASScan }}
           singleEnvironment: 'true'
           backendExists: ${{ parameters.backendExists }}
+          createResourceGroup: ${{ parameters.createResourceGroup }}
           createResourceGroup: false # ${{ parameters.createResourceGroup }}
           publicAccessEnabled: false # ${{ parameters.publicAccessEnabled }}
           createDnsZones: false # ${{ parameters.createDnsZones }}
@@ -87,6 +80,7 @@ stages:
           runMSDevSecOpsScan: ${{ parameters.runMSDevSecOpsScan }}
           runGHASScan: ${{ parameters.runGHASScan }}
           backendExists: ${{ parameters.backendExists }}
+          createResourceGroup: ${{ parameters.createResourceGroup }}
           createResourceGroup: false # ${{ parameters.createResourceGroup }}
           publicAccessEnabled: false # ${{ parameters.publicAccessEnabled }}
           createDnsZones: false # ${{ parameters.createDnsZones }}
