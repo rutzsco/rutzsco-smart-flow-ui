@@ -35,47 +35,29 @@ docker build . -t custom-chat-copilot-sk-base/chat-app
 
 #### Azure Developer CLI
 
-**NOTE**: You can specify the following command if you want to use an existing vNet and secure all services behind private endpoints. You will need a vNet with a /24 CIDR range in order to use this option.
+**NOTE**: You will need to specify the following variables command if you want to use an API deploy and it's services.  You can get most of these from the azd environment for that API deploy.
 
 ```shell
-azd env set AZURE_VNET_NAME <vnet-name>
-azd env set AZURE_VNET_RESOURCE_GROUP_NAME <vnet-resource-group-name>
-azd env set AZURE_CONTAINER_APP_SUBNET_NAME <azure-container-app-subnet-name>
-azd env set AZURE_CONTAINER_APP_SUBNET_ADDRESS_PREFIX <azure-container-app-subnet-address-prefix>
-azd env set AZURE_PRIVATE_ENDPOINT_SUBNET_NAME <azure-private-endpoint-subnet-name>
-azd env set AZURE_PRIVATE_ENDPOINT_SUBNET_ADDRESS_PREFIX <azure-private-endpoint-subnet-address-prefix>
-azd env set AZURE_MONITOR_PRIVATE_LINK_SCOPE_NAME <azure-monitor-private-link-scope-name>
-azd env set AZURE_MONITOR_PRIVATE_LINK_SCOPE_RESOURCE_GROUP_NAME <azure-monitor-private-link-scope-resource-group-name>
-```
-
-**NOTE**: If you want to use an OpenAI service that already exists somewhere else, you can disable the IaC from deploying the OpenAI service.
-
-```shell
-azd env set SHOULD_DEPLOY_AZURE_OPENAI_SERVICE false
-```
-
-**NOTE**: If you want to use a Entra ID service principal to authorize requests to the OpenAI Service (using the On-Behalf-Of flow) behind API Management, you can specify the following commands to indicate the Entra ID values. The authority is the FQDN of the Entra ID tenant in either Azure Commercial or one of the sovereign clouds.
-
-```shell
-azd env set AZURE_SP_CLIENT_ID <client-id>
-azd env set AZURE_SP_CLIENT_SECRET <client-secret>
-azd env set AZURE_TENANT_ID <tenant-id>
-azd env set AZURE_SP_OPENAI_AUDIENCE <audience-of-the-OpenAI-service-principal>
-azd env set AZURE_AUTHORITY_HOST https://login.microsoftonline.com/
-azd env set AZURE_SP_CLIENT_ID_SCOPE api://<client-id>/user_impersonation
-azd end set AZURE_OPENAI_ENDPOINT <apim-endpoint>
-```
-
-**NOTE**: If you need to specify an API Management subscription key for the OpenAI service, you can specify the following command.
-
-```shell
-azd env set OCP_APIM_SUBSCRIPTION_KEY <apim-subscription-key>
-```
-
-**NOTE**: If you want to use managed identities to access the various Azure services instead of keys, you can specify the following command.
-
-```shell
-azd env set USE_MANAGED_IDENTITY_RESOURCE_ACCESS true
+azd env set AZURE_ENV_NAME="<value>"
+azd env set APP_NAME_NO_DASHES="<value>"
+azd env set AZURE_RESOURCE_GROUP="rg-smartflow-<envName>"
+azd env set AZURE_LOCATION="eastus2"
+azd env set ENVIRONMENT_NAME="<envName>"
+azd env set AZURE_SUBSCRIPTION_ID="<subscription_id>"
+azd env set ADMIN_CLIENT_ID="<your_user_client_id>"
+azd env set MY_IP="<your_ip_address>"
+azd env set AI_ENDPOINT="https://<APP_NAME_NO_DASHES>-cog-dev.openai.azure.com/"
+azd env set AI_SEARCH_ENDPOINT="https://<APP_NAME_NO_DASHES>-srch-<envName>.search.windows.net/"
+azd env set API_CONTAINER_APP_FQDN="<APP_NAME_NO_DASHES>-ca-api-<envName>.<some_value>.eastus2.azurecontainerapps.io"
+azd env set API_KEY="<some_value>"
+azd env set AZURE_CONTAINER_REGISTRY_ENDPOINT="<APP_NAME_NO_DASHES>cr<envName>.azurecr.io"
+azd env set AZURE_CONTAINER_REGISTRY_NAME="<APP_NAME_NO_DASHES>cr<envName>"
+azd env set COSMOS_ENDPOINT="https://<APP_NAME_NO_DASHES>-cosmos-<envName>.documents.azure.com:443/"
+azd env set DOCUMENT_INTELLIGENCE_ENDPOINT="https://<APP_NAME_NO_DASHES>-cog-fr-<envName>.cognitiveservices.azure.com/"
+azd env set MANAGED_IDENTITY_NAME="<APP_NAME_NO_DASHES>-app-id"
+azd env set SERVICE_UI_RESOURCE_EXISTS="true"
+azd env set STORAGE_ACCOUNT_CONTAINER="data"
+azd env set STORAGE_ACCOUNT_NAME="<APP_NAME_NO_DASHES>st<envName>"
 ```
 
 Run the following command to build, provision & deploy the application.
@@ -97,6 +79,7 @@ docker push <ACRNAME>.azurecr.io/custom-chat-copilot-sk-base/chat-app:<VERSION>
 ```bash
 az containerapp update --name <APPLICATION_NAME> --resource-group <RESOURCE_GROUP_NAME> --image <IMAGE_NAME>
 ```
+
 ## Application Settings Documentation
 
 ### Sample Settings file
@@ -122,11 +105,13 @@ az containerapp update --name <APPLICATION_NAME> --resource-group <RESOURCE_GROU
   "EnableDataProtectionBlobKeyStorage" : "false"
 }
 ```
+
 This documentation outlines the various application settings used in the configuration of Azure services and other APIs.
 
 ### Azure Storage
 
 #### `AzureStorageUserUploadContainer`
+
 - **Description**: The name of the container in Azure Blob Storage where user uploads are stored.
 - **Value**: `"content"`
 

@@ -40,7 +40,7 @@ module fetchLatestImage './fetch-container-image.bicep' = {
 resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
   name: appName
   location: location
-  tags: union(tags, { 'azd-service-name': 'web' })
+  tags: tags
   identity: {
     type: 'UserAssigned'
     userAssignedIdentities: {

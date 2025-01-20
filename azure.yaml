@@ -13,12 +13,12 @@ infra:
 
 services:
   ui:
-    project: ./app/SmartFlowUI
+    project: ./app/SmartFlowUI/backend
     host: containerapp
     language: dotnet
     docker:
-      path: ./Dockerfile
-      context: .
+      path: ../Dockerfile
+      context: ../
 
 hooks:
   # This script gets my IP address
@@ -48,29 +48,39 @@ hooks:
       }
 
       $json_content = @{
+        AOAIStandardServiceEndpoint = $envDict['AI_ENDPOINT']
         AOAIPremiumServiceEndpoint = $envDict['AI_ENDPOINT']
         AOAIPremiumChatGptDeployment = "gpt-4o"
-        AOAIStandardServiceEndpoint = $envDict['AI_ENDPOINT']
         AOAIStandardChatGptDeployment = "gpt-4o"
-        AzureDocumentIntelligenceEndpoint = $envDict['DOCUMENT_INTELLIGENCE_ENDPOINT']
+        AOAIEmbeddingsDeployment = "text-embedding"
+
         AzureSearchServiceEndpoint = $envDict['AI_SEARCH_ENDPOINT']
+
+        CosmosDbEndpoint =  $envDict['COSMOS_ENDPOINT']
+        CosmosDbDatabaseName = "ChatHistory"
+        CosmosDbCollectionName = "ChatTurn"
+
+        DocumentUploadStrategy = "AzureNative"
+        EnableDataProtectionBlobKeyStorage = "false"
         StorageAccountName = $envDict['STORAGE_ACCOUNT_NAME']
+        AzureStorageAccountEndPoint = 'https://$($envDict["STORAGE_ACCOUNT_NAME"]).blob.core.windows.net'
         ContentStorageContainer = $envDict['STORAGE_ACCOUNT_CONTAINER']
+        AzureStorageUserUploadContainer = "content"
+
+        UserAssignedManagedIdentityClientId = $envDict['ADMIN_CLIENT_ID']
+        UseManagedIdentityResourceAccess = "true"
+        ProfileFileName = "profiles"
+
+        ShowCollectionsSelection = "true"
+        ShowFileUploadSelection = "true"
+
+        AnalysisApiEndpoint = "https://$($envDict['API_CONTAINER_APP_FQDN'])"
+        AnalysisApiKeysecretRef = $envDict['API_KEY']
+        AzureDocumentIntelligenceEndpoint =$envDict['DOCUMENT_INTELLIGENCE_ENDPOINT']
         ApiKey = $envDict['API_KEY']
-        CosmosDbEndpoint = $envDict['COSMOS_ENDPOINT']
-        Values = @{
-            AnalysisApiKey = $envDict['API_KEY']
-            AnalysisApiEndpoint = "https://$($envDict['API_CONTAINER_APP_FQDN'])"
-            AzureWebJobsStorage = 'UseDevelopmentStorage=true'
-            FUNCTIONS_WORKER_RUNTIME = 'dotnet-isolated'
-            BatchAnalysisStorageAccountName = $envDict['STORAGE_ACCOUNT_NAME']
-            BatchAnalysisStorageInputContainerName = $envDict['STORAGE_ACCOUNT_BATCH_IN_CONTAINER']
-            BatchAnalysisStorageOutputContainerName = $envDict['STORAGE_ACCOUNT_BATCH_OUT_CONTAINER']
-            CosmosDbEndpoint = $envDict['COSMOS_ENDPOINT']
-            CosmosDbDatabaseName = $envDict['COSMOS_DATABASE_NAME']
-            CosmosDbContainerName = $envDict['COSMOS_CONTAINER_NAME']
-            MaxBatchSize = 10
-        }
+        APPLICATIONINSIGHTS_CONNECTION_STRING = ""
+        AZURE_CLIENT_ID = $envDict['ADMIN_CLIENT_ID']
+        existing_Identity_Name = $envDict['MANAGED_IDENTITY_NAME']
         IsEncrypted = $false
       } | ConvertTo-Json -Depth 5
 

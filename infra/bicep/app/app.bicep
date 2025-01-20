@@ -20,6 +20,7 @@ param deploymentSuffix string = ''
 param secrets object = {}
 @description('The environment variables for the container')
 param env array = []
+param secretArray array = []
 
 param port int = 8080
 
@@ -48,7 +49,7 @@ module fetchLatestImage '../core/host/fetch-container-image.bicep' = {
 resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
   name: name
   location: location
-  tags: union(tags, { 'azd-service-name': 'web' })
+  tags: union(tags, { 'azd-service-name': 'ui' })
   identity: {
     type: 'UserAssigned'
     userAssignedIdentities: {
@@ -91,14 +92,14 @@ resource containerApp 'Microsoft.App/containerApps@2024-03-01' = {
                 value: '${port}'
               }
             ],
-            env
-            // map(
-            //   secrets,
-            //   secret => {
-            //     name: secret.name
-            //     secretRef: secret.secretRef
-            //   }
-            // )
+            env,
+            map(
+              secretArray,
+              secret => {
+                name: secret.name
+                secretRef: secret.secretRef
+              }
+            )
           )
           resources: {
             cpu: json('1.0')
