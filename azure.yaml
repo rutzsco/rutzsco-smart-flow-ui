@@ -48,13 +48,16 @@ hooks:
       }
 
       $json_content = @{
+        AOAIEmbeddingsDeployment = "text-embedding"
         AOAIStandardServiceEndpoint = $envDict['AI_ENDPOINT']
         AOAIPremiumServiceEndpoint = $envDict['AI_ENDPOINT']
         AOAIPremiumChatGptDeployment = "gpt-4o"
         AOAIStandardChatGptDeployment = "gpt-4o"
-        AOAIEmbeddingsDeployment = "text-embedding"
 
         AzureSearchServiceEndpoint = $envDict['AI_SEARCH_ENDPOINT']
+
+        AzureStorageAccountEndPoint = 'https://$($envDict["STORAGE_ACCOUNT_NAME"]).blob.core.windows.net'
+        AzureStorageUserUploadContainer = "content"
 
         CosmosDbEndpoint =  $envDict['COSMOS_ENDPOINT']
         CosmosDbDatabaseName = "ChatHistory"
@@ -62,25 +65,17 @@ hooks:
 
         DocumentUploadStrategy = "AzureNative"
         EnableDataProtectionBlobKeyStorage = "false"
-        StorageAccountName = $envDict['STORAGE_ACCOUNT_NAME']
-        AzureStorageAccountEndPoint = 'https://$($envDict["STORAGE_ACCOUNT_NAME"]).blob.core.windows.net'
-        ContentStorageContainer = $envDict['STORAGE_ACCOUNT_CONTAINER']
-        AzureStorageUserUploadContainer = "content"
-
-        UserAssignedManagedIdentityClientId = $envDict['ADMIN_CLIENT_ID']
-        UseManagedIdentityResourceAccess = "true"
         ProfileFileName = "profiles"
-
         ShowCollectionsSelection = "true"
         ShowFileUploadSelection = "true"
+        UseManagedIdentityResourceAccess = "true"
+        UserAssignedManagedIdentityClientId = $envDict['ADMIN_CLIENT_ID']
 
-        AnalysisApiEndpoint = "https://$($envDict['API_CONTAINER_APP_FQDN'])"
-        AnalysisApiKeysecretRef = $envDict['API_KEY']
-        AzureDocumentIntelligenceEndpoint =$envDict['DOCUMENT_INTELLIGENCE_ENDPOINT']
-        ApiKey = $envDict['API_KEY']
-        APPLICATIONINSIGHTS_CONNECTION_STRING = ""
         AZURE_CLIENT_ID = $envDict['ADMIN_CLIENT_ID']
         existing_Identity_Name = $envDict['MANAGED_IDENTITY_NAME']
+        AnalysisApiEndpoint = "https://$($envDict['API_CONTAINER_APP_FQDN'])"
+        AnalysisApiKeysecretRef = $envDict['API_KEY']
+
         IsEncrypted = $false
       } | ConvertTo-Json -Depth 5
 

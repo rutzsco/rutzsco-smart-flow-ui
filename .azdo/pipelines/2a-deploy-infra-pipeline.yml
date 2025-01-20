@@ -67,7 +67,6 @@ stages:
           runGHASScan: ${{ parameters.runGHASScan }}
           singleEnvironment: 'true'
           backendExists: ${{ parameters.backendExists }}
-          createResourceGroup: ${{ parameters.createResourceGroup }}
           createResourceGroup: false # ${{ parameters.createResourceGroup }}
           publicAccessEnabled: false # ${{ parameters.publicAccessEnabled }}
           createDnsZones: false # ${{ parameters.createDnsZones }}
@@ -80,7 +79,6 @@ stages:
           runMSDevSecOpsScan: ${{ parameters.runMSDevSecOpsScan }}
           runGHASScan: ${{ parameters.runGHASScan }}
           backendExists: ${{ parameters.backendExists }}
-          createResourceGroup: ${{ parameters.createResourceGroup }}
           createResourceGroup: false # ${{ parameters.createResourceGroup }}
           publicAccessEnabled: false # ${{ parameters.publicAccessEnabled }}
           createDnsZones: false # ${{ parameters.createDnsZones }}

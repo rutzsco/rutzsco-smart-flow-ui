@@ -30,30 +30,10 @@ parameters:
       - QA
       - PROD
     default: DEV
-  # - name: createResourceGroup
-  #   displayName: Create Resource Group?
-  #   type: boolean
-  #   default: true
-  # - name: publicAccessEnabled
-  #   displayName: Public Access Enabled?
-  #   type: boolean
-  #   default: true
-  # - name: createDnsZones
-  #   displayName: Create DNS Zones?
-  #   type: boolean
-  #   default: true
-  # - name: addRoleAssignments
-  #   displayName: Add Role Assignments?
-  #   type: boolean
-  #   default: true
-  # - name: apps
-  #   displayName: Which Apps to build and deploy?
-  #   type: string
-  #   values:
-  #     - API
-  #     - BATCH
-  #     - API-BATCH
-  #   default: 'API-BATCH'
+  - name: backendExists
+    displayName: Does Container Image Exist?
+    type: boolean
+    default: true
   - name: buildApps
     displayName: Build Docker Images
     type: boolean
@@ -92,6 +72,7 @@ stages:
   parameters:
     environments: ['${{ parameters.deployToEnvironment }}']
     singleEnvironment: 'true'
+    backendExists: ${{ parameters.backendExists }}
     createResourceGroup: false
     publicAccessEnabled: true
     createDnsZones: false
@@ -105,7 +86,7 @@ stages:
     environmentName: '${{ parameters.deployToEnvironment }}'
     pushToACR: ${{ parameters.pushApps }}
     app: 
-      { containerAppName: 'ui', acrAppName: 'assistantui', projectFolderName: 'app/Assistant.UI', port: '8080' }
+      { containerAppName: 'ui', acrAppName: 'smartflowui', projectFolderName: 'app/SmartFlowUI', port: '8080' }
 
 # ----------------------------------------------------------------------------------------------------
 - ${{ if eq(parameters.deployApps, true) }}:
@@ -113,5 +94,5 @@ stages:
     parameters:
       environments: ['${{ parameters.deployToEnvironment }}']
       apps: [ 
-        { containerAppName: 'ui', acrAppName: 'assistantui', projectFolderName: 'app/Assistant.UI', port: '8080' }
+        { containerAppName: 'ui', acrAppName: 'smartflowui', projectFolderName: 'app/SmartFlowUI', port: '8080' }
       ] 
