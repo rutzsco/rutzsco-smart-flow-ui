@@ -365,7 +365,7 @@ var settings = [
   { name: 'AnalysisApiKey', secretRef: 'apikey' }
 ]
 module app './app/app.bicep' = {
-  name: 'app${deploymentSuffix}'
+  name: 'ui-app${deploymentSuffix}'
   params: {
     name: resourceNames.outputs.containerAppUIName
     location: location

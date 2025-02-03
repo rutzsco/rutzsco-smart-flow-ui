@@ -91,7 +91,7 @@ steps:
 
   - ${{ if contains(lower(parameters.action), 'push') }}:
     - task: AzureCLI@2
-      displayName: 'ACR: Docker Push ${{ parameters.imageName }}'
+      displayName: 'ACR: Docker Push'
       inputs:
         AzureSubscription: $(serviceConnectionName)
         scriptType: bash

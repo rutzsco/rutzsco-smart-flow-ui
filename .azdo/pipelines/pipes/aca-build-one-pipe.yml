@@ -1,5 +1,5 @@
 # ----------------------------------------------------------------------------------------------------
-# Pipe to build an Azure Container App for multiple apps and environments
+# Pipe to build an Azure Container App for one app
 # ----------------------------------------------------------------------------------------------------
 parameters:
   - name: environmentName
@@ -11,6 +11,9 @@ parameters:
   - name: pushToACR
     default: true
     type: boolean
+  # - name: dockerPushType
+  #   default: 'native'
+  #   type: string
 
 # ----------------------------------------------------------------------------------------------------
 stages:
@@ -24,3 +27,5 @@ stages:
         projectFolderName: ${{ parameters.app.projectFolderName }}
         environmentName: ${{ parameters.environmentName }}
         pushToACR: ${{ parameters.pushToACR }}
+        acrFolderName: ${{ parameters.app.acrFolderName }}
+        # dockerPushType: ${{ parameters.dockerPushType }}

@@ -155,21 +155,23 @@ jobs:
           tags: ${{ steps.meta.outputs.tags }}
       # END -- Task Based Docker Push Commands ----------------------------------------------------------------------
 
-      # -- Native Docker Push Commands ----------------------------------------------------------------------
-      - name: Native Docker Build
-        if: ${{ inputs.PUSH_TO_ACR && inputs.DOCKER_PUSH_TYPE == 'NATIVE' }}
-        id: docker-build
-        working-directory: '${{ github.workspace }}/${{ inputs.APP_PATH }}'
-        run: |
-            docker build . -t ${{ steps.image-name.outputs.IMAGE_NAME }}
-            docker images
+      # -- Native Docker Push Commands ------------------------------------------------------------------------------
+      # -- These native commands are not used at this time, just here for reference
+      # -- ----------------------------------------------------------------------------------------------------------
+      # - name: Native Docker Build
+      #   if: ${{ inputs.PUSH_TO_ACR && inputs.DOCKER_PUSH_TYPE == 'NATIVE' }}
+      #   id: docker-build
+      #   working-directory: '${{ github.workspace }}/${{ inputs.APP_PATH }}'
+      #   run: |
+      #       docker build . -t ${{ steps.image-name.outputs.IMAGE_NAME }}
+      #       docker images
 
-      - name: Native Docker Push
-        if: ${{ inputs.PUSH_TO_ACR && inputs.DOCKER_PUSH_TYPE == 'NATIVE' }}
-        working-directory: '${{ github.workspace }}/${{ inputs.APP_PATH }}'
-        run: |
-            docker tag ${{ steps.image-name.outputs.IMAGE_NAME }} ${{ inputs.ACR_NAME }}.azurecr.io/${{ steps.image-name.outputs.IMAGE_NAME }}
-            docker push ${{ inputs.ACR_NAME }}.azurecr.io/${{ steps.image-name.outputs.IMAGE_NAME }}
+      # - name: Native Docker Push
+      #   if: ${{ inputs.PUSH_TO_ACR && inputs.DOCKER_PUSH_TYPE == 'NATIVE' }}
+      #   working-directory: '${{ github.workspace }}/${{ inputs.APP_PATH }}'
+      #   run: |
+      #       docker tag ${{ steps.image-name.outputs.IMAGE_NAME }} ${{ inputs.ACR_NAME }}.azurecr.io/${{ steps.image-name.outputs.IMAGE_NAME }}
+      #       docker push ${{ inputs.ACR_NAME }}.azurecr.io/${{ steps.image-name.outputs.IMAGE_NAME }}
       # END -- Native Docker Push Commands ----------------------------------------------------------------------
       
       - name: 'ACR: Remove Agent from FW'
@@ -177,14 +179,3 @@ jobs:
         run: |
            echo "Executing: az acr network-rule remove --name ${{ inputs.ACR_NAME }} --resource-group ${{ inputs.RESOURCE_GROUP }} --ip-address  ${{ steps.get-ip.outputs.agentIpAddress }}"
            az acr network-rule remove --name ${{ inputs.ACR_NAME }} --resource-group ${{ inputs.RESOURCE_GROUP }} --ip-address  ${{ steps.get-ip.outputs.agentIpAddress }}
-
-      ## ------------------------------------------------------------------------------------------------------------------------
-      # It would be nice to get these parms working right and just use this task..., but they are not quite right yet
-      # - name: Docker Build & Push
-      #   uses: docker/build-push-action@v2
-      #   with:
-      #     context: '${{ github.workspace }}/${{ inputs.APP_PATH }}'
-      #     push: true
-      #     tags: ${{ inputs.ACR_NAME }}.azurecr.io/${{ steps.image-name.outputs.IMAGE_NAME }}
-
-          

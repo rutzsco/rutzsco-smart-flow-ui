@@ -25,6 +25,9 @@ parameters:
   - name: acrFolderName
     default: 'appImages'
     type: string
+  # - name: dockerPushType
+  #   default: 'native'
+  #   type: string
 
 # ----------------------------------------------------------------------------------------------------
 jobs:
@@ -106,12 +109,14 @@ jobs:
       # ----------------------------------------------------------------------------------------------------
       # Build the image
       # ----------------------------------------------------------------------------------------------------
+      # - ${{ if eq(lower(parameters.dockerPushType), 'native') }}:
       - task: CmdLine@2
         displayName: Docker Build
         inputs:
           script: |
             docker build . -t $(imageName) -t $(imageNameBranch)
             docker images
+            docker save $(imageName) -o $(Pipeline.Workspace)/$(acrAppNameLower).tar
           workingDirectory: '$(System.DefaultWorkingDirectory)/${{ parameters.projectFolderName }}'
 
       # ----------------------------------------------------------------------------------------------------
@@ -120,7 +125,29 @@ jobs:
       - ${{ if parameters.pushToACR }}:
         - template: steps-container-registry-template.yml
           parameters:
-            action: 'add-login-push-remove'
+            action: 'add-login-push'
+            serviceConnectionName: ${{ parameters.serviceConnectionName }}
+            registryName: $(containerRegistryName)
+            registryResourceGroup: $(resourceGroupName)
+            imageName: $(imageName)
+            imageNameLatest: $(imageNameBranch)
+            updateFirewall: ${{ parameters.updateFirewall }}
+            agentIpAddress: $(agentIpAddress)
+
+      - task: PublishPipelineArtifact@1
+        displayName: Publish Docker Artifact
+        inputs:
+          targetPath: '$(Pipeline.Workspace)/$(acrAppNameLower).tar'
+          artifact: 'docker_$(acrAppNameLower)'
+          publishLocation: 'pipeline'
+
+      # ----------------------------------------------------------------------------------------------------
+      # ACR Push: Push to ACR, add/remove firewall rules and remove if requested
+      # ----------------------------------------------------------------------------------------------------
+      - ${{ if parameters.pushToACR }}:
+        - template: steps-container-registry-template.yml
+          parameters:
+            action: 'remove'
             serviceConnectionName: ${{ parameters.serviceConnectionName }}
             registryName: $(containerRegistryName)
             registryResourceGroup: $(resourceGroupName)

@@ -2,14 +2,17 @@
 # Variables for location of source for application and ACA configuration settings for each app
 # ----------------------------------------------------------------------------------------------------
 variables:
-  - name: ACR_REPO_NAME
-    value: 'smartflow'
+  - name: DUMMY
+    value: 'DUMMY'
+    
+#   - name: ACR_REPO_NAME
+#     value: 'smartflow'
 
-  - name: UI_CONTAINER_APP_NAME
-    value: 'ui'
-  - name: UI_PROJECT_FOLDER_NAME
-    value: 'app/SmartFlowUI'
-  - name: UI_ACR_APP_NAME
-    value: 'smartflowui'
-  - name: UI_PORT
-    value: '8080'
+#   - name: UI_CONTAINER_APP_NAME
+#     value: 'ui'
+#   - name: UI_PROJECT_FOLDER_NAME
+#     value: 'app/SmartFlowUI'
+#   - name: UI_ACR_APP_NAME
+#     value: 'smartflowui'
+#   - name: UI_PORT
+#     value: '8080'

@@ -39,7 +39,7 @@ resource userIdentity 'Microsoft.ManagedIdentity/userAssignedIdentities@2023-07-
 }
 
 module fetchLatestImage '../core/host/fetch-container-image.bicep' = {
-  name: 'app-fetch-image${deploymentSuffix}'
+  name: 'ui-app-fetch-image${deploymentSuffix}'
   params: {
     exists: exists
     name: imageName

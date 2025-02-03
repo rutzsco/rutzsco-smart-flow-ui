@@ -30,8 +30,8 @@ parameters:
       - QA
       - PROD
     default: DEV
-  - name: backendExists
-    displayName: Does Container Image Exist?
+  - name: deployBicep
+    displayName: Deploy Bicep
     type: boolean
     default: true
   - name: buildApps
@@ -50,6 +50,17 @@ parameters:
     displayName: Run MS DevSecOps Scan?
     type: boolean
     default: false
+  - name: backendExists
+    displayName: Does Container Image Exist?
+    type: boolean
+    default: true
+  # - name: dockerPushType
+  #   displayName: Docker Build Type
+  #   type: string
+  #   values:
+  #     - native
+  #     - task
+  #   default: 'native'
 
 # ----------------------------------------------------------------------------------------------------
 variables:
@@ -58,27 +69,29 @@ variables:
 
 # ----------------------------------------------------------------------------------------------------
 stages:
-- stage: ScanApplication
-  displayName: Scan Application
-  jobs:
-    - template: pipes/templates/scan-code-template.yml
-      parameters:
-        environmentName: 'DEV'
-        runMSDevSecOpsScan: ${{ parameters.runMSDevSecOpsScan }}
-        runGHASScan: false
+- ${{ if eq(parameters.runMSDevSecOpsScan, true) }}:
+  - stage: ScanApplication
+    displayName: Scan Application
+    jobs:
+      - template: pipes/templates/scan-code-template.yml
+        parameters:
+          environmentName: 'DEV'
+          runMSDevSecOpsScan: ${{ parameters.runMSDevSecOpsScan }}
+          runGHASScan: false
 
 # ----------------------------------------------------------------------------------------------------
-- template: pipes/infra-only-pipe.yml
-  parameters:
-    environments: ['${{ parameters.deployToEnvironment }}']
-    singleEnvironment: 'true'
-    backendExists: ${{ parameters.backendExists }}
-    createResourceGroup: false
-    publicAccessEnabled: true
-    createDnsZones: false
-    addRoleAssignments: false
-    runMSDevSecOpsScan: ${{ parameters.runMSDevSecOpsScan }}
-    runGHASScan: false
+- ${{ if eq(parameters.deployBicep, true) }}:
+  - template: pipes/infra-only-pipe.yml
+    parameters:
+      environments: ['${{ parameters.deployToEnvironment }}']
+      singleEnvironment: 'true'
+      backendExists: ${{ parameters.backendExists }}
+      createResourceGroup: false
+      publicAccessEnabled: true
+      createDnsZones: false
+      addRoleAssignments: false
+      runMSDevSecOpsScan: ${{ parameters.runMSDevSecOpsScan }}
+      runGHASScan: false
 
 # ----------------------------------------------------------------------------------------------------
 - template: pipes/aca-build-one-pipe.yml
@@ -86,7 +99,8 @@ stages:
     environmentName: '${{ parameters.deployToEnvironment }}'
     pushToACR: ${{ parameters.pushApps }}
     app: 
-      { containerAppName: 'ui', acrAppName: 'smartflowui', projectFolderName: 'app/SmartFlowUI', port: '8080' }
+      { containerAppName: 'ui', acrAppName: 'smartflowui', projectFolderName: 'app/SmartFlowUI', port: '8080', acrFolderName: 'smartflow' }
+    # dockerPushType: ${{ parameters.dockerPushType }}
 
 # ----------------------------------------------------------------------------------------------------
 - ${{ if eq(parameters.deployApps, true) }}:
@@ -94,5 +108,5 @@ stages:
     parameters:
       environments: ['${{ parameters.deployToEnvironment }}']
       apps: [ 
-        { containerAppName: 'ui', acrAppName: 'smartflowui', projectFolderName: 'app/SmartFlowUI', port: '8080' }
+        { containerAppName: 'ui', acrAppName: 'smartflowui', projectFolderName: 'app/SmartFlowUI', port: '8080', acrFolderName: 'smartflow' }
       ] 

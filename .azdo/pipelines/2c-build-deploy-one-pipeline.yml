@@ -25,6 +25,13 @@ parameters:
   displayName: Run Scan
   type: boolean
   default: false
+# - name: dockerPushType
+#   displayName: Docker Build Type
+#   type: string
+#   values:
+#     - native
+#     - task
+#   default: 'native'
 
 # ----------------------------------------------------------------------------------------------------
 variables:
@@ -48,12 +55,13 @@ stages:
   parameters:
     pushToACR: ${{ parameters.pushApps }}
     apps: [ 
-      { containerAppName: 'ui',   acrAppName: 'smartflowui',   projectFolderName: 'app/SmartFlowUI',       port: '8080' }
+      { containerAppName: 'ui', acrAppName: 'smartflowui', projectFolderName: 'app/SmartFlowUI', port: '8080', acrFolderName: 'smartflow' }
     ] 
+    # dockerPushType: ${{ parameters.dockerPushType }}
 
 # ----------------------------------------------------------------------------------------------------
 - template: pipes/aca-deploy-pipe.yml
   parameters:
     apps: [ 
-      { containerAppName: 'ui',   acrAppName: 'smartflowui',   projectFolderName: 'app/SmartFlowUI',       port: '8080' }
+      { containerAppName: 'ui', acrAppName: 'smartflowui', projectFolderName: 'app/SmartFlowUI', port: '8080', acrFolderName: 'smartflow' }
     ] 

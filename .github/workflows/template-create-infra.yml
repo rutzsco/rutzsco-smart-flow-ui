@@ -90,6 +90,10 @@ jobs:
         if: ${{ inputs.runCreateInfra }}
         uses: actions/checkout@v4
 
+      - name: Get the current date
+        id: get-date
+        run: echo "TAG=$(date +'%Y%m%d%H%M')" >> $GITHUB_OUTPUT
+
       - name: Display Variables and Files
         run: |-
           echo "inputs.envCode=${{ inputs.envCode }}"
@@ -160,7 +164,7 @@ jobs:
         with:
           scope: subscription
           region: ${{ vars.RESOURCEGROUP_LOCATION }}
-          deploymentName: ${{ inputs.templateFile }}-sub-${{ vars.RESOURCEGROUP_LOCATION }}
+          deploymentName: ${{ inputs.templateFile }}-sub-${{ steps.get-date.outputs.TAG}}
           template: ${{ inputs.templatePath }}${{ inputs.templateFile }}
           parameters: ${{ inputs.templatePath }}${{ inputs.parameterFile }}
           deploymentMode: ${{ inputs.deploymentMode }} # Must be: Incremental | Complete | Validation
@@ -172,7 +176,7 @@ jobs:
         with:
           scope: resourcegroup
           region: ${{ vars.RESOURCEGROUP_LOCATION }}
-          deploymentName: ${{ inputs.templateFile }}-rg-${{ vars.RESOURCEGROUP_LOCATION }}
+          deploymentName: ${{ inputs.templateFile }}-rg-${{ steps.get-date.outputs.TAG}}
           resourceGroupName: ${{ env.generatedResourceGroupName }}
           template: ${{ inputs.templatePath }}${{ inputs.templateFile }}
           parameters: ${{ inputs.templatePath }}${{ inputs.parameterFile }}
