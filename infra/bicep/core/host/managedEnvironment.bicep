@@ -1,6 +1,6 @@
 param newEnvironmentName string = ''
 param existingEnvironmentName string = ''
-param existingEnvironmentResourceGroup string = ''
+// param existingEnvironmentResourceGroup string = ''
 param location string = resourceGroup().location
 param tags object = {}
 
@@ -9,6 +9,7 @@ param logAnalyticsWorkspaceName string
 param logAnalyticsRgName string
 param appSubnetId string = ''
 param publicAccessEnabled bool = true
+param containerAppEnvironmentWorkloadProfiles array
 
 // --------------------------------------------------------------------------------------------------------------
 var useExistingEnvironment = !empty(existingEnvironmentName)
@@ -27,7 +28,7 @@ var logAnalyticsCustomerId = logAnalyticsResource.properties.customerId
 // App Environment
 resource existingAppEnvironmentResource 'Microsoft.App/managedEnvironments@2024-03-01' existing = if (useExistingEnvironment) {
   name: existingEnvironmentName
-  scope: resourceGroup(existingEnvironmentResourceGroup)
+  scope: resourceGroup(resourceGroupName)
 }
 resource newAppEnvironmentResource 'Microsoft.App/managedEnvironments@2024-03-01' = if (!useExistingEnvironment) {
   name: cleanAppEnvName
@@ -45,6 +46,7 @@ resource newAppEnvironmentResource 'Microsoft.App/managedEnvironments@2024-03-01
       infrastructureSubnetId: appSubnetId
       internal: !publicAccessEnabled
     } : {}
+    workloadProfiles: containerAppEnvironmentWorkloadProfiles
   }
 }
 

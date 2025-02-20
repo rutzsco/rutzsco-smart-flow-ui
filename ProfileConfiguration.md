@@ -1,8 +1,9 @@
-## Profile Configuration
+# Profile Configuration
 
-### Smart Flow Plug In
+## Smart Flow Plug In
 
-#### Profile Example
+### Profile Example
+
 ```json
   {
     "Name": "Demo Task Flow",
@@ -20,7 +21,8 @@
     }
   },
 ```
-#### Settings
+
+### Settings
 
 ```json
   {

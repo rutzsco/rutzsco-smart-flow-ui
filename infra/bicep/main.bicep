@@ -60,6 +60,18 @@ param existing_ManagedAppEnv_Name string
 param existing_ManagedAppEnv_ResourceGroupName string
 //param existing_ManagedAppEnv_WorkloadProfile_Name string
 
+@description('Workload profiles for the Container Apps environment')
+param containerAppEnvironmentWorkloadProfiles array = [
+  {
+    name: 'app'
+    workloadProfileType: 'D4'
+    minimumCount: 1
+    maximumCount: 10
+  }
+]
+@description('Name of the Container Apps Environment workload profile to use for the app')
+param containerAppEnvironmentWorkloadProfileName string = 'app'
+
 // --------------------------------------------------------------------------------------------------------------
 // You need an existing Cosmos DB
 // --------------------------------------------------------------------------------------------------------------
@@ -276,6 +288,7 @@ module managedEnvironment './core/host/managedEnvironment.bicep' = {
     location: location
     logAnalyticsWorkspaceName: logAnalytics.outputs.logAnalyticsWorkspaceName
     logAnalyticsRgName: resourceGroupName
+    containerAppEnvironmentWorkloadProfiles: containerAppEnvironmentWorkloadProfiles
   }
 }
 
@@ -378,6 +391,7 @@ module app './app/app.bicep' = {
     exists: backendExistsBool
     identityName: managedIdentity.outputs.managedIdentityName
     deploymentSuffix: deploymentSuffix
+    appContainerName: containerAppEnvironmentWorkloadProfileName
     env: settings
     secrets: {
       cosmos: 'https://${keyVault.outputs.name}${environment().suffixes.keyvaultDns}/secrets/${cosmos.outputs.connectionStringSecretName}'

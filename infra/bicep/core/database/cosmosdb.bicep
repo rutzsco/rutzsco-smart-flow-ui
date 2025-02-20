@@ -1,6 +1,16 @@
+// --------------------------------------------------------------------------------
+// This BICEP file will create a Cosmos Database
+// This expects a parameter with a list of containers/keys, something like this:
+//   var cosmosContainerArray = [
+//     { name: 'AgentLog', partitionKey: '/requestId' }
+//     { name: 'UserDocuments', partitionKey: '/userId' }
+//     { name: 'ChatTurn', partitionKey: '/chatId' }
+//   ]
+// --------------------------------------------------------------------------------
 @description('Cosmos DB account name')
 param accountName string = 'sql-${uniqueString(resourceGroup().id)}'
 param existingAccountName string = ''
+param existingCosmosResourceGroupName string = resourceGroup().name
 
 @description('The name for the SQL database')
 param databaseName string
@@ -27,7 +37,6 @@ param userPrincipalId string = ''
 // Variables
 // --------------------------------------------------------------------------------------------------------------
 var connectionStringSecretName = 'azure-cosmos-connection-string'
-//var chatContainerName = 'AgentLog'
 var useExistingAccount = !empty(existingAccountName)
 
 // --------------------------------------------------------------------------------------------------------------
@@ -35,56 +44,8 @@ var useExistingAccount = !empty(existingAccountName)
 // --------------------------------------------------------------------------------------------------------------
 resource existingCosmosAccount 'Microsoft.DocumentDB/databaseAccounts@2024-08-15' existing = if (useExistingAccount) {
   name: existingAccountName
+  scope: resourceGroup(existingCosmosResourceGroupName)
 }
-resource cosmosDatabaseExisting 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases@2024-08-15' = if (useExistingAccount) {
-  parent: existingCosmosAccount
-  name: databaseName
-  tags: tags
-  properties: {
-    resource: {
-      id: databaseName
-    }
-    options: {}
-  }
-}
-resource chatContainerExisting 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/containers@2024-08-15' = [for container in containerArray: if (!useExistingAccount) {
-  parent: cosmosDatabaseExisting
-  name: container.name
-  tags: tags
-  properties: {
-    resource: {
-      id: container.name
-      indexingPolicy: {
-        indexingMode: 'consistent'
-        automatic: true
-        includedPaths: [
-          {
-            path: '/*'
-          }
-        ]
-        excludedPaths: [
-          {
-            path: '/"_etag"/?'
-          }
-        ]
-      }
-      partitionKey: {
-        paths: [
-          container.partitionKey
-        ]
-        kind: 'Hash'
-      }
-      uniqueKeyPolicy: {
-        uniqueKeys: []
-      }
-      conflictResolutionPolicy: {
-        mode: 'LastWriterWins'
-        conflictResolutionPath: '/_ts'
-      }
-    }
-    options: {}
-  }
-}]
 
 // --------------------------------------------------------------------------------------------------------------
 // Create new Cosmos DB account
@@ -153,29 +114,16 @@ resource chatContainer 'Microsoft.DocumentDB/databaseAccounts/sqlDatabases/conta
   tags: tags
   properties: {
     resource: {
-      id: container.Name
+      id: container.name
       indexingPolicy: {
         indexingMode: 'consistent'
         automatic: true
-        includedPaths: [
-          {
-            path: '/*'
-          }
-        ]
-        excludedPaths: [
-          {
-            path: '/"_etag"/?'
-          }
-        ]
+        includedPaths: [{ path: '/*' }]
+        excludedPaths: [{ path: '/"_etag"/?' }]
       }
       partitionKey: {
-        paths: [
-          container.partitionKey
-        ]
+        paths: [ container.partitionKey ]
         kind: 'Hash'
-      }
-      uniqueKeyPolicy: {
-        uniqueKeys: []
       }
       conflictResolutionPolicy: {
         mode: 'LastWriterWins'
@@ -229,6 +177,7 @@ resource cosmosDbUserAccessRoleAssignment 'Microsoft.DocumentDB/databaseAccounts
 // --------------------------------------------------------------------------------------------------------------
 output id string = useExistingAccount ? existingCosmosAccount.id : cosmosAccount.id
 output name string = useExistingAccount ? existingCosmosAccount.name : cosmosAccount.name
+output resourceGroupName string = useExistingAccount ? existingCosmosResourceGroupName : resourceGroup().name
 output endpoint string = useExistingAccount ? existingCosmosAccount.properties.documentEndpoint : cosmosAccount.properties.documentEndpoint
 output keyVaultSecretName string = connectionStringSecretName
 output privateEndpointName string = privateEndpointName
