@@ -255,7 +255,7 @@ module azureOpenAi './core/ai/cognitive-services.bicep' = {
   name: 'existing_openai${deploymentSuffix}'
   params: {
     existing_CogServices_Name: existing_OpenAI_Name
-    existing_CogServices_RG_Name: existing_OpenAI_ResourceGroupName
+    existing_CogServices_ResourceGroupName: existing_OpenAI_ResourceGroupName
     textEmbedding: {
       DeploymentName: 'text-embedding'
       ModelName: 'text-embedding-ada-002'
@@ -284,7 +284,7 @@ module managedEnvironment './core/host/managedEnvironment.bicep' = {
   name: 'existing_ca_env${deploymentSuffix}'
   params: {
     existingEnvironmentName: existing_ManagedAppEnv_Name
-    existingEnvironmentResourceGroup: existing_ManagedAppEnv_ResourceGroupName
+    //existingEnvironmentResourceGroup: existing_ManagedAppEnv_ResourceGroupName
     location: location
     logAnalyticsWorkspaceName: logAnalytics.outputs.logAnalyticsWorkspaceName
     logAnalyticsRgName: resourceGroupName
@@ -325,7 +325,7 @@ module documentIntelligence './core/ai/document-intelligence.bicep' = {
   name: 'existing_doc_intelligence${deploymentSuffix}'
   params: {
     existing_CogServices_Name: existing_DocumentIntelligence_Name
-    existing_CogServices_RG_Name: existing_DocumentIntelligence_RG_Name
+    //existing_CogServices_RG_Name: existing_DocumentIntelligence_RG_Name
   }
 }
 
@@ -377,7 +377,7 @@ var settings = [
   { name: 'AnalysisApiEndpoint', value: 'https://${resourceNames.outputs.containerAppAPIName}.${managedEnvironment.outputs.defaultDomain}' }
   { name: 'AnalysisApiKey', secretRef: 'apikey' }
 ]
-module app './app/app.bicep' = {
+module uiContainerApp './app/app.bicep' = {
   name: 'ui-app${deploymentSuffix}'
   params: {
     name: resourceNames.outputs.containerAppUIName
@@ -402,3 +402,17 @@ module app './app/app.bicep' = {
     }
   }
 }
+
+// --------------------------------------------------------------------------------------------------------------
+// -- Outputs ---------------------------------------------------------------------------------------------------
+// --------------------------------------------------------------------------------------------------------------
+output SUBSCRIPTION_ID string = subscription().subscriptionId
+output ACR_NAME string = containerRegistry.outputs.name
+output ACR_URL string = containerRegistry.outputs.loginServer
+output UI_CONTAINER_APP_FQDN string = uiContainerApp.outputs.fqdn
+output UI_CONTAINER_APP_NAME string = uiContainerApp.outputs.name
+output UI_CONTAINER_APP_URL string = uiContainerApp.outputs.uri
+output AZURE_CONTAINER_ENVIRONMENT_NAME string = managedEnvironment.outputs.name
+output AZURE_CONTAINER_REGISTRY_ENDPOINT string = containerRegistry.outputs.loginServer
+output AZURE_CONTAINER_REGISTRY_NAME string = containerRegistry.outputs.name
+output AZURE_RESOURCE_GROUP string = resourceGroupName

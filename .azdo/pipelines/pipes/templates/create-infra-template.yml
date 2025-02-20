@@ -13,6 +13,8 @@ parameters:
     default: 'main.azdo.bicepparam'
   - name: deploymentMode
     default: 'Incremental' # 'Incremental' | 'Complete' | 'Validation'
+  - name: backendExists
+    default: true
   - name: createResourceGroup
     default: true
   - name: deployToResourceGroup
@@ -77,45 +79,45 @@ jobs:
         inputs:
           targetType: 'inline'
           script: |
-            $environmentNameLower="${{ parameters.environmentName }}".ToLower()
-            echo "##vso[task.setvariable variable=environmentNameLower]$environmentNameLower"
-
             $appNameLower="$(appName)".ToLower()
             echo "##vso[task.setvariable variable=appNameLower]$appNameLower"
 
-            $appNameLowerNoDashes="$(appName)".ToLower().Replace("-", "")
-            echo "##vso[task.setvariable variable=appNameLowerNoDashes]$appNameLowerNoDashes"
+            $appNameNoDashesLower="$(appName)".ToLower().Replace("-", "")
+            echo "##vso[task.setvariable variable=appNameNoDashesLower]$appNameNoDashesLower"
 
-            $resourceGroupName="$(resourceGroupPrefix)-$environmentNameLower".ToLower()
+            $resourceGroupName="$(resourceGroupPrefix)-$(environmentNameLower)".ToLower()
             echo "##vso[task.setvariable variable=resourceGroupName]$resourceGroupName"
 
-            $runDateTime=(Get-Date).ToString("yyyyMMdd-HHmmss")
+            $runDateTime=Get-Date -Format "yyyyMMddHHmmss"
             echo "##vso[task.setvariable variable=runDateTime]$runDateTime"
-            $runDateTimeZ=(Get-Date).ToString("yyyyMMddTHHmmss")+"Z"
+
+            $runDateTimeZ=$runDateTime+"Z"
             echo "##vso[task.setvariable variable=runDateTimeZ]$runDateTimeZ"
+
+            echo "appNameLower=$appNameLower"
+            echo "appNameNoDashesLower=$appNameNoDashesLower"
+            echo "runDateTime=$runDateTime"
+            echo "runDateTimeZ=$runDateTimeZ"
+            echo "resourceGroupName=$resourceGroupName"
+            echo "environmentName=$(environmentName)"
+            echo "environmentNameLower=$(environmentNameLower)"
 
       - bash: |
           echo "environmentName=${{ parameters.environmentName }}"
           echo "templateFolderName=${{ parameters.templateFolderName }}"
           echo "templateFileName=${{ parameters.templateFileName }}"
-          echo "templateFile=$(templateFile)"
           echo "parameterFileName=${{ parameters.parameterFileName }}"
-          echo "parameterFile=$(parameterFile)"
           echo "deploymentMode=${{ parameters.deploymentMode }}"
           echo "resourceGroupName=$(resourceGroupName)"
           echo "appName=$(appName)"
           echo "appNameLower=$(appNameLower)"
-          echo "appNameLowerNoDashes=$(appNameLowerNoDashes)"
-          echo "runDateTime=$(runDateTime)"
-          echo "runDateTimeZ=$(runDateTimeZ)"
+          echo "appNameNoDashesLower=$(appNameNoDashesLower)"
 
+          echo "backendExists=${{ parameters.backendExists }}"
           echo "publicAccessEnabled=$(publicAccessEnabled)"
           echo "parameters.publicAccessEnabled=${{ parameters.publicAccessEnabled }}"
           echo "createDnsZones=$(createDnsZones)"
           echo "parameters.createDnsZones=${{ parameters.createDnsZones }}"
-          echo "deployAIHub=$(deployAIHub)"
-          echo "parameters.deployAIHub=${{ parameters.deployAIHub }}"
-          echo "parameters.deployBatchApp=${{ parameters.deployBatchApp }}"
           echo "addRoleAssignments=$(addRoleAssignments)"
           echo "parameters.addRoleAssignments=${{ parameters.addRoleAssignments }}"
 

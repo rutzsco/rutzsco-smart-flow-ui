@@ -9,12 +9,12 @@ pool:
 trigger:
   - none
 
-schedules:
-  - cron: '0 12 * * 3'
-    displayName: Scan Every Wednesday
-    branches:
-      include:
-        - main
+# schedules:
+#   - cron: '0 12 * * 3'
+#     displayName: Scan Every Wednesday
+#     branches:
+#       include:
+#         - main
 
 # ----------------------------------------------------------------------------------------------------
 parameters:

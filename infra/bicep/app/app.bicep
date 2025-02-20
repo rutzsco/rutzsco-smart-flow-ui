@@ -158,3 +158,4 @@ output id string = containerApp.id
 output name string = containerApp.name
 output defaultDomain string = containerAppEnvironmentResource.properties.defaultDomain
 output uri string = 'https://${containerApp.properties.configuration.ingress.fqdn}'
+output fqdn string = containerApp.properties.configuration.ingress.fqdn

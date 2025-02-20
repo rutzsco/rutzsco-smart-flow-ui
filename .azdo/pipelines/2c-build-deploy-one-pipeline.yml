@@ -3,7 +3,8 @@
 # ----------------------------------------------------------------------------------------------------
 name: $(date:yyyy).$(date:MM).$(date:dd)$(rev:.r)
 pool:
-  vmImage: 'ubuntu-latest'
+  vmImage: ubuntu-latest
+
 # ----------------------------------------------------------------------------------------------------
 trigger: none
 
@@ -54,10 +55,7 @@ stages:
 - template: pipes/aca-build-one-pipe.yml
   parameters:
     pushToACR: ${{ parameters.pushApps }}
-    apps: [ 
-      { containerAppName: 'ui', acrAppName: 'smartflowui', projectFolderName: 'app/SmartFlowUI', port: '8080', acrFolderName: 'smartflow' }
-    ] 
-    # dockerPushType: ${{ parameters.dockerPushType }}
+    app: { containerAppName: 'ui', acrAppName: 'smartflowui', projectFolderName: 'app/SmartFlowUI', port: '8080', acrFolderName: 'smartflow' }
 
 # ----------------------------------------------------------------------------------------------------
 - template: pipes/aca-deploy-pipe.yml

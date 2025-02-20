@@ -15,6 +15,8 @@ parameters:
     default: 'Incremental'
   - name: singleEnvironment
     default: 'false'
+  - name: backendExists
+    default: true
   - name: createResourceGroup
     default: true
   - name: publicAccessEnabled
@@ -22,8 +24,6 @@ parameters:
   - name: createDnsZones
     default: true
   - name: deployAIHub
-    default: true
-  - name: deployBatchApp
     default: true
   - name: addRoleAssignments
     default: true
@@ -63,10 +63,10 @@ stages:
               templateFolderName: ${{ parameters.templateFolderName }}
               templateFileName: ${{ parameters.templateFileName }}
               parameterFileName: ${{ parameters.parameterFileName }}
+              backendExists: ${{ parameters.backendExists }}
               createResourceGroup: ${{ parameters.createResourceGroup }}
               publicAccessEnabled: ${{ parameters.publicAccessEnabled }}
               createDnsZones: ${{ parameters.createDnsZones }}
               deployAIHub: ${{ parameters.deployAIHub }}
-              deployBatchApp: ${{ parameters.deployBatchApp }}
               addRoleAssignments: ${{ parameters.addRoleAssignments }}
               deploymentMode: ${{ parameters.deploymentMode }}
