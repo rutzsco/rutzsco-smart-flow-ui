@@ -2,6 +2,7 @@
 # Action: Build and deploy one container app modules
 # ------------------------------------------------------------------------------------------------------------------------
 name: 2c - Build and Deploy One App
+run-name: 2b - Build and Deploy One App to ENV ${{ inputs.deployEnvironment }} by @${{ github.actor }}
 
 on:
   # push:

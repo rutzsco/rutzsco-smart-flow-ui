@@ -2,6 +2,7 @@
 # Action: Deploy infra, then build and deploy one container app module
 # ------------------------------------------------------------------------------------------------------------------------
 name: 1 - Deploy Infra, Build, Deploy All Apps
+run-name: 1 - Deploy Infra, Build, Deploy to ENV ${{ inputs.deployEnvironment }} by @${{ github.actor }}
 
 on:
   # push:
