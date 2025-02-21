@@ -1,8 +1,8 @@
 # ------------------------------------------------------------------------------------------------------------------------
 # Action: Deploy Azure Resources via Bicep Files
 # ------------------------------------------------------------------------------------------------------------------------
-name: 2a - Deploy Infrastructure
-run-name: 2a - Deploy Infrastructure to ENV ${{ inputs.deployEnvironment }} by @${{ github.actor }}
+name: 2a - Deploy UI Infrastructure
+run-name: 2a - Deploy UI Infrastructure to ENV ${{ inputs.deployEnvironment }} by @${{ github.actor }}
 
 on:
   workflow_dispatch:
