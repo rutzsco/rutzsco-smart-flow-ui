@@ -33,6 +33,10 @@ on:
         required: false
         type: string
         default: 'TASK'
+      ENV_CODE:
+        required: true
+        type: string
+        default: 'DEV'
 
 # ------------------------------------------------------------------------------------------------------------------------
     outputs:
@@ -46,12 +50,12 @@ on:
         value: ${{ inputs.ACR_REPO_NAME  }}
       ACR_APP_NAME:
         value: ${{ inputs.ACR_APP_NAME  }}
-    
+
 # ------------------------------------------------------------------------------------------------------------------------
 jobs:
   build:
     runs-on: ubuntu-latest
-    environment: dev
+    environment: ${{ inputs.ENV_CODE  }}
     outputs:
       IMAGE_NAME: ${{ steps.image-name.outputs.IMAGE_NAME }}
       IMAGE_VERSION: ${{ steps.image-name.outputs.IMAGE_VERSION }}

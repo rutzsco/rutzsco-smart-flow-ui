@@ -21,6 +21,12 @@ on:
           - dev
           - qa
           - prod
+          - lyle
+          - scott
+          - piotr
+          - chris
+          - nick
+          - matt
       runSecurityScan:
         description: 'Run Security Scan'
         required: false
@@ -111,6 +117,7 @@ jobs:
       - template-env
     secrets: inherit
     with:
+      ENV_CODE: ${{ needs.template-env.outputs.ENV_CODE }}
       APP_PATH: ${{ needs.template-env.outputs.UI_APP_PATH }}
       ACR_APP_NAME: ${{ needs.template-env.outputs.UI_ACR_APP_NAME }}
       ACR_NAME: ${{ needs.template-env.outputs.ACR_NAME }}
@@ -127,7 +134,7 @@ jobs:
       - template-env
     secrets: inherit
     with:
-      ENV_CODE: ${{ inputs.deployEnvironment }}
+      ENV_CODE: ${{ needs.template-env.outputs.ENV_CODE }}
       RESOURCE_GROUP: ${{ needs.template-env.outputs.RESOURCE_GROUP_NAME }}
       CONTAINER_APP_ENV_NAME: ${{ needs.build-ui.outputs.APP_PATH }}
       CONTAINER_NAME: ${{ needs.template-env.outputs.UI_CONTAINER_APP_NAME }}

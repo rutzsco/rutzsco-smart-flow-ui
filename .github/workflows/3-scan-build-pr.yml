@@ -15,6 +15,7 @@ env:
   UI_APP_PATH: 'app/SmartFlowUI'
   UI_ACR_APP_NAME: 'smartflowui'
   UI_PORT: '8080'
+  ENV_CODE: 'DEV'
 
 jobs:
   template-env:
@@ -22,6 +23,7 @@ jobs:
     name: Template Env Variables
     runs-on: ubuntu-latest
     outputs:
+      ENV_CODE: ${{ inputs.deployEnvironment }}
       ACR_NAME: '${{ vars.APP_NAME_NO_DASHES }}crdev'
       ACR_REPO_NAME: ${{ env.ACR_REPO_NAME }}
 
@@ -60,6 +62,7 @@ jobs:
     needs:
       - template-env
     with:
+      ENV_CODE: ${{ needs.template-env.outputs.ENV_CODE }}
       APP_PATH: ${{ needs.template-env.outputs.UI_APP_PATH }}
       ACR_APP_NAME: ${{ needs.template-env.outputs.UI_ACR_APP_NAME }}
       ACR_NAME: ${{ needs.template-env.outputs.ACR_NAME }}
