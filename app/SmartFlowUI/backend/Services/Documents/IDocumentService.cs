@@ -1,8 +1,8 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 
-using SmartFlowUI.Services.Documents;
+using MinimalApi.Services.Documents;
 
-namespace SmartFlowUI.Services.ChatHistory;
+namespace MinimalApi.Services.ChatHistory;
 public interface IDocumentService
 {
     Task<UploadDocumentsResponse> CreateDocumentUploadAsync(UserInformation userInfo, IFormFileCollection files, string selectedProfile, Dictionary<string, string>? fileMetadata, CancellationToken cancellationToken);

@@ -3,7 +3,7 @@
 using Newtonsoft.Json;
 using Shared.Models;
 
-namespace SmartFlowUI.Services.Documents;
+namespace MinimalApi.Services.Documents;
 
 public class DocumentIndexRequest
 {

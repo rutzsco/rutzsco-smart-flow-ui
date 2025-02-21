@@ -5,7 +5,7 @@ VisualStudioVersion = 17.5.33516.290
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ClientApp", "frontend\ClientApp.csproj", "{C772928F-B43F-45A4-8EFA-4D1CD5945559}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SmartFlowUI", "backend\SmartFlowUI.csproj", "{16D842AC-6B5E-4641-8DBF-62523B20C220}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MinimalApi", "backend\MinimalApi.csproj", "{16D842AC-6B5E-4641-8DBF-62523B20C220}"
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{D8F48C94-8F1C-4F2A-A01C-A546B13A2ED6}"
 	ProjectSection(SolutionItems) = preProject

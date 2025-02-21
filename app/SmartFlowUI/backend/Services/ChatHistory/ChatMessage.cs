@@ -9,7 +9,7 @@ using System.Text.RegularExpressions;
 using Newtonsoft.Json;
 
 
-namespace SmartFlowUI.Services.ChatHistory;
+namespace MinimalApi.Services.ChatHistory;
 
 
     public class ChatSessionRecord

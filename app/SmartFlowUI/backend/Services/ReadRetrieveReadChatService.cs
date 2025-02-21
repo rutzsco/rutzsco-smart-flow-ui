@@ -1,7 +1,7 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
-using SmartFlowUI.Services.Profile;
+using MinimalApi.Services.Profile;
 
-namespace SmartFlowUI.Services;
+namespace MinimalApi.Services;
 
 internal sealed class ReadRetrieveReadChatService
 {

@@ -1,10 +1,10 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 
 using System.Linq;
-using SmartFlowUI.Services.Profile;
-using SmartFlowUI.Services.Security;
+using MinimalApi.Services.Profile;
+using MinimalApi.Services.Security;
 
-namespace SmartFlowUI.Extensions;
+namespace MinimalApi.Extensions;
 
 internal static class UserExtensions
 {

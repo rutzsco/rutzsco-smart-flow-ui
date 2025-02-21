@@ -2,9 +2,9 @@
 
 using System.ComponentModel;
 using Microsoft.SemanticKernel.ChatCompletion;
-using SmartFlowUI.Services.Profile.Prompts;
+using MinimalApi.Services.Profile.Prompts;
 
-namespace SmartFlowUI.Services.Skills;
+namespace MinimalApi.Services.Skills;
 
 public class ChatSkill
 {

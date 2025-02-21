@@ -5,16 +5,16 @@ using System.Net.Http;
 using Azure.Core;
 using ClientApp.Pages;
 using Microsoft.AspNetCore.Antiforgery;
-using SmartFlowUI.Services;
-using SmartFlowUI.Services.ChatHistory;
-using SmartFlowUI.Services.Documents;
-using SmartFlowUI.Services.Profile;
-using SmartFlowUI.Services.Search;
-using SmartFlowUI.Services.Security;
+using MinimalApi.Services;
+using MinimalApi.Services.ChatHistory;
+using MinimalApi.Services.Documents;
+using MinimalApi.Services.Profile;
+using MinimalApi.Services.Search;
+using MinimalApi.Services.Security;
 using Shared.Models;
 
 
-namespace SmartFlowUI.Extensions;
+namespace MinimalApi.Extensions;
 
 internal static class WebApplicationExtensions
 {

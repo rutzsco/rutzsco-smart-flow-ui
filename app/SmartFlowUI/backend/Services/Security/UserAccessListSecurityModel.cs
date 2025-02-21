@@ -1,6 +1,6 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 
-namespace SmartFlowUI.Services.Security;
+namespace MinimalApi.Services.Security;
 
 public class UserAccessListSecurityModel
 {

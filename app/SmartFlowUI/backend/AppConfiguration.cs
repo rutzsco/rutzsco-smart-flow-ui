@@ -1,6 +1,6 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 
-namespace SmartFlowUI;
+namespace MinimalApi;
 
 public static class AppConfiguration
 {

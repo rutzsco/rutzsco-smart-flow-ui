@@ -3,7 +3,7 @@
 using System.Reflection;
 using Newtonsoft.Json;
 
-namespace SmartFlowUI.Services.Profile;
+namespace MinimalApi.Services.Profile;
 
 public class ProfileDefinition
 {
@@ -42,7 +42,7 @@ public class ProfileDefinition
 
     private static List<ProfileDefinition> LoadProflies(string name)
     {
-        var resourceName = $"SmartFlowUI.Services.Profile.{name}.json";
+        var resourceName = $"MinimalApi.Services.Profile.{name}.json";
         var assembly = Assembly.GetExecutingAssembly();
 
         using (Stream stream = assembly.GetManifestResourceStream(resourceName))
@@ -89,7 +89,7 @@ public class ProfileDefinition
 
     public string ChatSystemMessageFile { get; set; }
     public string ChatSystemMessage { get; set; }
-    
+
     public List<string> SampleQuestions { get; set; }
 
     public List<UserPromptTemplate> UserPromptTemplates { get; set; }

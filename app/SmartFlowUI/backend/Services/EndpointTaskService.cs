@@ -1,9 +1,9 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 
 using System.Net.Http;
-using SmartFlowUI.Services.Profile;
+using MinimalApi.Services.Profile;
 
-namespace SmartFlowUI.Services;
+namespace MinimalApi.Services;
 
 internal sealed class EndpointTaskService : IChatService
 {
@@ -30,7 +30,6 @@ internal sealed class EndpointTaskService : IChatService
 
         var payload = await response.Content.ReadAsStringAsync();
 
-
         TaskResponse taskResponse = JsonSerializer.Deserialize<TaskResponse>(payload);
         var thoughts = new List<ThoughtRecord>();
         foreach (var thought in taskResponse.thoughtProcess)
@@ -44,10 +43,9 @@ internal sealed class EndpointTaskService : IChatService
     private StringContent BuildChatRequest(ChatRequest request)
     {
         var payload = JsonSerializer.Serialize(request.History);
-        var content = new StringContent(payload, Encoding.UTF8, "application/json"); 
+        var content = new StringContent(payload, Encoding.UTF8, "application/json");
         return content;
     }
-
 
     public StringContent BuildTaskRequest(ChatRequest request)
     {

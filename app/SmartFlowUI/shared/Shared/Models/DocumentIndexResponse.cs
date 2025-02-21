@@ -2,7 +2,7 @@
 
 using Newtonsoft.Json;
 
-namespace SmartFlowUI.Services.Documents;
+namespace MinimalApi.Services.Documents;
 
 public class DocumentIndexResponse
 {

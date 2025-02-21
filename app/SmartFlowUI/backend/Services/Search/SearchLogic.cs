@@ -2,7 +2,7 @@
 
 using TiktokenSharp;
 
-namespace SmartFlowUI.Services.Search;
+namespace MinimalApi.Services.Search;
 
 public class SearchLogic<T> where T : IKnowledgeSource
 {

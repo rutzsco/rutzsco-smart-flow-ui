@@ -91,8 +91,8 @@ param existing_OpenAI_ResourceGroupName string
 // --------------------------------------------------------------------------------------------------------------
 @description('Name of an existing Document Intelligence Service to use')
 param existing_DocumentIntelligence_Name string
-@description('Name of ResourceGroup for an existing Document Intelligence Service')
-param existing_DocumentIntelligence_RG_Name string
+// @description('Name of ResourceGroup for an existing Document Intelligence Service')
+// param existing_DocumentIntelligence_RG_Name string
 
 // --------------------------------------------------------------------------------------------------------------
 // You need an existing Storage Account
@@ -376,6 +376,10 @@ var settings = [
   { name: 'AZURE_CLIENT_ID', value: managedIdentity.outputs.managedIdentityClientId }
   { name: 'AnalysisApiEndpoint', value: 'https://${resourceNames.outputs.containerAppAPIName}.${managedEnvironment.outputs.defaultDomain}' }
   { name: 'AnalysisApiKey', secretRef: 'apikey' }
+  { name: 'AutoBodyDamageAdvisorEndpoint', value: 'https://${resourceNames.outputs.containerAppAPIName}.${managedEnvironment.outputs.defaultDomain}/api/task/auto-body-damage-analysis' }
+  { name: 'AutoBodyDamageAdvisorApiKey', secretRef: 'apikey' }
+  { name: 'ColorBlindEndpoint', value: 'https://${resourceNames.outputs.containerAppAPIName}.${managedEnvironment.outputs.defaultDomain}/api/task/image-review-inline-prompt' }
+  { name: 'ColorBlindApiKey', secretRef: 'apikey' }
 ]
 module uiContainerApp './app/app.bicep' = {
   name: 'ui-app${deploymentSuffix}'

@@ -1,6 +1,6 @@
 ﻿using Azure.AI.Inference;
 
-namespace SmartFlowUI.Extensions
+namespace MinimalApi.Extensions
 {
     public record SKResult(string Answer, CompletionsUsage? Usage, long DurationMilliseconds);
 }

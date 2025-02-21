@@ -1,7 +1,7 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 using System.Reflection;
 
-namespace SmartFlowUI.Services.Profile.Prompts;
+namespace MinimalApi.Services.Profile.Prompts;
 
 public static class PromptService
 {
@@ -15,7 +15,7 @@ public static class PromptService
 
     public static string GetPromptByName(string prompt)
     {
-        var resourceName = $"SmartFlowUI.Services.Profile.Prompts.{prompt}.txt";
+        var resourceName = $"MinimalApi.Services.Profile.Prompts.{prompt}.txt";
         var assembly = Assembly.GetExecutingAssembly();
         using (Stream stream = assembly.GetManifestResourceStream(resourceName))
         {

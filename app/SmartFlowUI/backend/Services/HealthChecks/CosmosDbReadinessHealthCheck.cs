@@ -3,7 +3,7 @@
 using Microsoft.Azure.Cosmos;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 
-namespace SmartFlowUI.Services.HealthChecks;
+namespace MinimalApi.Services.HealthChecks;
 
 public class CosmosDbReadinessHealthCheck(CosmosClient cosmosClient) : IHealthCheck
 {

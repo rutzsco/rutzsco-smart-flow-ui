@@ -6,7 +6,7 @@ using Azure.Core;
 using Azure.Search.Documents;
 using Azure.Search.Documents.Indexes;
 
-namespace SmartFlowUI.Services.Search;
+namespace MinimalApi.Services.Search;
 
 public class SearchClientFactory
 {

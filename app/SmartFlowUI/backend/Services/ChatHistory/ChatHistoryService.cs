@@ -4,7 +4,7 @@ using Microsoft.Azure.Cosmos;
 using Microsoft.Identity.Client;
 using Shared.Models;
 
-namespace SmartFlowUI.Services.ChatHistory;
+namespace MinimalApi.Services.ChatHistory;
 
 
 public class ChatHistoryService : IChatHistoryService

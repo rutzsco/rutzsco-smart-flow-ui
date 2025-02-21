@@ -1,6 +1,6 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 
-namespace SmartFlowUI.Services.ChatHistory;
+namespace MinimalApi.Services.ChatHistory;
 
 public interface IChatHistoryService
 {

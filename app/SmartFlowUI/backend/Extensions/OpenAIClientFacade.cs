@@ -1,7 +1,7 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 
 using Azure.AI.OpenAI;
-namespace SmartFlowUI.Extensions;
+namespace MinimalApi.Extensions;
 
 public class OpenAIClientFacade
 {

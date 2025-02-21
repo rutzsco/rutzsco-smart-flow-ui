@@ -1,12 +1,12 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 
 using System.ComponentModel;
-using SmartFlowUI.Services.Profile;
-using SmartFlowUI.Services.Search;
-using SmartFlowUI.Services.Search.IndexDefinitions;
+using MinimalApi.Services.Profile;
+using MinimalApi.Services.Search;
+using MinimalApi.Services.Search.IndexDefinitions;
 
 
-namespace SmartFlowUI.Services.Skills;
+namespace MinimalApi.Services.Skills;
 
 public sealed class RetrieveRelatedDocumentSkillKM
 {

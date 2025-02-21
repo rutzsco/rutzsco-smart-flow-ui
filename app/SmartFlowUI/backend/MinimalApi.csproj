@@ -50,8 +50,6 @@
     <EmbeddedResource Include="Services\Profile\profiles-rutzsco.json" />
     <EmbeddedResource Include="Services\Profile\profiles.json" />
     <EmbeddedResource Include="Services\Profile\Prompts\CSVCopilotSystemPrompt.txt" />
-    <EmbeddedResource Include="Services\Profile\Prompts\AutoBodyCopilotSystemPromptV2.txt" />
-    <EmbeddedResource Include="Services\Profile\Prompts\AutoBodyCopilotSystemPrompt.txt" />
     <EmbeddedResource Include="Services\Profile\Prompts\ChatSimpleSystemPrompt.txt" />
     <EmbeddedResource Include="Services\Profile\Prompts\RAGChatSystemPrompt.txt" />
     <EmbeddedResource Include="Services\Profile\Prompts\ChatSimpleUserPrompt.txt" />

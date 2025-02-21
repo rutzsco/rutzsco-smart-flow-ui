@@ -1,10 +1,10 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 
 using Microsoft.SemanticKernel.ChatCompletion;
-using SmartFlowUI.Services.Profile;
-using SmartFlowUI.Services.Profile.Prompts;
+using MinimalApi.Services.Profile;
+using MinimalApi.Services.Profile.Prompts;
 
-namespace SmartFlowUI.Services;
+namespace MinimalApi.Services;
 
 internal sealed class ReadRetrieveReadStreamingChatService : IChatService
 {

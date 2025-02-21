@@ -1,6 +1,6 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 
-namespace SmartFlowUI.Services.Search;
+namespace MinimalApi.Services.Search;
 
 public interface IKnowledgeSource
 {

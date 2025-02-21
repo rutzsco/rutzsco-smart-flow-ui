@@ -3,7 +3,7 @@
 using Newtonsoft.Json;
 using static Microsoft.ApplicationInsights.MetricDimensionNames.TelemetryContext;
 
-namespace SmartFlowUI.Services.Documents;
+namespace MinimalApi.Services.Documents;
 
 public class DocumentUpload
 {

@@ -1,7 +1,7 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 
 using System.Net.Http.Headers;
-using SmartFlowUI.Services.Documents;
+using MinimalApi.Services.Documents;
 
 namespace ClientApp.Services;
 

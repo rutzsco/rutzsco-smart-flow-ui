@@ -1,8 +1,8 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 using System.Security.Claims;
-using SmartFlowUI.Services.Profile;
+using MinimalApi.Services.Profile;
 using Shared.Models;
-namespace SmartFlowUI.Services.Security;
+namespace MinimalApi.Services.Security;
 
 public static class GroupMembershipSecurityModel
 {

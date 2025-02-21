@@ -12,13 +12,13 @@ COPY ["Directory.Packages.props", "."]
 COPY ["backend/", "backend/"]
 COPY ["frontend/", "frontend/"]
 COPY ["shared/", "shared/"]
-RUN dotnet restore "backend/SmartFlowUI.csproj"
+RUN dotnet restore "backend/MinimalApi.csproj"
 
 WORKDIR "/src/backend"
 FROM build AS publish
-RUN dotnet publish "SmartFlowUI.csproj" -o /app
+RUN dotnet publish "MinimalApi.csproj" -o /app
 
 FROM base AS final
 WORKDIR /app
 COPY --from=publish /app .
-ENTRYPOINT ["dotnet", "SmartFlowUI.dll"]
+ENTRYPOINT ["dotnet", "MinimalApi.dll"]

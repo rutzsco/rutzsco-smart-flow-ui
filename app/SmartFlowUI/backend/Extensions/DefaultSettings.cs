@@ -1,4 +1,4 @@
-﻿namespace SmartFlowUI.Extensions;
+﻿namespace MinimalApi.Extensions;
 
 public static class DefaultSettings
 {

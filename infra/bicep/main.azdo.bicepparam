@@ -11,7 +11,7 @@ param existing_LogAnalytics_ResourceGroupName = '#{ResourceGroupName}#'
 param existing_ACR_ResourceGroupName = '#{ResourceGroupName}#'
 param existing_ManagedAppEnv_ResourceGroupName = '#{ResourceGroupName}#'
 param existing_OpenAI_ResourceGroupName = '#{ResourceGroupName}#'
-param existing_DocumentIntelligence_RG_Name = '#{ResourceGroupName}#'
+// param existing_DocumentIntelligence_RG_Name = '#{ResourceGroupName}#'
 
 param existing_LogAnalytics_Name = '#{appNameNoDashesLower}#-log-dev'
 param existing_AppInsights_Name = '#{appNameNoDashesLower}#-appi-dev'

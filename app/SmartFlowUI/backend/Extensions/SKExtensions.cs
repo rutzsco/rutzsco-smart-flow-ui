@@ -1,10 +1,10 @@
 ﻿using Azure.AI.Inference;
 using Microsoft.SemanticKernel.ChatCompletion;
-using SmartFlowUI.Services.Profile;
-using SmartFlowUI.Services.Search;
+using MinimalApi.Services.Profile;
+using MinimalApi.Services.Search;
 using TiktokenSharp;
 
-namespace SmartFlowUI.Extensions;
+namespace MinimalApi.Extensions;
 
 public static class SKExtensions
 {

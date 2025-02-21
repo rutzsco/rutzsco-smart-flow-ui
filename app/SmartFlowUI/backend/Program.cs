@@ -2,9 +2,9 @@
 
 using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.DataProtection;
-using SmartFlowUI;
-using SmartFlowUI.Services.HealthChecks;
-using SmartFlowUI.Services.Profile;
+using MinimalApi;
+using MinimalApi.Services.HealthChecks;
+using MinimalApi.Services.Profile;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Configuration.AddEnvironmentVariables();
@@ -61,7 +61,7 @@ else
         }
         var blobClient = container.GetBlobClient("keys.xml");
         builder.Services.AddDataProtection().PersistKeysToAzureBlobStorage(blobClient);
-    } 
+    }
 }
 
 builder.Services.AddCustomHealthChecks();

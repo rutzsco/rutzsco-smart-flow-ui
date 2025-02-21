@@ -2,10 +2,10 @@
 
 using Microsoft.AspNetCore.DataProtection.KeyManagement;
 using Microsoft.Azure.Cosmos;
-using SmartFlowUI.Services.Documents;
+using MinimalApi.Services.Documents;
 using Shared.Json;
 
-namespace SmartFlowUI.Services.ChatHistory;
+namespace MinimalApi.Services.ChatHistory;
 
 public class DocumentService : IDocumentService
 {

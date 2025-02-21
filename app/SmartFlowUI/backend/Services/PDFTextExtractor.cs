@@ -1,7 +1,7 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 
 using UglyToad.PdfPig;
-namespace SmartFlowUI.Services;
+namespace MinimalApi.Services;
 
 public class PDFTextExtractor
 {

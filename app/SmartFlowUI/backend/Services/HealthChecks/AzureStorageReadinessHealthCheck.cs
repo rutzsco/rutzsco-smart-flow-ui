@@ -2,7 +2,7 @@
 
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 
-namespace SmartFlowUI.Services.HealthChecks;
+namespace MinimalApi.Services.HealthChecks;
 
 public class AzureStorageReadinessHealthCheck(BlobServiceClient blobServiceClient) : IHealthCheck
 {

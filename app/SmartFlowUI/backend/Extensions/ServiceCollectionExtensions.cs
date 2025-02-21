@@ -7,17 +7,17 @@ using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.Azure.Cosmos;
 using Microsoft.Azure.Cosmos.Fluent;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
-using SmartFlowUI.Services.ChatHistory;
-using SmartFlowUI.Services.HealthChecks;
-using SmartFlowUI.Services.Documents;
-using SmartFlowUI.Services.Search;
-using SmartFlowUI.Services.Skills;
+using MinimalApi.Services.ChatHistory;
+using MinimalApi.Services.HealthChecks;
+using MinimalApi.Services.Documents;
+using MinimalApi.Services.Search;
+using MinimalApi.Services.Skills;
 using Microsoft.SemanticKernel.ChatCompletion;
 using Microsoft.SemanticKernel.Connectors.AzureOpenAI;
 using Microsoft.SemanticKernel.TextGeneration;
 using System.ClientModel.Primitives;
 
-namespace SmartFlowUI.Extensions;
+namespace MinimalApi.Extensions;
 
 internal static class ServiceCollectionExtensions
 {

@@ -1,6 +1,6 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 
-using SmartFlowUI.Services.Documents;
+using MinimalApi.Services.Documents;
 using Shared.Models;
 using static System.Runtime.InteropServices.JavaScript.JSType;
 

@@ -1,8 +1,8 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 
-using SmartFlowUI.Services.Profile;
+using MinimalApi.Services.Profile;
 
-namespace SmartFlowUI.Services.ChatHistory;
+namespace MinimalApi.Services.ChatHistory;
 
 public static class ChatHistoryExtension
 {

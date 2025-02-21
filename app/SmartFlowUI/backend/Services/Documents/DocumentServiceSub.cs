@@ -1,8 +1,8 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 
-using SmartFlowUI.Services.ChatHistory;
+using MinimalApi.Services.ChatHistory;
 
-namespace SmartFlowUI.Services.Documents;
+namespace MinimalApi.Services.Documents;
 
 public class DocumentServiceSub : IDocumentService
 {

@@ -17,7 +17,6 @@
       "existing_OpenAI_Name": { "value": "${APP_NAME_NO_DASHES}-cog-${ENVIRONMENT_NAME}" },
       "existing_OpenAI_ResourceGroupName": { "value": "${AZURE_RESOURCE_GROUP}" },
       "existing_DocumentIntelligence_Name": { "value": "${APP_NAME_NO_DASHES}-cog-fr-${ENVIRONMENT_NAME}" },
-      "existing_DocumentIntelligence_RG_Name": { "value": "${AZURE_RESOURCE_GROUP}" },
       "existing_StorageAccount_Name": { "value": "${APP_NAME_NO_DASHES}st${ENVIRONMENT_NAME}" },
       "existing_SearchService_Name": { "value": "${APP_NAME_NO_DASHES}-srch-${ENVIRONMENT_NAME}" },
       "existing_Vnet_Name": { "value": "${APP_NAME_NO_DASHES}-vnet-${ENVIRONMENT_NAME}" },

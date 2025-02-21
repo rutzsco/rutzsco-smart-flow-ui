@@ -11,7 +11,7 @@ param existing_LogAnalytics_ResourceGroupName = '#{RESOURCEGROUP_PREFIX}#-#{envC
 param existing_ACR_ResourceGroupName = '#{RESOURCEGROUP_PREFIX}#-#{envCode}#'
 param existing_ManagedAppEnv_ResourceGroupName = '#{RESOURCEGROUP_PREFIX}#-#{envCode}#'
 param existing_OpenAI_ResourceGroupName = '#{RESOURCEGROUP_PREFIX}#-#{envCode}#'
-param existing_DocumentIntelligence_RG_Name = '#{RESOURCEGROUP_PREFIX}#-#{envCode}#'
+// param existing_DocumentIntelligence_RG_Name = '#{RESOURCEGROUP_PREFIX}#-#{envCode}#'
 
 param existing_KeyVault_Name = '#{APP_NAME_NO_DASHES}#kvdev'
 param existing_StorageAccount_Name = '#{APP_NAME_NO_DASHES}#stdev'

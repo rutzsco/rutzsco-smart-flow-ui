@@ -2,12 +2,12 @@
 
 using System.Collections.Generic;
 using Microsoft.Azure.Cosmos;
-using SmartFlowUI.Services.Documents;
-using SmartFlowUI.Services.Profile;
-using SmartFlowUI.Services.Search;
+using MinimalApi.Services.Documents;
+using MinimalApi.Services.Profile;
+using MinimalApi.Services.Search;
 using Shared.Json;
 
-namespace SmartFlowUI.Services.ChatHistory;
+namespace MinimalApi.Services.ChatHistory;
 
 public class DocumentServiceAzureNative : IDocumentService
 {

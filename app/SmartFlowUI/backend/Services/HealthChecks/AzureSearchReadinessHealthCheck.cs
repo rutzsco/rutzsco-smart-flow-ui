@@ -1,9 +1,9 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 
 using Microsoft.Extensions.Diagnostics.HealthChecks;
-using SmartFlowUI.Services.Search;
+using MinimalApi.Services.Search;
 
-namespace SmartFlowUI.Services.HealthChecks;
+namespace MinimalApi.Services.HealthChecks;
 
 public class AzureSearchReadinessHealthCheck : IHealthCheck
 {

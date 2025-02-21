@@ -2,7 +2,7 @@
 
 using System.Text.RegularExpressions;
 
-namespace SmartFlowUI.Services.Search.IndexDefinitions;
+namespace MinimalApi.Services.Search.IndexDefinitions;
 
 public class AISearchIndexerIndexDefinintion : IKnowledgeSource
 {

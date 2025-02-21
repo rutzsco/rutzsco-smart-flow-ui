@@ -1,6 +1,6 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 
-namespace SmartFlowUI.Services.Search.IndexDefinitions;
+namespace MinimalApi.Services.Search.IndexDefinitions;
 
 public class AIStudioIndexDefinition : IKnowledgeSource
 {

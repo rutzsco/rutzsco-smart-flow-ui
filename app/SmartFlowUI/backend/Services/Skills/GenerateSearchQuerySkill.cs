@@ -3,10 +3,10 @@
 using System;
 using System.ComponentModel;
 using Microsoft.SemanticKernel.ChatCompletion;
-using SmartFlowUI.Extensions;
-using SmartFlowUI.Services.Profile.Prompts;
+using MinimalApi.Extensions;
+using MinimalApi.Services.Profile.Prompts;
 
-namespace SmartFlowUI.Services.Skills;
+namespace MinimalApi.Services.Skills;
 
 
 public sealed class GenerateSearchQuerySkill

@@ -2,7 +2,7 @@
 
 using Newtonsoft.Json;
 
-namespace SmartFlowUI.Services.ChatHistory;
+namespace MinimalApi.Services.ChatHistory;
 
 /// <summary>
 /// Information about a single chat message.

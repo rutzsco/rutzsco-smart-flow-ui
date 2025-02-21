@@ -11,46 +11,53 @@
     ]
   },
   {
-    "Name": "Auto Body Damage Advisor",
+    "Name": "Auto Body Damage Analysis",
     "Id": "AutoBodyDamageAdvisor",
-    "Approach": "Chat",
-    "SecurityModel": "None",
-    "ChatSystemMessageFile": "AutoBodyCopilotSystemPromptV2",
-    "SampleQuestions": [
-      "What is the brand and model of this vehicle?",
-      "Classify this vehicle into 'Motorbike', 'SUV', 'Sedan', 'Truck', 'Convertible'"
-    ]
-  },
-  {
-    "Name": "AssistantApi",
-    "Id": "AssistantApi",
-    "Approach": "ENDPOINTASSISTANTV2",
+    "Approach": "ENDPOINTASSISTANTTASK",
     "SecurityModel": "None",
     "SecurityModelGroupMembership": [ "LocalDevUser" ],
     "SampleQuestions": [
-      "Generate a plot with a sine wave repeating 20 times"
+      "Perform a damage analysis of this wrecked car image"
     ],
     "AssistantEndpointSettings": {
-      "APIEndpointSetting": "AssistantApiEndpoint",
-      "APIEndpointKeySetting": "AssistantApiKey"
+      "APIEndpointSetting": "AutoBodyDamageAdvisorEndpoint",
+      "APIEndpointKeySetting": "AutoBodyDamageAdvisorApiKey",
+      "AllowFileUpload": true
     }
   },
   {
-    "Name": "Document Chat",
-    "Id": "DocumentChat",
-    "Approach": "UserDocumentChat",
+    "Name": "Color Blind Image Analysis",
+    "Id": "ColorBlindTester",
+    "Approach": "ENDPOINTASSISTANTTASK",
     "SecurityModel": "None",
+    "SecurityModelGroupMembership": [ "LocalDevUser" ],
     "SampleQuestions": [
+      "Analyze this image for conformance to color-blindness image creation standards"
     ],
-    "RAGSettings": {
-      "GenerateSearchQueryPluginName": "GenerateSearchQuery",
-      "GenerateSearchQueryPluginQueryFunctionName": "GenerateSearchQuery",
-      "DocumentRetrievalPluginName": "DocumentRetrieval",
-      "DocumentRetrievalPluginQueryFunctionName": "KwiecienV2",
-      "ChatSystemMessageFile": "RAGChatSystemPrompt",
-      "StorageContianer": "content",
-      "AllowFileUpload":  true
+    "AssistantEndpointSettings": {
+      "APIEndpointSetting": "ColorBlindEndpoint",
+      "APIEndpointKeySetting": "ColorBlindApiKey",
+      "AllowFileUpload": true
     }
   }
-
+  // This is close but the syntax for passing the prompt in is not right yet...
+  //{
+  //  "Name": "Team Colors Test",
+  //  "Id": "TeamColorTester",
+  //  "Approach": "ENDPOINTASSISTANTTASK",
+  //  "SecurityModel": "None",
+  //  "SecurityModelGroupMembership": [ "LocalDevUser" ],
+  //  "SampleQuestions": [
+  //    "Analyze this image to see if it uses the proper color scheme for the Minnesota Vikings"
+  //  ],
+  //  "RAGSettings": {
+  //    "ChatSystemMessage": "You are helpful assistant that is reviewing graphical images for the Minnesota Vikings Football Team. ",
+  //    "ChatUserMessage": "Evaluate the proposed image for compliance with the official colors of the Minnesota Vikings Team."
+  //  },
+  //  "AssistantEndpointSettings": {
+  //    "APIEndpointSetting": "CustomPromptEndpoint",
+  //    "APIEndpointKeySetting": "CustomPromptApiKey",
+  //    "AllowFileUpload": true
+  //  }
+  //}
 ]

@@ -1,6 +1,6 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 
-namespace SmartFlowUI.Extensions;
+namespace MinimalApi.Extensions;
 
 public class ContextVariableOptions
 {
