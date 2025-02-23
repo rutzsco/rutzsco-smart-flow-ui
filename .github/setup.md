@@ -26,10 +26,17 @@ See [https://docs.microsoft.com/en-us/azure/azure-resource-manager/templates/dep
 > ADMIN_IP_ADDRESS and ADMIN_PRINCIPAL_ID are optional - set only if you want to get access to the KV and ACR.
 You can customize and run the following commands, or you can set these secrets up manually by going to the Settings -> Secrets -> Actions -> Secrets.
 
+These secrets should be set at the environment level, and may or may not be the same.
+
 ```bash
-gh secret set AZURE_SUBSCRIPTION_ID -b <yourAzureSubscriptionId>
-gh secret set AZURE_TENANT_ID -b <GUID-Entra-tenant-where-SP-lives>
-gh secret set CICD_CLIENT_ID -b <GUID-application/client-Id>
+gh secret set --env <ENV-NAME> AZURE_SUBSCRIPTION_ID -b <yourAzureSubscriptionId>
+gh secret set --env <ENV-NAME> AZURE_TENANT_ID -b <GUID-Entra-tenant-where-SP-lives>
+gh secret set --env <ENV-NAME> CICD_CLIENT_ID -b <GUID-application/client-Id>
+```
+
+These two secrets are optional if you want to grant an administrator access to the Key Vault and ACR.  
+
+```bash
 gh secret set ADMIN_IP_ADDRESS 192.168.1.1
 gh secret set ADMIN_PRINCIPAL_ID <yourGuid>
 ```
@@ -43,6 +50,8 @@ These values are used by the Bicep templates to configure the resource names tha
 > If you desire different names or values for your DEV/QA/PROD environments, you can set up the variables at the Environment level instead of the Repository level.
 
 You can customize and run the following commands (or just set it up manually by going to the Settings -> Secrets -> Actions -> Variables).  Replace '<<YOURAPPNAME>>' with a value that is unique to your deployment, which can contain dashes or underscores (i.e. 'xxx-doc-review'). APP_NAME_NO_DASHES should be the same but without dashes.
+
+These should be set at the environment level and may be the same for all environments.
 
 ```bash
 gh variable set APP_NAME -b <<YOUR-APP-NAME>>

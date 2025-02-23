@@ -149,7 +149,7 @@ jobs:
 
   # ------------------------------------------------------------------------------------------------------------------------
   deploy-ui:
-    name: Deploy API ${{ inputs.deployEnvironment }} ${{ inputs.deployType }}
+    name: Deploy UI ${{ inputs.deployEnvironment }} ${{ inputs.deployType }}
     uses: ./.github/workflows/template-aca-deploy.yml
     needs:
       - build-ui

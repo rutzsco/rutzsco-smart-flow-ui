@@ -112,7 +112,6 @@ jobs:
   build-ui:
     name: Build UI
     uses: ./.github/workflows/template-aca-build.yml
-    #if: inputs.deployApp == 'ui'
     needs:
       - template-env
     secrets: inherit
@@ -126,9 +125,8 @@ jobs:
 
   # ------------------------------------------------------------------------------------------------------------------------
   deploy-ui:
-    name: Deploy API ${{ inputs.deployEnvironment }} ${{ inputs.deployType }}
+    name: Deploy UI ${{ inputs.deployEnvironment }} ${{ inputs.deployType }}
     uses: ./.github/workflows/template-aca-deploy.yml
-    #if: inputs.deployApp == 'ui'
     needs:
       - build-ui
       - template-env
