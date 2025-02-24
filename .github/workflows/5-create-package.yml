@@ -12,7 +12,15 @@
 name: 5 - Create Repo Package UI Docker Image
 run-name: 5 - Create Repo Package UI Docker Image by @${{ github.actor }}
 
-on: workflow_dispatch
+on: 
+  workflow_dispatch:
+
+  release:
+    types: 
+      - published
+
+permissions:
+  packages: write
 
 # ------------------------------------------------------------------------------------------------------------------------
 env:
@@ -85,6 +93,7 @@ jobs:
             org.opencontainers.image.description=UI for the SmartFlow API
             org.opencontainers.image.source=https://github.com/${{ github.repository_owner }}/${{ steps.set-repo.outputs.REPO_NAME }}
           tags: |
+            type=raw,value=latest,enable={{is_default_branch}}
             type=raw,enable=true,priority=200,prefix=,suffix=,value=${{ steps.set-date.outputs.TAG }}
             type=ref,event=branch
             type=ref,event=pr
