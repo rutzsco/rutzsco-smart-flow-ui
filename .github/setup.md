@@ -51,7 +51,7 @@ These values are used by the Bicep templates to configure the resource names tha
 
 You can customize and run the following commands (or just set it up manually by going to the Settings -> Secrets -> Actions -> Variables).  Replace '<<YOURAPPNAME>>' with a value that is unique to your deployment, which can contain dashes or underscores (i.e. 'xxx-doc-review'). APP_NAME_NO_DASHES should be the same but without dashes.
 
-These should be set at the environment level and may be the same for all environments.
+These should be set at the repository level and may be the same for all environments, although you could set them up at the environment level if you want them to unique.
 
 ```bash
 gh variable set APP_NAME -b <<YOUR-APP-NAME>>
