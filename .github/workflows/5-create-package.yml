@@ -1,21 +1,12 @@
 # ------------------------------------------------------------------------------------------------------------------------
 # Action: Create a package for reuse by others
 # ------------------------------------------------------------------------------------------------------------------------
-# See https://www.thadaw.com/posts/publish-docker-image-public-on-github-package-with-github-actions?id=6wrk7rh
-# ------------------------------------------------------------------------------------------------------------------------
-# Making Your Package Public
-# Before pulling the image publicly, you need to make sure your GitHub Package is set to public.
+# Before allowing public to pull the image, you need to make sure your GitHub Package is set to public.
 # Change the visibility by opening the package settings and setting the package visibility to public.
+# Note: in order to do this the org settings for packages must be set to allow them to be made public.
 # ------------------------------------------------------------------------------------------------------------------------
-# https://stackoverflow.com/questions/75560321/pushing-image-to-github-packages-throws-denied-not-found-owner-not-found
-#   ERROR: denied: not_found: owner not found
-# ------------------------------------------------------------------------------------------------------------------------
-# https://github.com/sombriks/redline/commit/1a625719ff543b4a7d6a49e1650caa3c8231ccea
-#   ERROR: permission_denied: create_package
-#   says he solved it by doing "write-all"
-#      this is far to permissive, but trying it for now...
-#   This also says the docs that say you can't use GITHUB_TOKEN are wrong...  don't need the classic token... 
-#   I should revert to that
+# This action relies on a Token which must be setup and given 'write:packages' permissions.
+# Set secrets.PUBLISH_PACKAGE_TOKEN to the token value and secrets.PUBLISH_PACKAGE_USER to the owner of the token
 # ------------------------------------------------------------------------------------------------------------------------
 
 name: 5 - Create Repo Package UI Docker Image
