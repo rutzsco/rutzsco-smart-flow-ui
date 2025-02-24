@@ -41,12 +41,6 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v4.1.1
 
-      - name: Dump github context
-        run:   echo "$GITHUB_CONTEXT"
-        shell: bash
-        env:
-          GITHUB_CONTEXT: ${{ toJson(github) }}
-
       - name: Get the current date and repo name
         id: set-date
         run: echo "TAG=$(date +'%Y%m%d%H%M')" >> $GITHUB_OUTPUT
@@ -77,11 +71,11 @@ jobs:
           echo "inputs.ACR_APP_NAME=${{ env.ACR_APP_NAME }}"
           echo "inputs.APP_PATH=${{ env.APP_PATH }}"
 
-          echo "env.REPO_NAME=${{ steps.set-repo.outputs.REPO_NAME }}"
-          echo "env.TAG=${{ steps.set-date.outputs.TAG }}"
+          echo "outputs.REPO_NAME=${{ steps.set-repo.outputs.REPO_NAME }}"
+          echo "outputs.TAG=${{ steps.set-date.outputs.TAG }}"
 
-          echo "steps.image-name.IMAGE_VERSION=${{ steps.image-name.outputs.IMAGE_VERSION }}"
-          echo "steps.image-name.IMAGE_NAME=${{ steps.image-name.outputs.IMAGE_NAME }}"
+          echo "outputs.IMAGE_VERSION=${{ steps.image-name.outputs.IMAGE_VERSION }}"
+          echo "outputs.IMAGE_NAME=${{ steps.image-name.outputs.IMAGE_NAME }}"
 
       - name: Extract metadata (tags, labels) for Docker
         id: meta
@@ -110,9 +104,3 @@ jobs:
           push: true
           labels: ${{ steps.meta.outputs.labels }}            
           tags: ${{ steps.meta.outputs.tags }}
-
-      - name: Display Variables
-        run: |-
-          echo "context: ./${{ env.APP_PATH }}"
-          echo "labels: ${{ steps.meta.outputs.labels }}"
-          echo "tags: ${{ steps.meta.outputs.tags }}"
