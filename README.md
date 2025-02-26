@@ -5,7 +5,8 @@ This project is a demonstration of how to create a simple UI that builds on top 
 ## Contents
 
 * [Architecture and Overview](#architecture-and-overview)
-* [Getting Started with IAC](#getting-started-with-iac-and-deployment)
+* [Using this Docker Image in other projects](#using-this-docker-image-in-other-projects)
+* [Deploying this to your environment](#getting-started-with-iac-and-deployment)
 * [Local Development](#application-development-and-refinement)
 * [Creating SmartFlow API Profiles](#creating-smartflow-api-profiles)
 
@@ -28,6 +29,18 @@ Note: This is a companion app to the [SmartFlow API application](https://github.
 For an easy and optimal deployment experience, copy all of the secrets and variables that you used in the the SmartFlow API deploy to this application's repository variables and secrets, then kick off the primary GitHub Workflow or Azure DevOps pipeline, and it should be good to go.
 
 If you want to use `azd up`, you will want to use the same variables to match the existing SmartFlow API application.  Copy the AZD setting values from the Smart-Flow-Public project (i.e. the entire `.azure` folder), then add in the two variables `APP_NAME_NO_DASHES="xxxx"` and `ENVIRONMENT_NAME="dev"` and then the azd up command should work right off first time as designed.
+
+---
+
+## Using this Docker Image in other projects
+
+If you have an existing SmartFlow application and want to pull this standard image into the UI container app, we have published the image as a public package in this repository. You can pull that package into your application and then use the Storage Account or Key Based Profile settings ([see below](#creating-smartflow-api-profiles)) to configure the profiles how you want to use it.
+
+You can access this profile via the link on this page, or using a command like this:
+
+```bash
+docker pull ghcr.io/msft-mfg-ai/smart-flow-ui/smartflowui:latest
+```
 
 ---
 
@@ -85,11 +98,11 @@ Once the UI is deployed, you can also change the profiles defined by specifying 
 
 The profiles are loaded in priority order, starting with the Storage Account, then looking for a ProfileConfiguration environment key, then defaulting finally to the `profiles.json` file.
 
-### 1. Storage Account
+### 1. Storage Account Profile
 
 If you create an environment key named `ProfileConfigurationBlobStorageContainer`, the application will look in that container for a file named `profiles.json`.  This file will be used to override the profiles defined in the `profiles.json` file in the application.
 
-### 2. Environment Key
+### 2. Environment Key Profile
 
 If you create an environment key named `ProfileConfiguration`, the application will use that data to override the profiles defined in the `profiles.json` file in the application. It is expected that the key value would contain a JSON string that is contains exactly what would be in the `profiles.json` file. However, that data must be Base 64 encoded as it will be Base64 decoded when it is read.
 
@@ -97,7 +110,7 @@ Create your `profiles.json` file locally, then use a tool like [https://base64.g
 
 ![B64 Example](./docs/images/Base64Encoding.png)
 
-### 3. Profiles.Json File
+### 3. Profiles.Json File Profile
 
 Lastly, if neither of the previous two options are specified, the application will use the values in `profiles.json` file to configure the application.
 
