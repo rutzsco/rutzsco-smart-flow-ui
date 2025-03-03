@@ -1,8 +1,5 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 
-using System.Net.Http.Headers;
-using MinimalApi.Services.Documents;
-
 namespace ClientApp.Services;
 
 public sealed class ApiClient(HttpClient httpClient)
@@ -11,11 +8,10 @@ public sealed class ApiClient(HttpClient httpClient)
     public async Task IngestionTriggerAsync(string sourceContainer, string indexName)
     {
         var request = new IngestionRequest(sourceContainer, $"{sourceContainer}-extract", indexName);
-        var json = JsonSerializer.Serialize(request, SerializerOptions.Default);
+        var json = System.Text.Json.JsonSerializer.Serialize(request, SerializerOptions.Default);
         using var body = new StringContent(json, Encoding.UTF8, "application/json");
         var response = await httpClient.PostAsync("api/ingestion/trigger", body);
     }
-
     public async Task<UserInformation> GetUserAsync()
     {
         if (Cache.UserInformation != null)
@@ -29,7 +25,6 @@ public sealed class ApiClient(HttpClient httpClient)
 
         return user;
     }
-
     public async Task<List<DocumentSummary>> GetUserDocumentsAsync()
     {
         var response = await httpClient.GetAsync("api/user/documents");
@@ -80,7 +75,7 @@ public sealed class ApiClient(HttpClient httpClient)
             if (metadata != null)
             {
                 // Serialize the dictionary to a JSON string
-                string serializedHeaders = JsonSerializer.Serialize(metadata);
+                string serializedHeaders = System.Text.Json.JsonSerializer.Serialize(metadata);
 
                 // Add the serialized dictionary as a single header value
                 content.Headers.Add("X-FILE-METADATA", serializedHeaders);
@@ -102,12 +97,11 @@ public sealed class ApiClient(HttpClient httpClient)
             return UploadDocumentsResponse.FromError(ex.ToString());
         }
     }
-
     public async Task<DocumentIndexResponse> NativeIndexDocumentsAsync(UploadDocumentsResponse documentList) // DocumentIndexRequest indexRequest)
     {
         try
         {
-            var json = JsonSerializer.Serialize(documentList, SerializerOptions.Default);
+            var json = System.Text.Json.JsonSerializer.Serialize(documentList, SerializerOptions.Default);
             using var body = new StringContent(json, Encoding.UTF8, "application/json");
             var response = await httpClient.PostAsync("api/native/index/documents", body);
             response.EnsureSuccessStatusCode();
@@ -119,7 +113,6 @@ public sealed class ApiClient(HttpClient httpClient)
             return DocumentIndexResponse.FromError(ex.ToString());
         }
     }
-
     public async IAsyncEnumerable<DocumentSummary> GetDocumentsAsync([EnumeratorCancellation] CancellationToken cancellationToken)
     {
         var response = await httpClient.GetAsync("api/user/documents", cancellationToken);
@@ -129,7 +122,7 @@ public sealed class ApiClient(HttpClient httpClient)
 
             using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
 
-            await foreach (var document in JsonSerializer.DeserializeAsyncEnumerable<DocumentSummary>(stream, options, cancellationToken))
+            await foreach (var document in System.Text.Json.JsonSerializer.DeserializeAsyncEnumerable<DocumentSummary>(stream, options, cancellationToken))
             {
                 if (document is null)
                 {
@@ -140,7 +133,6 @@ public sealed class ApiClient(HttpClient httpClient)
             }
         }
     }
-
     public async IAsyncEnumerable<ChatHistoryResponse> GetFeedbackAsync([EnumeratorCancellation] CancellationToken cancellationToken)
     {
         var response = await httpClient.GetAsync("api/feedback", cancellationToken);
@@ -151,7 +143,7 @@ public sealed class ApiClient(HttpClient httpClient)
 
             using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
 
-            await foreach (var document in JsonSerializer.DeserializeAsyncEnumerable<ChatHistoryResponse>(stream, options, cancellationToken))
+            await foreach (var document in System.Text.Json.JsonSerializer.DeserializeAsyncEnumerable<ChatHistoryResponse>(stream, options, cancellationToken))
             {
                 if (document is null)
                 {
@@ -169,7 +161,7 @@ public sealed class ApiClient(HttpClient httpClient)
         {
             var options = SerializerOptions.Default;
             using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
-            await foreach (var document in JsonSerializer.DeserializeAsyncEnumerable<ChatHistoryResponse>(stream, options, cancellationToken))
+            await foreach (var document in System.Text.Json.JsonSerializer.DeserializeAsyncEnumerable<ChatHistoryResponse>(stream, options, cancellationToken))
             {
                 if (document is null)
                 {
@@ -180,7 +172,6 @@ public sealed class ApiClient(HttpClient httpClient)
             }
         }
     }
-
     public async IAsyncEnumerable<ChatSessionModel> GetHistoryV2Async([EnumeratorCancellation] CancellationToken cancellationToken)
     {
         var response = await httpClient.GetAsync("api/chat/history-v2", cancellationToken);
@@ -188,7 +179,7 @@ public sealed class ApiClient(HttpClient httpClient)
         {
             var options = SerializerOptions.Default;
             using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
-            await foreach (var session in JsonSerializer.DeserializeAsyncEnumerable<ChatSessionModel>(stream, options, cancellationToken))
+            await foreach (var session in System.Text.Json.JsonSerializer.DeserializeAsyncEnumerable<ChatSessionModel>(stream, options, cancellationToken))
             {
                 if (session is null)
                 {
@@ -199,7 +190,6 @@ public sealed class ApiClient(HttpClient httpClient)
             }
         }
     }
-
     public async IAsyncEnumerable<ChatHistoryResponse> GetChatHistorySessionAsync([EnumeratorCancellation] CancellationToken cancellationToken, string chatId)
     {
         var response = await httpClient.GetAsync($"api/chat/history/{chatId}", cancellationToken);
@@ -207,7 +197,7 @@ public sealed class ApiClient(HttpClient httpClient)
         {
             var options = SerializerOptions.Default;
             using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
-            await foreach (var document in JsonSerializer.DeserializeAsyncEnumerable<ChatHistoryResponse>(stream, options, cancellationToken))
+            await foreach (var document in System.Text.Json.JsonSerializer.DeserializeAsyncEnumerable<ChatHistoryResponse>(stream, options, cancellationToken))
             {
                 if (document is null)
                 {
@@ -218,16 +208,72 @@ public sealed class ApiClient(HttpClient httpClient)
             }
         }
     }
-
     public async Task ChatRatingAsync(ChatRatingRequest request)
     {
         await PostBasicAsync(request, "api/chat/rating");
     }
-
     private async Task PostBasicAsync<TRequest>(TRequest request, string apiRoute) where TRequest : ApproachRequest
     {
-        var json = JsonSerializer.Serialize(request,SerializerOptions.Default);
+        var json = System.Text.Json.JsonSerializer.Serialize(request, SerializerOptions.Default);
         using var body = new StringContent(json, Encoding.UTF8, "application/json");
         var response = await httpClient.PostAsync(apiRoute, body);
+    }
+    public async Task<(ProfileInfo, string)> GetProfilesInfoAsync()
+    {
+        // switch to turn on/off base64 encoding
+        // There is a corresponding switch in the backend/Extensions/WebApplicationExtensions.cs file to encode it or not
+        var responseIsBase64Encoded = true;
+        // no matter how I've tried to send data to the client, sending JSON or objects fails
+        // and when it gets here the response.body is null
+        // sending B64 encoded data works just fine...???
+        var profileData = string.Empty;
+        try
+        {
+            var responseData = await httpClient.GetStringAsync("api/profiles/info");
+            if (responseIsBase64Encoded)
+            {
+                var profileDataDecoded = Encoding.UTF8.GetString(System.Convert.FromBase64String(responseData[1..^1]));
+                var profileInfo = Newtonsoft.Json.JsonConvert.DeserializeObject<ProfileInfo>(profileDataDecoded);
+                return (profileInfo, profileDataDecoded);
+            }
+            else
+            {
+                var profileInfo = Newtonsoft.Json.JsonConvert.DeserializeObject<ProfileInfo>(responseData);
+                return (profileInfo, responseData);
+            }
+        }
+        catch (Exception ex)
+        {
+            var msg = $"GetProfilesInfoAsync: failed to get data: {ex.Message}";
+            Console.WriteLine(msg);
+            Debug.WriteLine(msg);
+            return (new ProfileInfo($"{profileData.Substring(0, 15)}...", $"Error processing {profileData.Length} bytes of data", msg), msg);
+        }
+    }
+    public async Task<(ProfileInfo, string)> GetProfilesReloadAsync()
+    {
+        var profileData = string.Empty;
+        try
+        {
+            var profileDataPlus = await httpClient.GetStringAsync("api/profiles/reload");
+            var profileDataDecoded = Encoding.UTF8.GetString(System.Convert.FromBase64String(profileDataPlus[1..^1]));
+            var profileInfo = Newtonsoft.Json.JsonConvert.DeserializeObject<ProfileInfo>(profileDataDecoded);
+            return (profileInfo, profileDataDecoded);
+
+            // when I send it this way... nothing gets through
+            //var profileInfo = Newtonsoft.Json.JsonConvert.DeserializeObject<ProfileInfo>(profileData);
+            //return profileInfo;
+
+            // when I send it this way... nothing gets through
+            //var profiledata = await httpClient.GetFromJsonAsync<ProfileInfo>("api/profiles/info");
+            //return profileInfo;
+        }
+        catch (Exception ex)
+        {
+            var msg = $"GetProfilesInfoAsync: failed to get data: {ex.Message}";
+            Console.WriteLine(msg);
+            Debug.WriteLine(msg);
+            return (new ProfileInfo($"{profileData.Substring(0, 15)}...", $"Error processing {profileData.Length} bytes of data", msg), msg);
+        }
     }
 }

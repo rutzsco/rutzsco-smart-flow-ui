@@ -27,6 +27,11 @@ global using MudBlazor;
 global using MudBlazor.Services;
 global using Shared.Json;
 global using Shared.Models;
+global using System.Diagnostics;
+global using System.Net.Http.Headers;
+global using MinimalApi.Services.Documents;
+global using System.Data;
+global using Microsoft.AspNetCore.Components.WebAssembly.Http;
 
 [assembly: System.Runtime.Versioning.SupportedOSPlatform("browser")]
 [assembly: System.Runtime.CompilerServices.InternalsVisibleTo("ClientApp.Tests")]

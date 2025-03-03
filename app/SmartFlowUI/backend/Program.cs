@@ -30,7 +30,7 @@ var serviceProvider = builder.Services.BuildServiceProvider();
 var blobServiceClient = serviceProvider.GetRequiredService<BlobServiceClient>();
 
 AppConfiguration.Load(builder.Configuration);
-ProfileDefinition.Load(builder.Configuration, blobServiceClient);
+ProfileDefinition.All = ProfileService.Load(builder.Configuration, blobServiceClient);
 
 static string? GetEnvVar(string key) => Environment.GetEnvironmentVariable(key);
 

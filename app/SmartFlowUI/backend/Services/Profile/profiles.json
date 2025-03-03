@@ -39,6 +39,19 @@
       "APIEndpointKeySetting": "ColorBlindApiKey",
       "AllowFileUpload": true
     }
+  },
+  {
+    "Name": "Bad Key Endpoint",
+    "Id": "BadKeyTester",
+    "Approach": "ENDPOINTASSISTANTTASK",
+    "SecurityModel": "None",
+    "SecurityModelGroupMembership": [ "LocalDevUser" ],
+    "SampleQuestions": ["Where is the key?", "Why is it defined incorrectly?" ],
+    "AssistantEndpointSettings": {
+      "APIEndpointSetting": "ColorBlindEndpoint",
+      "APIEndpointKeySetting": "BogusKey", // bad key intentionally to test UI view
+      "AllowFileUpload": true
+    }
   }
   // This is close but the syntax for passing the prompt in is not right yet...
   //{

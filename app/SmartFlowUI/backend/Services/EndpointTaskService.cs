@@ -30,7 +30,7 @@ internal sealed class EndpointTaskService : IChatService
 
         var payload = await response.Content.ReadAsStringAsync();
 
-        TaskResponse taskResponse = JsonSerializer.Deserialize<TaskResponse>(payload);
+        TaskResponse taskResponse = System.Text.Json.JsonSerializer.Deserialize<TaskResponse>(payload);
         var thoughts = new List<ThoughtRecord>();
         foreach (var thought in taskResponse.thoughtProcess)
         {
@@ -42,7 +42,7 @@ internal sealed class EndpointTaskService : IChatService
 
     private StringContent BuildChatRequest(ChatRequest request)
     {
-        var payload = JsonSerializer.Serialize(request.History);
+        var payload = System.Text.Json.JsonSerializer.Serialize(request.History);
         var content = new StringContent(payload, Encoding.UTF8, "application/json");
         return content;
     }
@@ -64,7 +64,7 @@ internal sealed class EndpointTaskService : IChatService
                 }
             }
         };
-        var payload = JsonSerializer.Serialize(requestModel);
+        var payload = System.Text.Json.JsonSerializer.Serialize(requestModel);
         var content = new StringContent(payload, Encoding.UTF8, "application/json");
         return content;
     }

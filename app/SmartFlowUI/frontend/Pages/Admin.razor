@@ -1,0 +1,147 @@
+﻿@page "/admin"
+
+<PageTitle>Admin</PageTitle>
+
+<MudGrid Justify="Justify.Center">
+	<MudItem id="uploads" xs="12" Class="overflow-x-auto">
+		<MudCard Class="ma-1">
+			<MudCardHeader>
+				<CardHeaderContent>
+					<MudText Typo="Typo.h1">Profile Info</MudText>
+				</CardHeaderContent>
+			</MudCardHeader>
+			<MudCardContent>
+				<MudExpansionPanels Class="pt-4" Elevation=2>
+					<MudExpansionPanel Expanded>
+						<TitleContent>
+							<MudText Typo="Typo.h4">@_profileInfo.Keys.Count Endpoints Are Defined</MudText>
+						</TitleContent>
+						<ChildContent>
+							<MudList T="string">
+								@foreach (var key in _profileInfo.Keys)
+								{
+									if (key.APIEndpointSettingIsValid && key.APIEndpointKeySettingIsValid)
+									{
+										<MudListItem>
+											<AvatarContent>
+												<MudIcon Icon="@Icons.Material.Filled.Key" Title="Key Found!" Style="color: forestgreen;" />
+											</AvatarContent>
+											<ChildContent>
+												<b>@key.ProfileName</b><br />
+												@key.APIEndpointSettingValue
+											</ChildContent>
+										</MudListItem>
+									}
+									else
+									{
+										if (key.APIEndpointSettingIsValid && !key.APIEndpointKeySettingIsValid)
+										{
+											<MudListItem>
+												<AvatarContent>
+													<MudIcon Icon="@Icons.Material.Filled.HeartBroken" Title="Key is invalid!" Style="color: red;" />
+												</AvatarContent>
+												<ChildContent>
+													<b>@key.ProfileName</b><br />
+													@key.APIEndpointSettingValue<br />
+													<i>Invalid Key is named <b>@key.APIEndpointKeySettingName</b></i>
+												</ChildContent>
+											</MudListItem>
+										}
+										else
+										{
+											<MudListItem>
+												<AvatarContent>
+													<MudIcon Icon="@Icons.Material.Filled.CallMissed" Title="No URL defined" Style="color: blueviolet;" />
+												</AvatarContent>
+												<ChildContent>
+													<b>@key.ProfileName</b><br />
+													No URL defined for this endpoint
+												</ChildContent>
+											</MudListItem>
+										}
+									}
+								}
+							</MudList>
+							<MudText Typo="Typo.body2" Style="margin-left: 50px; color: gray">
+								Legend:<br />
+								<MudIcon Icon="@Icons.Material.Filled.CallMissed" Title="Key" Style="font-size: .8em; color: blueviolet;" /> No Endpoint URL defined<br />
+								<MudIcon Icon="@Icons.Material.Filled.Key" Title="Key" Style="font-size: .8em; color: forestgreen;" /> Endpoint found with a key specified<br />
+								<MudIcon Icon="@Icons.Material.Filled.HeartBroken" Style="font-size: .8em; color: red; " Title="HeartBroken" /> Endpoint found with but no key value found<br />
+							</MudText>
+						</ChildContent>
+					</MudExpansionPanel>
+				</MudExpansionPanels>
+			</MudCardContent>
+		</MudCard>
+		<MudCard Class="ma-1">
+			<MudForm @ref="@_form">
+				<MudCardContent>
+					<MudExpansionPanels Class="pt-4" Elevation=2>
+						<MudExpansionPanel>
+							<TitleContent>
+								<MudText Typo="Typo.h4">Profile Data</MudText>
+								@_profileInfo.ProfileLoadingMessage
+							</TitleContent>
+							<ChildContent>
+								<MudTextField @bind-Value="_profileRawData"
+											  Label="Raw Profile Data"
+											  T="string"
+											  FullWidth AutoGrow
+											  Variant="Variant.Outlined"
+											  Style="font-family: Consolas;"></MudTextField>
+
+							</ChildContent>
+						</MudExpansionPanel>
+					</MudExpansionPanels>
+				</MudCardContent>
+				<MudCardActions>
+					<MudButton StartIcon="@Icons.Material.Filled.ReplayCircleFilled"
+							   Variant="Variant.Filled"
+							   Color="Color.Primary"
+							   Disabled=@(!_profileInfo.Profiles.Any())
+							   Size="Size.Large"
+							   OnClick="@(async _ => await ReloadProfileInfoAsync())">
+						Reload Profiles
+					</MudButton>
+				</MudCardActions>
+			</MudForm>
+		</MudCard>
+
+		<MudCard Class="ma-1">
+			<MudCardContent>
+				<MudExpansionPanels Class="pt-4" Elevation=2>
+					<MudExpansionPanel>
+						<TitleContent>
+							<MudText Typo="Typo.h4">Profile Help</MudText>
+						</TitleContent>
+						<ChildContent>
+							The prompts that are defined in the SmartFlow API should be represented in the UI as profiles.<br />
+							<br />
+							Profiles are originally defined in the Services/Profile/profiles.json file, which is embedded in the application.
+							Once the UI is deployed, you can change the profiles defined by specifying one of two alternate locations for the profile data.
+							In that way, you can update the profiles supplied without having to redeploy the application each time.
+							<br /><br />
+							The profiles are loaded in priority order, starting with the Storage Account, then looking for a ProfileConfiguration environment key, then defaulting finally to the <i>profiles.json</i> file if the two alternates are not defined.
+							<br /><br />
+							<b>1. Storage Account Profile</b>
+							<br /><br />
+							If you create an environment key named <b><i>ProfileConfigurationBlobStorageContainer</i></b>, the application will look in that container for a file named <i>profiles.json</i>.  This file will be used to override the profiles defined in the <i>profiles.json</i> file in the application.
+							<br /><br />
+							<b>2. Environment Key Profile</b>
+							<br /><br />
+							If you create an environment key named <b><i>ProfileConfiguration</i></b>, the application will use that data to override the profiles defined in the <i>profiles.json</i> file in the application. It is expected that the key value would contain a JSON string that is contains exactly what would be in the <i>profiles.json</i> file. However, that data must be Base 64 encoded as it will be Base64 decoded when it is read.
+							Create your <i>profiles.json</i> file locally, then use a tool like <a href="https://base64.guru/converter/encode/text" target="_blank">https://base64.guru/converter/encode/text</a> (or some other tool you have access to) to encode the file.  Create an environment key named <i>ProfileConfiguration</i> and paste the Base 64 encoded string into the value.
+						</ChildContent>
+					</MudExpansionPanel>
+				</MudExpansionPanels>
+			</MudCardContent>
+		</MudCard>
+
+
+	</MudItem>
+	<MudScrollToTop Selector="#uploads"
+					VisibleCssClass="visible absolute"
+					HiddenCssClass="invisible">
+		<MudFab Color="Color.Primary" IconSize="Size.Large" StartIcon="@Icons.Material.Filled.ArrowUpward" />
+	</MudScrollToTop>
+</MudGrid>

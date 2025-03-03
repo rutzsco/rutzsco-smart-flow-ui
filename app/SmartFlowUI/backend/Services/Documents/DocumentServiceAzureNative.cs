@@ -1,12 +1,5 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 
-using System.Collections.Generic;
-using Microsoft.Azure.Cosmos;
-using MinimalApi.Services.Documents;
-using MinimalApi.Services.Profile;
-using MinimalApi.Services.Search;
-using Shared.Json;
-
 namespace MinimalApi.Services.ChatHistory;
 
 public class DocumentServiceAzureNative : IDocumentService
@@ -26,10 +19,34 @@ public class DocumentServiceAzureNative : IDocumentService
         _searchClientFactory = searchClientFactory;
 
         // Create database if it doesn't exist
-        var db = _cosmosClient.CreateDatabaseIfNotExistsAsync(DefaultSettings.CosmosDbDatabaseName).GetAwaiter().GetResult();
-
-        // Create get container if it doesn't exist
-        _cosmosContainer = db.Database.CreateContainerIfNotExistsAsync(DefaultSettings.CosmosDBUserDocumentsCollectionName, "/userId").GetAwaiter().GetResult();
+        try
+        {
+            var db = _cosmosClient.CreateDatabaseIfNotExistsAsync(DefaultSettings.CosmosDbDatabaseName).GetAwaiter().GetResult();
+            // Create get container if it doesn't exist
+            _cosmosContainer = db.Database.CreateContainerIfNotExistsAsync(DefaultSettings.CosmosDBUserDocumentsCollectionName, "/userId").GetAwaiter().GetResult();
+        }
+        catch (CosmosException ex) {
+            if (ex.StatusCode == HttpStatusCode.Forbidden && ex.Message.Contains("firewall settings", StringComparison.InvariantCultureIgnoreCase))
+            {
+                Console.ForegroundColor = ConsoleColor.Red;
+                Console.WriteLine($"==> Connection to Cosmos {_cosmosClient.Endpoint.Host} failed because of a misconfigured firewall setting!");
+                // Message might contain this...: "code":"Forbidden","message":"Request originated from IP x.x.188.38 through public internet. This is blocked by your Cosmos DB account firewall settings. More info: https:...
+                var startLoc = ex.Message.IndexOf("\"code\":\"Forbidden\",\"message\":\"", StringComparison.InvariantCultureIgnoreCase);
+                var endLoc = ex.Message.IndexOf("More info:", startLoc + 30, StringComparison.InvariantCultureIgnoreCase);
+                if (startLoc > 0 && endLoc > 0)
+                {
+                    var ipMessage = ex.Message.Substring(startLoc + 30, endLoc - startLoc - 30);
+                    Console.WriteLine($"==> {ipMessage}");
+                }
+                Console.ResetColor();
+            }
+            //throw;
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"*** Connection to Cosmos failed: {ex.Message}");
+            throw;
+        }
     }
 
     public async Task<UploadDocumentsResponse> CreateDocumentUploadAsync(UserInformation userInfo, IFormFileCollection files, string selectedProfile, Dictionary<string, string>? fileMetadata, CancellationToken cancellationToken)
@@ -58,18 +75,19 @@ public class DocumentServiceAzureNative : IDocumentService
 
     public async Task<List<DocumentUpload>> GetDocumentUploadsAsync(UserInformation user, string profileId)
     {
-        var query = _cosmosContainer.GetItemQueryIterator<DocumentUpload>(
-            new QueryDefinition("SELECT TOP 100 * FROM c WHERE c.sessionId = @sessionId ORDER BY c.sourceName DESC")
-            .WithParameter("@username", user.UserId)
-            .WithParameter("@sessionId", profileId));
-
         var results = new List<DocumentUpload>();
-        while (query.HasMoreResults)
+        if (_cosmosContainer != null)
         {
-            var response = await query.ReadNextAsync();
-            results.AddRange(response.ToList());
+            var query = _cosmosContainer.GetItemQueryIterator<DocumentUpload>(
+                new QueryDefinition("SELECT TOP 100 * FROM c WHERE c.sessionId = @sessionId ORDER BY c.sourceName DESC")
+                .WithParameter("@username", user.UserId)
+                .WithParameter("@sessionId", profileId));
+            while (query.HasMoreResults)
+            {
+                var response = await query.ReadNextAsync();
+                results.AddRange(response.ToList());
+            }
         }
-
         return results;
     }
 }

@@ -460,7 +460,7 @@ internal static class ServiceCollectionExtensions
                 {
                     jsonWriter.WritePropertyName(item.Key);
 
-                    JsonSerializer.Serialize(jsonWriter, item.Value,
+                    System.Text.Json.JsonSerializer.Serialize(jsonWriter, item.Value,
                         item.Value?.GetType() ?? typeof(object));
                 }
 

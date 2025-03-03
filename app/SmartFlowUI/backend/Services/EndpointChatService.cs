@@ -20,7 +20,7 @@ internal sealed class EndpointChatService : IChatService
 
     public async IAsyncEnumerable<ChatChunkResponse> ReplyAsync(UserInformation user, ProfileDefinition profile, ChatRequest request, [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
-        var payload = JsonSerializer.Serialize(request.History);
+        var payload = System.Text.Json.JsonSerializer.Serialize(request.History);
 
         var apiRequest = new HttpRequestMessage(HttpMethod.Post, _configuration[profile.AssistantEndpointSettings.APIEndpointSetting]);
         apiRequest.Headers.Add("X-Api-Key", _configuration[profile.AssistantEndpointSettings.APIEndpointKeySetting]);
@@ -30,7 +30,7 @@ internal sealed class EndpointChatService : IChatService
         response.EnsureSuccessStatusCode();
         using (var responseStream = await response.Content.ReadAsStreamAsync())
         {
-            await foreach (ChatChunkResponse chunk in JsonSerializer.DeserializeAsyncEnumerable<ChatChunkResponse>(responseStream, new JsonSerializerOptions { PropertyNameCaseInsensitive = true, DefaultBufferSize = 32 }))
+            await foreach (ChatChunkResponse chunk in System.Text.Json.JsonSerializer.DeserializeAsyncEnumerable<ChatChunkResponse>(responseStream, new JsonSerializerOptions { PropertyNameCaseInsensitive = true, DefaultBufferSize = 32 }))
             {
                 if (chunk == null)
                     continue;

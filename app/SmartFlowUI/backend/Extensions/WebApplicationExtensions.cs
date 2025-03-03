@@ -1,19 +1,5 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 
-using System;
-using System.Net.Http;
-using Azure.Core;
-using ClientApp.Pages;
-using Microsoft.AspNetCore.Antiforgery;
-using MinimalApi.Services;
-using MinimalApi.Services.ChatHistory;
-using MinimalApi.Services.Documents;
-using MinimalApi.Services.Profile;
-using MinimalApi.Services.Search;
-using MinimalApi.Services.Security;
-using Shared.Models;
-
-
 namespace MinimalApi.Extensions;
 
 internal static class WebApplicationExtensions
@@ -54,12 +40,24 @@ internal static class WebApplicationExtensions
         // Profile Selections
         api.MapGet("profile/selections", OnGetProfileUserSelectionOptionsAsync);
 
+        api.MapGet("profiles/info", OnGetProfilesInfo);
+        // I've tried multiple ways to map this and they don't change the results...
+        // See the OnGetProfilesInfo for more details on the problem...
+        //api.MapGet("profiles/info", OnGetProfilesInfoAsync);
+        //api.MapGet("profiles/info", (Func<HttpContext, Task<IResult>>)OnGetProfilesInfoAsync);
+        //api.MapGet("profiles/info", async context =>
+        //{
+        //	var profileInfo = await ProfileService.GetProfileDataAsync();
+        //	await context.Response.WriteAsJsonAsync(profileInfo);
+        //});
+        api.MapGet("profiles/reload", OnGetProfilesReload);
+
         api.MapGet("token/csrf", OnGetAntiforgeryTokenAsync);
 
         api.MapGet("status", OnGetStatus);
 
         api.MapGet("tag", OnTagSyncAsync);
-        
+
         api.MapPost("ingestion/trigger", OnPostTriggerIngestionPipelineAsync);
         api.MapGet("headers", OnGetHeadersAsync);
         return app;
@@ -134,6 +132,45 @@ internal static class WebApplicationExtensions
         return Results.Ok(result);
     }
 
+    private static IResult OnGetProfilesInfo(HttpContext context, ILogger<WebApplication> logger)
+    {
+        // switch to turn on/off base64 encoding
+        // There is a corresponding switch in the frontend/Services/ApiClient.cs file to decode it or not
+        var base64EncodeTheResults = true;
+        // when I send it back with JSON in the payload - nothing gets through... the response body is totally empty
+        // when I send it back as a B64 string - it works and goes through and all works fine
+        // I've tried it as sync and async - no difference...
+        // I've tried it as IResult and as a Typed Result - no difference
+        if (base64EncodeTheResults)
+        {
+            var profileInfo = ProfileService.GetProfileData();
+            var profileInfoJson = Newtonsoft.Json.JsonConvert.SerializeObject(profileInfo, Formatting.Indented);
+            var plainTextBytes = System.Text.Encoding.UTF8.GetBytes(profileInfoJson);
+            var b64Text = System.Convert.ToBase64String(plainTextBytes);
+            return Results.Ok(b64Text);
+        }
+        else
+        {
+            var profileInfo = ProfileService.GetProfileData();
+            var profileInfoJson = Newtonsoft.Json.JsonConvert.SerializeObject(profileInfo, Formatting.Indented);
+            /// tried adding these headers - no change
+            //context.Response.Headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0";
+            //context.Response.Headers["Pragma"] = "no-cache";
+            //context.Response.ContentType = "application/json; charset=utf-8";
+            //context.Response.WriteAsJsonAsync(profileInfoJson).Wait();
+            return Results.Ok(profileInfo);
+        }
+    }
+
+    private static IResult OnGetProfilesReload(HttpContext context, ILogger<WebApplication> logger, IConfiguration configuration)
+    {
+        var profileInfo = ProfileService.Reload();
+        var profileInfoJson = Newtonsoft.Json.JsonConvert.SerializeObject(profileInfo, Formatting.Indented);
+        var plainTextBytes = System.Text.Encoding.UTF8.GetBytes(profileInfoJson);
+        var b64Text = System.Convert.ToBase64String(plainTextBytes);
+        return Results.Ok(b64Text);
+    }
+
     private static async Task<IResult> OnGetSourceFileAsync(HttpContext context, string fileName, BlobServiceClient blobServiceClient, IConfiguration configuration)
     {
         try
@@ -184,6 +221,7 @@ internal static class WebApplicationExtensions
             return Results.Problem("Internal server error");
         }
     }
+
     private static async Task<IResult> OnPostDocumentAsync(HttpContext context, [FromForm] IFormFileCollection files,
         [FromServices] AzureBlobStorageService service,
         [FromServices] IDocumentService documentService,
@@ -196,7 +234,7 @@ internal static class WebApplicationExtensions
         var selectedProfile = context.Request.Headers["X-PROFILE-METADATA"];
         Dictionary<string, string>? fileMetadata = null;
         if (!string.IsNullOrEmpty(fileMetadataContent))
-            fileMetadata = JsonSerializer.Deserialize<Dictionary<string,string>>(fileMetadataContent);
+            fileMetadata = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string,string>>(fileMetadataContent);
 
 
         var response = await documentService.CreateDocumentUploadAsync(userInfo, files, selectedProfile, fileMetadata, cancellationToken);
@@ -226,6 +264,7 @@ internal static class WebApplicationExtensions
         context.Response.Headers["Pragma"] = "no-cache";
         return TypedResults.Ok(userInfo);
     }
+
     private static async Task<IResult> OnGetUserDocumentsAsync(HttpContext context, IDocumentService documentService)
     {
         var userInfo = context.GetUserInfo();
@@ -293,6 +332,7 @@ internal static class WebApplicationExtensions
             }
         }
     }
+
     private static IChatService ResolveChatService(ChatRequest request, ChatService chatService, ReadRetrieveReadStreamingChatService ragChatService, EndpointChatService endpointChatService, EndpointChatServiceV2 endpointChatServiceV2, EndpointTaskService endpointTaskService)
     {
         if (request.OptionFlags.IsChatProfile())
@@ -332,7 +372,6 @@ internal static class WebApplicationExtensions
         return sessions;
     }
 
-
     private static async Task<IEnumerable<ChatHistoryResponse>> OnGetChatHistorySessionAsync(string chatId, HttpContext context, IChatHistoryService chatHistoryService)
     {
         var userInfo = context.GetUserInfo();
@@ -353,7 +392,6 @@ internal static class WebApplicationExtensions
         await ingestionService.TriggerIngestionPipelineAsync(ingestionRequest);
         return Results.Ok();
     }
-
 
     private static async Task<IResult> OnTagSyncAsync([FromServices] BlobServiceClient blobServiceClient)
     {
@@ -389,12 +427,11 @@ internal static class WebApplicationExtensions
                     existingMetadata.Add("Type", tag.Value);
                     await blobClient.SetMetadataAsync(existingMetadata);
                 }
-                
-            }                
+
+            }
 
             Console.WriteLine(); // Blank line for readability
         }
         return Results.Ok("OK");
     }
-
 }
