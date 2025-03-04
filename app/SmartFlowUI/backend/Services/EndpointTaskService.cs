@@ -1,7 +1,9 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 
 using System.Net.Http;
+using System.Security.Policy;
 using MinimalApi.Services.Profile;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace MinimalApi.Services;
 
@@ -21,25 +23,57 @@ internal sealed class EndpointTaskService : IChatService
     public async IAsyncEnumerable<ChatChunkResponse> ReplyAsync(UserInformation user, ProfileDefinition profile, ChatRequest request, [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         var sb = new StringBuilder();
-        var apiRequest = new HttpRequestMessage(HttpMethod.Post, _configuration[profile.AssistantEndpointSettings.APIEndpointSetting]);
+        var url = _configuration[profile.AssistantEndpointSettings.APIEndpointSetting];
+        var payload = string.Empty;
+
+        var apiRequest = new HttpRequestMessage(HttpMethod.Post, url);
         apiRequest.Headers.Add("X-Api-Key", _configuration[profile.AssistantEndpointSettings.APIEndpointKeySetting]);
         apiRequest.Content = BuildTaskRequest(request);
+        if (apiRequest.Content == null)
+        {
+            var msg = $"System Error: Unable to create request for {profile.Name}";
+            payload = BuildErrorTaskResponsePayload(msg, url, profile.Name, "BuildRequest");
+        }
+        try
+        {
+            if (payload == string.Empty)
+            {
+                var response = await _httpClient.SendAsync(apiRequest);
+                response.EnsureSuccessStatusCode();
+                payload = await response.Content.ReadAsStringAsync();
+            }
+        }
+        catch (HttpRequestException ex)
+        {
+            var msg =
+                ex.StatusCode.Value == System.Net.HttpStatusCode.NotFound ? $"System Error: API for {profile.Name} not found!" :
+                ex.StatusCode.Value == System.Net.HttpStatusCode.TooManyRequests ? "System Error: Rate Limit exceeded!" :
+                "System Error: Unable to get a response from the server.";
+            payload = BuildErrorTaskResponsePayload(msg, url, profile.Name, "SendAsync");
+        }
+        catch (JsonException)
+        {
+            var msg = $"Error: Failed to parse the server response - JSON Exception for {profile.Name}";
+            payload = BuildErrorTaskResponsePayload(msg, url, profile.Name, "SendAsync");
+        }
 
-        var response = await _httpClient.SendAsync(apiRequest);
-        response.EnsureSuccessStatusCode();
-
-        var payload = await response.Content.ReadAsStringAsync();
-
-        TaskResponse taskResponse = System.Text.Json.JsonSerializer.Deserialize<TaskResponse>(payload);
+        var taskResponse = System.Text.Json.JsonSerializer.Deserialize<TaskResponse>(payload);
         var thoughts = new List<ThoughtRecord>();
         foreach (var thought in taskResponse.thoughtProcess)
         {
             thoughts.Add(new ThoughtRecord(FormatLogStep(thought), thought.content));
         }
-
         yield return new ChatChunkResponse("", new ApproachResponse(taskResponse.answer, null, new ResponseContext(profile.Name, null, thoughts.ToArray(), request.ChatTurnId, request.ChatId, null)));
     }
-
+    private string BuildErrorTaskResponsePayload(string msg, string url, string profileName, string actionName)
+    {
+        var msgEx = $"{msg} Calling URL: {url}";
+        Console.WriteLine(msgEx);
+        var logEntries = new List<WorkflowLogEntry> { new(profileName, actionName, msgEx, null) };
+        var errorTaskResponse = new TaskResponse(msg, logEntries.AsEnumerable(), msgEx);
+        var payload = System.Text.Json.JsonSerializer.Serialize(errorTaskResponse);
+        return payload;
+    }
     private StringContent BuildChatRequest(ChatRequest request)
     {
         var payload = System.Text.Json.JsonSerializer.Serialize(request.History);
@@ -49,24 +83,30 @@ internal sealed class EndpointTaskService : IChatService
 
     public StringContent BuildTaskRequest(ChatRequest request)
     {
-        var file = request.FileUploads.FirstOrDefault();
-
-        var requestModel = new
+        try
         {
-            task = request.ChatTurnId,
-            requestMessage = "",
-            files = new[]
+            var file = request.FileUploads.FirstOrDefault();
+            var requestModel = new
             {
+                task = request.ChatTurnId,
+                requestMessage = "",
+                files = new[]
+                {
                 new
                 {
                     name = "Label",
                     dataUrl = file.DataUrl
                 }
             }
-        };
-        var payload = System.Text.Json.JsonSerializer.Serialize(requestModel);
-        var content = new StringContent(payload, Encoding.UTF8, "application/json");
-        return content;
+            };
+            var payload = System.Text.Json.JsonSerializer.Serialize(requestModel);
+            var content = new StringContent(payload, Encoding.UTF8, "application/json");
+            return content;
+        }
+        catch
+        {
+            return null;
+        }
     }
 
     private string FormatLogStep(WorkflowLogEntry logEntry)

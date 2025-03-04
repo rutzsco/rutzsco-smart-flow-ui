@@ -40,7 +40,7 @@ public static class ProfileService
             var profileStorageData = System.Text.Json.JsonSerializer.Deserialize<List<ProfileDefinition>>(Encoding.UTF8.GetString(downloadResult.Value.Content));
             if (profileStorageData != null)
             {
-                _loadingMessage = $"{profileStorageData.Count} profiles were loaded from storage file at {DateTime.Now:MMM-dd HH:mm.ss}!";
+                _loadingMessage = $"{profileStorageData.Count} profiles were loaded from storage file on {DateTime.Now:MMMM d} at {DateTime.Now:HH:mm:ss}!";
                 _profileSource = "Storage";
                 Console.WriteLine(_loadingMessage);
                 _profileData = profileStorageData;
@@ -56,7 +56,7 @@ public static class ProfileService
             var profileConfigData = System.Text.Json.JsonSerializer.Deserialize<List<ProfileDefinition>>(Encoding.UTF8.GetString(bytes));
             if (profileConfigData != null)
             {
-                _loadingMessage = $"{profileConfigData.Count} profiles were loaded from Config Key at {DateTime.Now:MMM-dd HH:mm.ss}!";
+                _loadingMessage = $"{profileConfigData.Count} profiles were loaded from configuration key value on {DateTime.Now:MMMM d} at {DateTime.Now:HH:mm:ss}!";
                 _profileSource = "Config";
                 Console.WriteLine(_loadingMessage);
                 _profileData = profileConfigData;
@@ -68,7 +68,7 @@ public static class ProfileService
         var fileName = configuration["ProfileFileName"];
         fileName ??= "profiles";
         var profileFileData = LoadEmbeddedProflies(fileName);
-        _loadingMessage = $"{profileFileData.Count} profiles were loaded from embedded file at {DateTime.Now:MMM-dd HH:mm.ss}!";
+        _loadingMessage = $"{profileFileData.Count} profiles were loaded from embedded file on {DateTime.Now:MMMM d} at {DateTime.Now:HH:mm:ss}!";
         _profileSource = "Embedded";
         Console.WriteLine(_loadingMessage);
         _profileData = profileFileData;

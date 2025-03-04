@@ -51,7 +51,7 @@ internal sealed class ChatService : IChatService
         context["UserMessage"] = userMessage;
 
 
-    
+
         if (request.FileUploads.Any())
         {
             var chatMessageContentItemCollection = new ChatMessageContentItemCollection();
@@ -83,7 +83,7 @@ internal sealed class ChatService : IChatService
         {
             chatHistory.AddUserMessage(userMessage);
         }
-          
+
         var sb = new StringBuilder();
         await foreach (StreamingChatMessageContent chatUpdate in chatGpt.GetStreamingChatMessageContentsAsync(chatHistory, DefaultSettings.AIChatRequestSettings))
         {
