@@ -136,7 +136,7 @@ internal static class WebApplicationExtensions
     {
         // switch to turn on/off base64 encoding
         // There is a corresponding switch in the frontend/Services/ApiClient.cs file to decode it or not
-        var base64EncodeTheResults = true;
+        var base64EncodeTheResults = false;
         // when I send it back with JSON in the payload - nothing gets through... the response body is totally empty
         // when I send it back as a B64 string - it works and goes through and all works fine
         // I've tried it as sync and async - no difference...
@@ -152,13 +152,27 @@ internal static class WebApplicationExtensions
         else
         {
             var profileInfo = ProfileService.GetProfileData();
-            var profileInfoJson = Newtonsoft.Json.JsonConvert.SerializeObject(profileInfo, Formatting.Indented);
+            var profileInfoJson = Newtonsoft.Json.JsonConvert.SerializeObject(profileInfo!, Formatting.Indented);
+            var profileJson = System.Text.Json.JsonSerializer.Serialize(profileInfo, new System.Text.Json.JsonSerializerOptions
+            {
+                WriteIndented = true,
+                IncludeFields = true,
+            });
+            var profileFromJson = System.Text.Json.JsonSerializer.Deserialize<ProfileInfo>(profileJson, new System.Text.Json.JsonSerializerOptions
+            {
+                PropertyNameCaseInsensitive = true,
+                IncludeFields = true,
+            });
             /// tried adding these headers - no change
             //context.Response.Headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0";
             //context.Response.Headers["Pragma"] = "no-cache";
             //context.Response.ContentType = "application/json; charset=utf-8";
             //context.Response.WriteAsJsonAsync(profileInfoJson).Wait();
-            return Results.Ok(profileInfo);
+            return Results.Json(profileInfo, contentType: "application/json; charset=utf-8", statusCode: 200, options: new System.Text.Json.JsonSerializerOptions
+            {
+                WriteIndented = true,
+                IncludeFields = true,
+            });
         }
     }
 

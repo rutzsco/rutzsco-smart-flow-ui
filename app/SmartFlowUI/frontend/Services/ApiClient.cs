@@ -222,24 +222,35 @@ public sealed class ApiClient(HttpClient httpClient)
     {
         // switch to turn on/off base64 encoding
         // There is a corresponding switch in the backend/Extensions/WebApplicationExtensions.cs file to encode it or not
-        var responseIsBase64Encoded = true;
+        var responseIsBase64Encoded = false;
         // no matter how I've tried to send data to the client, sending JSON or objects fails
         // and when it gets here the response.body is null
         // sending B64 encoded data works just fine...???
         var profileData = string.Empty;
         try
         {
-            var responseData = await httpClient.GetStringAsync("api/profiles/info");
             if (responseIsBase64Encoded)
             {
+                var responseData = await httpClient.GetStringAsync("api/profiles/info");
                 var profileDataDecoded = Encoding.UTF8.GetString(System.Convert.FromBase64String(responseData[1..^1]));
                 var profileInfo = Newtonsoft.Json.JsonConvert.DeserializeObject<ProfileInfo>(profileDataDecoded);
                 return (profileInfo, profileDataDecoded);
             }
             else
             {
-                var profileInfo = Newtonsoft.Json.JsonConvert.DeserializeObject<ProfileInfo>(responseData);
-                return (profileInfo, responseData);
+
+                var profileInfo = await httpClient.GetFromJsonAsync<ProfileInfo>("api/profiles/info", options: new JsonSerializerOptions{
+                    PropertyNameCaseInsensitive = true,
+                    IncludeFields = true,
+                });
+                var raw = System.Text.Json.JsonSerializer.Serialize(profileInfo, new JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true,
+                    IncludeFields = true,
+                });
+                Console.WriteLine("GetProfilesInfoAsync: profileInfo is not null" + profileInfo != null);
+                return (profileInfo!, raw);
+
             }
         }
         catch (Exception ex)

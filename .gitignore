@@ -413,3 +413,4 @@ infra/bicep/*.parameters.json
 .vscode/settings.json
 .azure
 app/SmartFlowUI/backend/Services/Profile/blob-storage-example/profiles.json
+appsettings.local.json
