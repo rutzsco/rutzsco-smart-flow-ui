@@ -26,8 +26,6 @@ global using MinimalApi.Services.Profile;
 global using MinimalApi.Services.Search;
 global using MinimalApi.Services.Security;
 
-global using Newtonsoft.Json;
-
 global using Shared;
 global using Shared.Models;
 global using System.Net;

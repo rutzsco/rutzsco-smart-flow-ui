@@ -62,7 +62,6 @@ public sealed class ApiClient(HttpClient httpClient)
                 content.Add(fileContent, file.Name, file.Name);
             }
 
-
             var tokenResponse = await httpClient.GetAsync("api/token/csrf");
             tokenResponse.EnsureSuccessStatusCode();
             var token = await tokenResponse.Content.ReadAsStringAsync();
@@ -218,73 +217,18 @@ public sealed class ApiClient(HttpClient httpClient)
         using var body = new StringContent(json, Encoding.UTF8, "application/json");
         var response = await httpClient.PostAsync(apiRoute, body);
     }
-    public async Task<(ProfileInfo, string)> GetProfilesInfoAsync()
-    {
-        // switch to turn on/off base64 encoding
-        // There is a corresponding switch in the backend/Extensions/WebApplicationExtensions.cs file to encode it or not
-        var responseIsBase64Encoded = false;
-        // no matter how I've tried to send data to the client, sending JSON or objects fails
-        // and when it gets here the response.body is null
-        // sending B64 encoded data works just fine...???
-        var profileData = string.Empty;
-        try
-        {
-            if (responseIsBase64Encoded)
-            {
-                var responseData = await httpClient.GetStringAsync("api/profiles/info");
-                var profileDataDecoded = Encoding.UTF8.GetString(System.Convert.FromBase64String(responseData[1..^1]));
-                var profileInfo = Newtonsoft.Json.JsonConvert.DeserializeObject<ProfileInfo>(profileDataDecoded);
-                return (profileInfo, profileDataDecoded);
-            }
-            else
-            {
-
-                var profileInfo = await httpClient.GetFromJsonAsync<ProfileInfo>("api/profiles/info", options: new JsonSerializerOptions{
-                    PropertyNameCaseInsensitive = true,
-                    IncludeFields = true,
-                });
-                var raw = System.Text.Json.JsonSerializer.Serialize(profileInfo, new JsonSerializerOptions
-                {
-                    PropertyNameCaseInsensitive = true,
-                    IncludeFields = true,
-                });
-                Console.WriteLine("GetProfilesInfoAsync: profileInfo is not null" + profileInfo != null);
-                return (profileInfo!, raw);
-
-            }
-        }
-        catch (Exception ex)
-        {
-            var msg = $"GetProfilesInfoAsync: failed to get data: {ex.Message}";
-            Console.WriteLine(msg);
-            Debug.WriteLine(msg);
-            return (new ProfileInfo($"{profileData.Substring(0, 15)}...", $"Error processing {profileData.Length} bytes of data", msg), msg);
-        }
-    }
-    public async Task<(ProfileInfo, string)> GetProfilesReloadAsync()
-    {
-        var profileData = string.Empty;
-        try
-        {
-            var profileDataPlus = await httpClient.GetStringAsync("api/profiles/reload");
-            var profileDataDecoded = Encoding.UTF8.GetString(System.Convert.FromBase64String(profileDataPlus[1..^1]));
-            var profileInfo = Newtonsoft.Json.JsonConvert.DeserializeObject<ProfileInfo>(profileDataDecoded);
-            return (profileInfo, profileDataDecoded);
-
-            // when I send it this way... nothing gets through
-            //var profileInfo = Newtonsoft.Json.JsonConvert.DeserializeObject<ProfileInfo>(profileData);
-            //return profileInfo;
-
-            // when I send it this way... nothing gets through
-            //var profiledata = await httpClient.GetFromJsonAsync<ProfileInfo>("api/profiles/info");
-            //return profileInfo;
-        }
-        catch (Exception ex)
-        {
-            var msg = $"GetProfilesInfoAsync: failed to get data: {ex.Message}";
-            Console.WriteLine(msg);
-            Debug.WriteLine(msg);
-            return (new ProfileInfo($"{profileData.Substring(0, 15)}...", $"Error processing {profileData.Length} bytes of data", msg), msg);
-        }
-    }
+	public async Task<(ProfileInfo, string)> GetProfilesInfoAsync()
+	{
+		var jsonOptions = new JsonSerializerOptions { PropertyNameCaseInsensitive = true, IncludeFields = true, WriteIndented = true };
+		var profileInfo = await httpClient.GetFromJsonAsync<ProfileInfo>("api/profiles/info", options: jsonOptions);
+		var rawJson = System.Text.Json.JsonSerializer.Serialize(profileInfo, jsonOptions);
+		return (profileInfo!, rawJson);
+	}
+	public async Task<(ProfileInfo, string)> GetProfilesReloadAsync()
+	{
+		var jsonOptions = new JsonSerializerOptions { PropertyNameCaseInsensitive = true, IncludeFields = true, WriteIndented = true };
+		var profileInfo = await httpClient.GetFromJsonAsync<ProfileInfo>("api/profiles/reload", options: jsonOptions);
+		var rawJson = System.Text.Json.JsonSerializer.Serialize(profileInfo, jsonOptions);
+		return (profileInfo!, rawJson);
+	}
 }

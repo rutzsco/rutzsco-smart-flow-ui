@@ -107,7 +107,7 @@ internal static class WebApplicationExtensions
             try
             {
 
-                var searchOptions = new SearchOptions { Size = 0, Facets = { $"{selectionOption.IndexFieldName},count:{100}" },  };
+                var searchOptions = new SearchOptions { Size = 0, Facets = { $"{selectionOption.IndexFieldName},count:{100}" }, };
                 SearchResults<SearchDocument> results = await searchClient.SearchAsync<SearchDocument>("*", searchOptions);
                 if (results.Facets != null && results.Facets.ContainsKey(selectionOption.IndexFieldName))
                 {
@@ -118,10 +118,10 @@ internal static class WebApplicationExtensions
                     selectionOptions.Add(new UserSelectionOption(selectionOption.DisplayName, selectionValues.OrderBy(x => x)));
                 }
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 logger.LogError(ex, $"Error getting user selection options for profile {profileId}");
-                selectionOptions.Add(new UserSelectionOption(selectionOption.DisplayName, new string[] { } ));
+                selectionOptions.Add(new UserSelectionOption(selectionOption.DisplayName, new string[] { }));
             }
         }
 
@@ -134,55 +134,16 @@ internal static class WebApplicationExtensions
 
     private static IResult OnGetProfilesInfo(HttpContext context, ILogger<WebApplication> logger)
     {
-        // switch to turn on/off base64 encoding
-        // There is a corresponding switch in the frontend/Services/ApiClient.cs file to decode it or not
-        var base64EncodeTheResults = false;
-        // when I send it back with JSON in the payload - nothing gets through... the response body is totally empty
-        // when I send it back as a B64 string - it works and goes through and all works fine
-        // I've tried it as sync and async - no difference...
-        // I've tried it as IResult and as a Typed Result - no difference
-        if (base64EncodeTheResults)
-        {
-            var profileInfo = ProfileService.GetProfileData();
-            var profileInfoJson = Newtonsoft.Json.JsonConvert.SerializeObject(profileInfo, Formatting.Indented);
-            var plainTextBytes = System.Text.Encoding.UTF8.GetBytes(profileInfoJson);
-            var b64Text = System.Convert.ToBase64String(plainTextBytes);
-            return Results.Ok(b64Text);
-        }
-        else
-        {
-            var profileInfo = ProfileService.GetProfileData();
-            var profileInfoJson = Newtonsoft.Json.JsonConvert.SerializeObject(profileInfo!, Formatting.Indented);
-            var profileJson = System.Text.Json.JsonSerializer.Serialize(profileInfo, new System.Text.Json.JsonSerializerOptions
-            {
-                WriteIndented = true,
-                IncludeFields = true,
-            });
-            var profileFromJson = System.Text.Json.JsonSerializer.Deserialize<ProfileInfo>(profileJson, new System.Text.Json.JsonSerializerOptions
-            {
-                PropertyNameCaseInsensitive = true,
-                IncludeFields = true,
-            });
-            /// tried adding these headers - no change
-            //context.Response.Headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0";
-            //context.Response.Headers["Pragma"] = "no-cache";
-            //context.Response.ContentType = "application/json; charset=utf-8";
-            //context.Response.WriteAsJsonAsync(profileInfoJson).Wait();
-            return Results.Json(profileInfo, contentType: "application/json; charset=utf-8", statusCode: 200, options: new System.Text.Json.JsonSerializerOptions
-            {
-                WriteIndented = true,
-                IncludeFields = true,
-            });
-        }
+        var jsonOptions = new JsonSerializerOptions { PropertyNameCaseInsensitive = true, IncludeFields = true };
+        var profileInfo = ProfileService.GetProfileData();
+        return Results.Json(profileInfo, contentType: "application/json; charset=utf-8", statusCode: 200, options: jsonOptions);
     }
 
     private static IResult OnGetProfilesReload(HttpContext context, ILogger<WebApplication> logger, IConfiguration configuration)
     {
+        var jsonOptions = new JsonSerializerOptions { PropertyNameCaseInsensitive = true, IncludeFields = true };
         var profileInfo = ProfileService.Reload();
-        var profileInfoJson = Newtonsoft.Json.JsonConvert.SerializeObject(profileInfo, Formatting.Indented);
-        var plainTextBytes = System.Text.Encoding.UTF8.GetBytes(profileInfoJson);
-        var b64Text = System.Convert.ToBase64String(plainTextBytes);
-        return Results.Ok(b64Text);
+        return Results.Json(profileInfo, contentType: "application/json; charset=utf-8", statusCode: 200, options: jsonOptions);
     }
 
     private static async Task<IResult> OnGetSourceFileAsync(HttpContext context, string fileName, BlobServiceClient blobServiceClient, IConfiguration configuration)
@@ -248,7 +209,7 @@ internal static class WebApplicationExtensions
         var selectedProfile = context.Request.Headers["X-PROFILE-METADATA"];
         Dictionary<string, string>? fileMetadata = null;
         if (!string.IsNullOrEmpty(fileMetadataContent))
-            fileMetadata = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string,string>>(fileMetadataContent);
+            fileMetadata = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, string>>(fileMetadataContent);
 
 
         var response = await documentService.CreateDocumentUploadAsync(userInfo, files, selectedProfile, fileMetadata, cancellationToken);
@@ -283,7 +244,7 @@ internal static class WebApplicationExtensions
     {
         var userInfo = context.GetUserInfo();
         var documents = await documentService.GetDocumentUploadsAsync(userInfo, null);
-        return TypedResults.Ok(documents.Select(d => new DocumentSummary(d.Id, d.SourceName, d.ContentType, d.Size, d.Status, d.StatusMessage,d.ProcessingProgress, d.Timestamp, d.Metadata)));
+        return TypedResults.Ok(documents.Select(d => new DocumentSummary(d.Id, d.SourceName, d.ContentType, d.Size, d.Status, d.StatusMessage, d.ProcessingProgress, d.Timestamp, d.Metadata)));
     }
 
     private static async Task<IResult> OnGetCollectionDocumentsAsync(HttpContext context, IDocumentService documentService, string profileId)
@@ -329,7 +290,7 @@ internal static class WebApplicationExtensions
             ArgumentNullException.ThrowIfNull(profile.RAGSettings, "Profile RAGSettings is null");
 
             var selectedDocument = request.SelectedUserCollectionFiles.FirstOrDefault();
-            var documents = await documentService.GetDocumentUploadsAsync(userInfo,null);
+            var documents = await documentService.GetDocumentUploadsAsync(userInfo, null);
             var document = documents.FirstOrDefault(d => d.SourceName == selectedDocument);
 
             ArgumentNullException.ThrowIfNull(document, "Document is null");

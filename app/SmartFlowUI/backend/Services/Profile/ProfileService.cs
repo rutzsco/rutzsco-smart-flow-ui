@@ -37,7 +37,7 @@ public static class ProfileService
             var container = blobServiceClient.GetBlobContainerClient(profileConfigurationBlobStorageContainer);
             var blobClient = container.GetBlobClient("profiles.json");
             var downloadResult = blobClient.DownloadContent();
-            var profileStorageData = JsonConvert.DeserializeObject<List<ProfileDefinition>>(Encoding.UTF8.GetString(downloadResult.Value.Content));
+            var profileStorageData = System.Text.Json.JsonSerializer.Deserialize<List<ProfileDefinition>>(Encoding.UTF8.GetString(downloadResult.Value.Content));
             if (profileStorageData != null)
             {
                 _loadingMessage = $"{profileStorageData.Count} profiles were loaded from storage file at {DateTime.Now:MMM-dd HH:mm.ss}!";
@@ -53,7 +53,7 @@ public static class ProfileService
         {
             _loadingMessage += $"Found Profile Configuration Key, decoding the value... ";
             var bytes = Convert.FromBase64String(profileConfig);
-            var profileConfigData = JsonConvert.DeserializeObject<List<ProfileDefinition>>(Encoding.UTF8.GetString(bytes));
+            var profileConfigData = System.Text.Json.JsonSerializer.Deserialize<List<ProfileDefinition>>(Encoding.UTF8.GetString(bytes));
             if (profileConfigData != null)
             {
                 _loadingMessage = $"{profileConfigData.Count} profiles were loaded from Config Key at {DateTime.Now:MMM-dd HH:mm.ss}!";
@@ -77,12 +77,12 @@ public static class ProfileService
 
 	private static List<ProfileDefinition> LoadEmbeddedProflies(string name)
 	{
-		var resourceName = $"MinimalApi.Services.Profile.{name}.json";
-		var assembly = Assembly.GetExecutingAssembly();
-		using Stream stream = assembly.GetManifestResourceStream(resourceName) ?? throw new ArgumentException($"The resource {resourceName} was not found.");
-		using StreamReader reader = new StreamReader(stream);
-		var jsonText = reader.ReadToEnd();
-		var profiles = JsonConvert.DeserializeObject<List<ProfileDefinition>>(jsonText);
-		return profiles ?? [];
+        var resourceName = $"MinimalApi.Services.Profile.{name}.json";
+        var assembly = Assembly.GetExecutingAssembly();
+        using Stream stream = assembly.GetManifestResourceStream(resourceName) ?? throw new ArgumentException($"The resource {resourceName} was not found.");
+        using StreamReader reader = new(stream);
+        var jsonText = reader.ReadToEnd();
+        var profiles = Newtonsoft.Json.JsonConvert.DeserializeObject<List<ProfileDefinition>>(jsonText);
+        return profiles ?? [];
 	}
 }
