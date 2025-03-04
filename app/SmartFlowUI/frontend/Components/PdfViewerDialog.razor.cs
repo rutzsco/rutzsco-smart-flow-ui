@@ -10,7 +10,7 @@ public sealed partial class PdfViewerDialog
     [Parameter] public required string FileName { get; set; }
     [Parameter] public required string BaseUrl { get; set; }
 
-    [CascadingParameter] public required MudDialogInstance Dialog { get; set; }
+    [CascadingParameter] public required IMudDialogInstance Dialog { get; set; }
 
     protected override async Task OnInitializedAsync()
     {

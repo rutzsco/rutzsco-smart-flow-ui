@@ -1,7 +1,6 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 
 using Microsoft.SemanticKernel.ChatCompletion;
-using MinimalApi.Services.Profile;
 using MinimalApi.Services.Profile.Prompts;
 
 namespace MinimalApi.Services;

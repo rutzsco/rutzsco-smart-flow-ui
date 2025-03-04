@@ -1,10 +1,5 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 
-using System.Net.Http;
-using System.Security.Policy;
-using MinimalApi.Services.Profile;
-using static System.Runtime.InteropServices.JavaScript.JSType;
-
 namespace MinimalApi.Services;
 
 internal sealed class EndpointTaskService : IChatService
