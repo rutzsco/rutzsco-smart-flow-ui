@@ -1,11 +1,5 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 
-using System;
-using System.Data;
-using Blazor.Serialization.Extensions;
-using Microsoft.AspNetCore.Components.WebAssembly.Http;
-using static System.Runtime.InteropServices.JavaScript.JSType;
-
 namespace ClientApp.Pages;
 
 public sealed partial class Chat
@@ -28,7 +22,7 @@ public sealed partial class Chat
     private ProfileSummary? _selectedProfileSummary = null;
     private ProfileSummary? _userUploadProfileSummary = null;
     private UserSelectionModel? _userSelectionModel = null;
-    
+
     private string _lastReferenceQuestion = "";
     private bool _isReceivingResponse = false;
     private bool _supportsFileUpload = false;
@@ -44,6 +38,7 @@ public sealed partial class Chat
     [Inject] public required ApiClient ApiClient { get; set; }
     [Inject] public required IJSRuntime JSRuntime { get; set; }
     [Inject] public required NavigationManager Navigation { get; set; }
+    [Inject] public required ISnackbar Snackbar { get; set; }
 
     [CascadingParameter(Name = nameof(Settings))] public required RequestSettingsOverrides Settings { get; set; }
     [CascadingParameter(Name = nameof(IsReversed))] public required bool IsReversed { get; set; }
@@ -67,6 +62,7 @@ public sealed partial class Chat
 
     protected override async Task OnInitializedAsync()
     {
+        //showInfo("Loading profiles...");
         var user = await ApiClient.GetUserAsync();
         _profiles = user.Profiles.Where(x => x.Approach != ProfileApproach.UserDocumentChat).ToList();
         _userUploadProfileSummary = user.Profiles.FirstOrDefault(x => x.Approach == ProfileApproach.UserDocumentChat);
@@ -77,6 +73,7 @@ public sealed partial class Chat
 
         if (!string.IsNullOrEmpty(ArchivedChatId))
         {
+            showInfo("Loading chat history...");
             await LoadArchivedChatAsync(_cancellationTokenSource.Token, ArchivedChatId);
         }
         EvaluateOptions();
@@ -124,7 +121,7 @@ public sealed partial class Chat
         _userQuestion = promptTemplate;
         return OnAskClickedAsync();
     }
-    
+
 
     private async Task OnRetryQuestionAsync()
     {
@@ -223,7 +220,7 @@ public sealed partial class Chat
             using Stream responseStream = await response.Content.ReadAsStreamAsync();
             var responseBuffer = new StringBuilder();
 
-            await foreach (var chunk in JsonSerializer.DeserializeAsyncEnumerable<ChatChunkResponse>(responseStream, new JsonSerializerOptions { PropertyNameCaseInsensitive = true, DefaultBufferSize = 32 }))
+            await foreach (var chunk in System.Text.Json.JsonSerializer.DeserializeAsyncEnumerable<ChatChunkResponse>(responseStream, new JsonSerializerOptions { PropertyNameCaseInsensitive = true, DefaultBufferSize = 32 }))
             {
                 if (chunk == null)
                 {
@@ -250,9 +247,14 @@ public sealed partial class Chat
                 StateHasChanged();
             }
         }
-        catch (HttpRequestException)
+        catch (HttpRequestException ex)
         {
-            _questionAndAnswerMap[_currentQuestion] = new ApproachResponse(string.Empty, null, null, "Error: Unable to get a response from the server.");
+            // this must be in the wrong spot...  it doesn't hit here if you have the wrong API definition...
+            var msg =
+                ex.StatusCode.Value == System.Net.HttpStatusCode.NotFound ? "Error: API Defined Incorrectly!" :
+                ex.StatusCode.Value == System.Net.HttpStatusCode.TooManyRequests ? "Error: Rate Limit exceeded!" :
+                "Error: Unable to get a response from the server.";
+            _questionAndAnswerMap[_currentQuestion] = new ApproachResponse(string.Empty, null, null, msg);
         }
         catch (JsonException)
         {
@@ -271,7 +273,7 @@ public sealed partial class Chat
         httpResponse.EnsureSuccessStatusCode();
 
         var httpResponseContent = await httpResponse.Content.ReadAsStringAsync();
-        var httpResponseContentJson = JsonSerializer.Deserialize<List<Dictionary<string, object>>>(httpResponseContent);
+        var httpResponseContentJson = System.Text.Json.JsonSerializer.Deserialize<List<Dictionary<string, object>>>(httpResponseContent);
         var httpResponseField = httpResponseContentJson?.FirstOrDefault()?[field]?.ToString();
         return httpResponseField;
     }
@@ -364,5 +366,24 @@ public sealed partial class Chat
             _questionAndAnswerMap[new UserQuestion(chatMessage.Prompt, chatMessage.Timestamp.UtcDateTime)] = ar;
         }
         Navigation.NavigateTo(string.Empty, forceLoad: false);
+    }
+    private void showInfo(string message)
+    {
+        showMessage(message, Severity.Info);
+    }
+    private void showWarning(string message)
+    {
+        showMessage(message, Severity.Warning);
+    }
+    private void showMessage(string message, Severity severity)
+    {
+        Snackbar.Add(
+            message,
+            severity,
+            static options =>
+            {
+                options.ShowCloseIcon = true;
+                options.VisibleStateDuration = 10_000;
+            });
     }
 }

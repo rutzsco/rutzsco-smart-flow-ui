@@ -10,7 +10,7 @@ public sealed partial class FeedbackDialog
     [Parameter] public required string MessageId { get; set; }
     [Parameter] public required string ChatId { get; set; }
 
-    [CascadingParameter] public required MudDialogInstance Dialog { get; set; }
+    [CascadingParameter] public required IMudDialogInstance Dialog { get; set; }
 
     [Inject] public required ApiClient ApiClient { get; set; }
 

@@ -1,19 +1,5 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 
-using System;
-using System.Net.Http;
-using Azure.Core;
-using ClientApp.Pages;
-using Microsoft.AspNetCore.Antiforgery;
-using MinimalApi.Services;
-using MinimalApi.Services.ChatHistory;
-using MinimalApi.Services.Documents;
-using MinimalApi.Services.Profile;
-using MinimalApi.Services.Search;
-using MinimalApi.Services.Security;
-using Shared.Models;
-
-
 namespace MinimalApi.Extensions;
 
 internal static class WebApplicationExtensions
@@ -54,12 +40,24 @@ internal static class WebApplicationExtensions
         // Profile Selections
         api.MapGet("profile/selections", OnGetProfileUserSelectionOptionsAsync);
 
+        api.MapGet("profiles/info", OnGetProfilesInfo);
+        // I've tried multiple ways to map this and they don't change the results...
+        // See the OnGetProfilesInfo for more details on the problem...
+        //api.MapGet("profiles/info", OnGetProfilesInfoAsync);
+        //api.MapGet("profiles/info", (Func<HttpContext, Task<IResult>>)OnGetProfilesInfoAsync);
+        //api.MapGet("profiles/info", async context =>
+        //{
+        //	var profileInfo = await ProfileService.GetProfileDataAsync();
+        //	await context.Response.WriteAsJsonAsync(profileInfo);
+        //});
+        api.MapGet("profiles/reload", OnGetProfilesReload);
+
         api.MapGet("token/csrf", OnGetAntiforgeryTokenAsync);
 
         api.MapGet("status", OnGetStatus);
 
         api.MapGet("tag", OnTagSyncAsync);
-        
+
         api.MapPost("ingestion/trigger", OnPostTriggerIngestionPipelineAsync);
         api.MapGet("headers", OnGetHeadersAsync);
         return app;
@@ -109,7 +107,7 @@ internal static class WebApplicationExtensions
             try
             {
 
-                var searchOptions = new SearchOptions { Size = 0, Facets = { $"{selectionOption.IndexFieldName},count:{100}" },  };
+                var searchOptions = new SearchOptions { Size = 0, Facets = { $"{selectionOption.IndexFieldName},count:{100}" }, };
                 SearchResults<SearchDocument> results = await searchClient.SearchAsync<SearchDocument>("*", searchOptions);
                 if (results.Facets != null && results.Facets.ContainsKey(selectionOption.IndexFieldName))
                 {
@@ -120,10 +118,10 @@ internal static class WebApplicationExtensions
                     selectionOptions.Add(new UserSelectionOption(selectionOption.DisplayName, selectionValues.OrderBy(x => x)));
                 }
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 logger.LogError(ex, $"Error getting user selection options for profile {profileId}");
-                selectionOptions.Add(new UserSelectionOption(selectionOption.DisplayName, new string[] { } ));
+                selectionOptions.Add(new UserSelectionOption(selectionOption.DisplayName, new string[] { }));
             }
         }
 
@@ -132,6 +130,20 @@ internal static class WebApplicationExtensions
         context.Response.Headers["Pragma"] = "no-cache";
         var result = new UserSelectionModel(selectionOptions);
         return Results.Ok(result);
+    }
+
+    private static IResult OnGetProfilesInfo(HttpContext context, ILogger<WebApplication> logger)
+    {
+        var jsonOptions = new JsonSerializerOptions { PropertyNameCaseInsensitive = true, IncludeFields = true };
+        var profileInfo = ProfileService.GetProfileData();
+        return Results.Json(profileInfo, contentType: "application/json; charset=utf-8", statusCode: 200, options: jsonOptions);
+    }
+
+    private static IResult OnGetProfilesReload(HttpContext context, ILogger<WebApplication> logger, IConfiguration configuration)
+    {
+        var jsonOptions = new JsonSerializerOptions { PropertyNameCaseInsensitive = true, IncludeFields = true };
+        var profileInfo = ProfileService.Reload();
+        return Results.Json(profileInfo, contentType: "application/json; charset=utf-8", statusCode: 200, options: jsonOptions);
     }
 
     private static async Task<IResult> OnGetSourceFileAsync(HttpContext context, string fileName, BlobServiceClient blobServiceClient, IConfiguration configuration)
@@ -184,6 +196,7 @@ internal static class WebApplicationExtensions
             return Results.Problem("Internal server error");
         }
     }
+
     private static async Task<IResult> OnPostDocumentAsync(HttpContext context, [FromForm] IFormFileCollection files,
         [FromServices] AzureBlobStorageService service,
         [FromServices] IDocumentService documentService,
@@ -196,7 +209,7 @@ internal static class WebApplicationExtensions
         var selectedProfile = context.Request.Headers["X-PROFILE-METADATA"];
         Dictionary<string, string>? fileMetadata = null;
         if (!string.IsNullOrEmpty(fileMetadataContent))
-            fileMetadata = JsonSerializer.Deserialize<Dictionary<string,string>>(fileMetadataContent);
+            fileMetadata = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, string>>(fileMetadataContent);
 
 
         var response = await documentService.CreateDocumentUploadAsync(userInfo, files, selectedProfile, fileMetadata, cancellationToken);
@@ -226,11 +239,12 @@ internal static class WebApplicationExtensions
         context.Response.Headers["Pragma"] = "no-cache";
         return TypedResults.Ok(userInfo);
     }
+
     private static async Task<IResult> OnGetUserDocumentsAsync(HttpContext context, IDocumentService documentService)
     {
         var userInfo = context.GetUserInfo();
         var documents = await documentService.GetDocumentUploadsAsync(userInfo, null);
-        return TypedResults.Ok(documents.Select(d => new DocumentSummary(d.Id, d.SourceName, d.ContentType, d.Size, d.Status, d.StatusMessage,d.ProcessingProgress, d.Timestamp, d.Metadata)));
+        return TypedResults.Ok(documents.Select(d => new DocumentSummary(d.Id, d.SourceName, d.ContentType, d.Size, d.Status, d.StatusMessage, d.ProcessingProgress, d.Timestamp, d.Metadata)));
     }
 
     private static async Task<IResult> OnGetCollectionDocumentsAsync(HttpContext context, IDocumentService documentService, string profileId)
@@ -276,7 +290,7 @@ internal static class WebApplicationExtensions
             ArgumentNullException.ThrowIfNull(profile.RAGSettings, "Profile RAGSettings is null");
 
             var selectedDocument = request.SelectedUserCollectionFiles.FirstOrDefault();
-            var documents = await documentService.GetDocumentUploadsAsync(userInfo,null);
+            var documents = await documentService.GetDocumentUploadsAsync(userInfo, null);
             var document = documents.FirstOrDefault(d => d.SourceName == selectedDocument);
 
             ArgumentNullException.ThrowIfNull(document, "Document is null");
@@ -293,6 +307,7 @@ internal static class WebApplicationExtensions
             }
         }
     }
+
     private static IChatService ResolveChatService(ChatRequest request, ChatService chatService, ReadRetrieveReadStreamingChatService ragChatService, EndpointChatService endpointChatService, EndpointChatServiceV2 endpointChatServiceV2, EndpointTaskService endpointTaskService)
     {
         if (request.OptionFlags.IsChatProfile())
@@ -332,7 +347,6 @@ internal static class WebApplicationExtensions
         return sessions;
     }
 
-
     private static async Task<IEnumerable<ChatHistoryResponse>> OnGetChatHistorySessionAsync(string chatId, HttpContext context, IChatHistoryService chatHistoryService)
     {
         var userInfo = context.GetUserInfo();
@@ -353,7 +367,6 @@ internal static class WebApplicationExtensions
         await ingestionService.TriggerIngestionPipelineAsync(ingestionRequest);
         return Results.Ok();
     }
-
 
     private static async Task<IResult> OnTagSyncAsync([FromServices] BlobServiceClient blobServiceClient)
     {
@@ -389,12 +402,11 @@ internal static class WebApplicationExtensions
                     existingMetadata.Add("Type", tag.Value);
                     await blobClient.SetMetadataAsync(existingMetadata);
                 }
-                
-            }                
+
+            }
 
             Console.WriteLine(); // Blank line for readability
         }
         return Results.Ok("OK");
     }
-
 }

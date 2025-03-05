@@ -7,7 +7,7 @@ namespace ClientApp.Components;
 public sealed partial class DisclaimerDialog
 {
 
-    [CascadingParameter] public required MudDialogInstance Dialog { get; set; }
+    [CascadingParameter] public required IMudDialogInstance Dialog { get; set; }
 
     private string _disclaimerMessage;
 

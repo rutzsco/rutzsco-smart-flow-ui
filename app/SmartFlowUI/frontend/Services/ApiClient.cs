@@ -1,8 +1,5 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 
-using System.Net.Http.Headers;
-using MinimalApi.Services.Documents;
-
 namespace ClientApp.Services;
 
 public sealed class ApiClient(HttpClient httpClient)
@@ -11,11 +8,10 @@ public sealed class ApiClient(HttpClient httpClient)
     public async Task IngestionTriggerAsync(string sourceContainer, string indexName)
     {
         var request = new IngestionRequest(sourceContainer, $"{sourceContainer}-extract", indexName);
-        var json = JsonSerializer.Serialize(request, SerializerOptions.Default);
+        var json = System.Text.Json.JsonSerializer.Serialize(request, SerializerOptions.Default);
         using var body = new StringContent(json, Encoding.UTF8, "application/json");
         var response = await httpClient.PostAsync("api/ingestion/trigger", body);
     }
-
     public async Task<UserInformation> GetUserAsync()
     {
         if (Cache.UserInformation != null)
@@ -29,7 +25,6 @@ public sealed class ApiClient(HttpClient httpClient)
 
         return user;
     }
-
     public async Task<List<DocumentSummary>> GetUserDocumentsAsync()
     {
         var response = await httpClient.GetAsync("api/user/documents");
@@ -67,7 +62,6 @@ public sealed class ApiClient(HttpClient httpClient)
                 content.Add(fileContent, file.Name, file.Name);
             }
 
-
             var tokenResponse = await httpClient.GetAsync("api/token/csrf");
             tokenResponse.EnsureSuccessStatusCode();
             var token = await tokenResponse.Content.ReadAsStringAsync();
@@ -80,7 +74,7 @@ public sealed class ApiClient(HttpClient httpClient)
             if (metadata != null)
             {
                 // Serialize the dictionary to a JSON string
-                string serializedHeaders = JsonSerializer.Serialize(metadata);
+                string serializedHeaders = System.Text.Json.JsonSerializer.Serialize(metadata);
 
                 // Add the serialized dictionary as a single header value
                 content.Headers.Add("X-FILE-METADATA", serializedHeaders);
@@ -102,12 +96,11 @@ public sealed class ApiClient(HttpClient httpClient)
             return UploadDocumentsResponse.FromError(ex.ToString());
         }
     }
-
     public async Task<DocumentIndexResponse> NativeIndexDocumentsAsync(UploadDocumentsResponse documentList) // DocumentIndexRequest indexRequest)
     {
         try
         {
-            var json = JsonSerializer.Serialize(documentList, SerializerOptions.Default);
+            var json = System.Text.Json.JsonSerializer.Serialize(documentList, SerializerOptions.Default);
             using var body = new StringContent(json, Encoding.UTF8, "application/json");
             var response = await httpClient.PostAsync("api/native/index/documents", body);
             response.EnsureSuccessStatusCode();
@@ -119,7 +112,6 @@ public sealed class ApiClient(HttpClient httpClient)
             return DocumentIndexResponse.FromError(ex.ToString());
         }
     }
-
     public async IAsyncEnumerable<DocumentSummary> GetDocumentsAsync([EnumeratorCancellation] CancellationToken cancellationToken)
     {
         var response = await httpClient.GetAsync("api/user/documents", cancellationToken);
@@ -129,7 +121,7 @@ public sealed class ApiClient(HttpClient httpClient)
 
             using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
 
-            await foreach (var document in JsonSerializer.DeserializeAsyncEnumerable<DocumentSummary>(stream, options, cancellationToken))
+            await foreach (var document in System.Text.Json.JsonSerializer.DeserializeAsyncEnumerable<DocumentSummary>(stream, options, cancellationToken))
             {
                 if (document is null)
                 {
@@ -140,7 +132,6 @@ public sealed class ApiClient(HttpClient httpClient)
             }
         }
     }
-
     public async IAsyncEnumerable<ChatHistoryResponse> GetFeedbackAsync([EnumeratorCancellation] CancellationToken cancellationToken)
     {
         var response = await httpClient.GetAsync("api/feedback", cancellationToken);
@@ -151,7 +142,7 @@ public sealed class ApiClient(HttpClient httpClient)
 
             using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
 
-            await foreach (var document in JsonSerializer.DeserializeAsyncEnumerable<ChatHistoryResponse>(stream, options, cancellationToken))
+            await foreach (var document in System.Text.Json.JsonSerializer.DeserializeAsyncEnumerable<ChatHistoryResponse>(stream, options, cancellationToken))
             {
                 if (document is null)
                 {
@@ -169,7 +160,7 @@ public sealed class ApiClient(HttpClient httpClient)
         {
             var options = SerializerOptions.Default;
             using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
-            await foreach (var document in JsonSerializer.DeserializeAsyncEnumerable<ChatHistoryResponse>(stream, options, cancellationToken))
+            await foreach (var document in System.Text.Json.JsonSerializer.DeserializeAsyncEnumerable<ChatHistoryResponse>(stream, options, cancellationToken))
             {
                 if (document is null)
                 {
@@ -180,7 +171,6 @@ public sealed class ApiClient(HttpClient httpClient)
             }
         }
     }
-
     public async IAsyncEnumerable<ChatSessionModel> GetHistoryV2Async([EnumeratorCancellation] CancellationToken cancellationToken)
     {
         var response = await httpClient.GetAsync("api/chat/history-v2", cancellationToken);
@@ -188,7 +178,7 @@ public sealed class ApiClient(HttpClient httpClient)
         {
             var options = SerializerOptions.Default;
             using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
-            await foreach (var session in JsonSerializer.DeserializeAsyncEnumerable<ChatSessionModel>(stream, options, cancellationToken))
+            await foreach (var session in System.Text.Json.JsonSerializer.DeserializeAsyncEnumerable<ChatSessionModel>(stream, options, cancellationToken))
             {
                 if (session is null)
                 {
@@ -199,7 +189,6 @@ public sealed class ApiClient(HttpClient httpClient)
             }
         }
     }
-
     public async IAsyncEnumerable<ChatHistoryResponse> GetChatHistorySessionAsync([EnumeratorCancellation] CancellationToken cancellationToken, string chatId)
     {
         var response = await httpClient.GetAsync($"api/chat/history/{chatId}", cancellationToken);
@@ -207,7 +196,7 @@ public sealed class ApiClient(HttpClient httpClient)
         {
             var options = SerializerOptions.Default;
             using var stream = await response.Content.ReadAsStreamAsync(cancellationToken);
-            await foreach (var document in JsonSerializer.DeserializeAsyncEnumerable<ChatHistoryResponse>(stream, options, cancellationToken))
+            await foreach (var document in System.Text.Json.JsonSerializer.DeserializeAsyncEnumerable<ChatHistoryResponse>(stream, options, cancellationToken))
             {
                 if (document is null)
                 {
@@ -218,16 +207,28 @@ public sealed class ApiClient(HttpClient httpClient)
             }
         }
     }
-
     public async Task ChatRatingAsync(ChatRatingRequest request)
     {
         await PostBasicAsync(request, "api/chat/rating");
     }
-
     private async Task PostBasicAsync<TRequest>(TRequest request, string apiRoute) where TRequest : ApproachRequest
     {
-        var json = JsonSerializer.Serialize(request,SerializerOptions.Default);
+        var json = System.Text.Json.JsonSerializer.Serialize(request, SerializerOptions.Default);
         using var body = new StringContent(json, Encoding.UTF8, "application/json");
         var response = await httpClient.PostAsync(apiRoute, body);
     }
+	public async Task<(ProfileInfo, string)> GetProfilesInfoAsync()
+	{
+		var jsonOptions = new JsonSerializerOptions { PropertyNameCaseInsensitive = true, IncludeFields = true, WriteIndented = true };
+		var profileInfo = await httpClient.GetFromJsonAsync<ProfileInfo>("api/profiles/info", options: jsonOptions);
+		var rawJson = System.Text.Json.JsonSerializer.Serialize(profileInfo, jsonOptions);
+		return (profileInfo!, rawJson);
+	}
+	public async Task<(ProfileInfo, string)> GetProfilesReloadAsync()
+	{
+		var jsonOptions = new JsonSerializerOptions { PropertyNameCaseInsensitive = true, IncludeFields = true, WriteIndented = true };
+		var profileInfo = await httpClient.GetFromJsonAsync<ProfileInfo>("api/profiles/reload", options: jsonOptions);
+		var rawJson = System.Text.Json.JsonSerializer.Serialize(profileInfo, jsonOptions);
+		return (profileInfo!, rawJson);
+	}
 }
