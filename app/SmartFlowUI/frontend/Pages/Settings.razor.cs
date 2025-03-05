@@ -30,7 +30,6 @@ public sealed partial class Settings : IDisposable
         await base.OnAfterRenderAsync(firstRender);
         if (firstRender)
         {
-            //showInfo("First render...  fetching profiles...");
             await GetProfileInfoAsync();
             StateHasChanged();
         }
@@ -38,9 +37,7 @@ public sealed partial class Settings : IDisposable
 
     private async Task GetProfileInfoAsync()
     {
-        _ = await Task.FromResult(true);
         _isLoadingProfiles = true;
-        //showInfo("Calling getProfileInfo...");
         var profileData = string.Empty;
         try
         {
@@ -54,10 +51,8 @@ public sealed partial class Settings : IDisposable
         _isLoadingProfiles = false;
         StateHasChanged();
     }
-
     private async Task ReloadProfileInfoAsync()
     {
-        _ = await Task.FromResult(true);
         _isLoadingProfiles = true;
         showInfo("Calling reloadProfileInfo...");
         var profileData = string.Empty;
@@ -94,6 +89,7 @@ public sealed partial class Settings : IDisposable
             _b64DecodedText = Encoding.UTF8.GetString(bytes);
         }
     }
+
     private void showInfo(string message)
     {
         showMessage(message, Severity.Info);
@@ -113,5 +109,6 @@ public sealed partial class Settings : IDisposable
                 options.VisibleStateDuration = 10_000;
             });
     }
+
     public void Dispose() => _cancellationTokenSource.Cancel();
 }
