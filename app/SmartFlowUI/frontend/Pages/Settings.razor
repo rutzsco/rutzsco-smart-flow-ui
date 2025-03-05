@@ -1,8 +1,8 @@
-﻿@page "/admin"
+﻿@page "/settings"
 
-<PageTitle>Admin</PageTitle>
+<PageTitle>Settings</PageTitle>
 
-<MudText Typo="Typo.h2" Style="margin-bottom: 30px;">Admin Settings</MudText>
+<MudText Typo="Typo.h2" Style="margin-bottom: 30px;">Settings</MudText>
 
 <MudGrid Justify="Justify.Center">
 	<MudTabs Elevation="2" Rounded="true" ApplyEffectsToContainer="true" PanelClass="pa-6" Style="width: 97%;">
@@ -79,6 +79,35 @@
 			</MudForm>
 		</MudTabPanel>
 
+		<MudTabPanel Text="Converter" Icon="@Icons.Material.Filled.EnhancedEncryption">
+			<MudCard Class="ma-1">
+				<MudCardHeader>
+					<CardHeaderContent>
+						<MudText Typo="Typo.h4">Base 64 Conversion Utility</MudText>
+					</CardHeaderContent>
+				</MudCardHeader>
+				<MudCardContent>
+					<MudText Style="margin-bottom: 20px;">This page provides a handy utility to encode or decode Base64 encoded strings, which are sometimes used in the profile configurations.</MudText>
+					<MudForm @ref="@_encodeForm">
+						<MudTextField @bind-Value="_b64DecodedText" T="string" FullWidth AutoGrow Variant="Variant.Outlined" Style="font-family: Consolas;" Label="Decoded Text"></MudTextField>
+						<MudButton StartIcon="@Icons.Material.Filled.EnhancedEncryption" Variant="Variant.Filled" Color="Color.Primary" Size="Size.Medium"
+								   Style="width: 300px; margin-bottom: 30px;"
+								   OnClick="@(_ => Base64EncodeText())">
+							Encode this Text
+						</MudButton>
+
+						<MudTextField @bind-Value="_b64EncodedText" T="string" FullWidth AutoGrow Variant="Variant.Filled" Style="font-family: Consolas;" Label="Encoded Text"></MudTextField>
+						<MudButton StartIcon="@Icons.Material.Filled.NoEncryption" Variant="Variant.Filled" Color="Color.Primary" Size="Size.Medium"
+								   Style="width: 300px; margin-bottom: 30px;"
+								   OnClick="@(_ => Base64DecodeText())">
+							Decode this Text
+						</MudButton>
+
+					</MudForm>
+				</MudCardContent>
+			</MudCard>
+		</MudTabPanel>
+
 		<MudTabPanel Text="Help" Icon="@Icons.Material.Filled.Help">
 			<MudCard Class="ma-1">
 				<MudCardHeader>
@@ -97,12 +126,19 @@
 					<br /><br />
 					<b>1. Storage Account Profile</b>
 					<br /><br />
-					If you create an environment key named <b><i>ProfileConfigurationBlobStorageContainer</i></b>, the application will look in that container for a file named <i>profiles.json</i>.  This file will be used to override the profiles defined in the <i>profiles.json</i> file in the application.
+					If you create an environment key named <b><i>ProfileConfigurationBlobStorageContainer</i></b>, the application will look in that container name for a file named <i>profiles.json</i>.  This file will be used to override the profiles defined in the <i>profiles.json</i> file in the application.
+					Upload your <i>profiles.json</i> into that container and then use the <b><i>Profile Config tab</i></b> on this page to reload the profile data and see the changes reflected in this app.
 					<br /><br />
 					<b>2. Environment Key Profile</b>
 					<br /><br />
-					If you create an environment key named <b><i>ProfileConfiguration</i></b>, the application will use that data to override the profiles defined in the <i>profiles.json</i> file in the application. It is expected that the key value would contain a JSON string that is contains exactly what would be in the <i>profiles.json</i> file. However, that data must be Base 64 encoded as it will be Base64 decoded when it is read.
-					Create your <i>profiles.json</i> file locally, then use a tool like <a href="https://base64.guru/converter/encode/text" target="_blank">https://base64.guru/converter/encode/text</a> (or some other tool you have access to) to encode the file.  Create an environment key named <i>ProfileConfiguration</i> and paste the Base 64 encoded string into the value.
+					If you create an environment key named <b><i>ProfileConfiguration</i></b> in your Azure app deployment, the application will use that data to override the profiles defined in the <i>profiles.json</i> file in the application.
+					It is expected that the key value would contain a JSON string that contains exactly what would be in the <i>profiles.json</i> file.
+					However, the application expects that this data will be Base64 encoded as it will be decoded when it is read so you must encode that data.
+					<ul>
+						<li>Create a <i>profiles.json</i> file in an editor, then use the <b><i>Converter tab</i></b> on this page to encode that data into a Base64 encoded string.</li>
+						<li>Create an environment key named <b><i>ProfileConfiguration</i></b> in your Azure app deployment and paste the Base64 encoded string into the value of that key.</li>
+						<li>Use the <b><i>Profile Config tab</i></b> on this page to reload the profile data and see the changes reflected in this app.</li>
+					</ul>
 				</MudCardContent>
 			</MudCard>
 		</MudTabPanel>

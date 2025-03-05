@@ -2,13 +2,16 @@
 
 namespace ClientApp.Pages;
 
-public sealed partial class Admin : IDisposable
+public sealed partial class Settings : IDisposable
 {
     private MudForm _form = null!;
+    private MudForm _encodeForm = null!;
 
     private bool _isLoadingProfiles = false;
     private ProfileInfo _profileInfo = new ProfileInfo();
     private string _profileRawData = string.Empty;
+    private string _b64DecodedText = string.Empty;
+    private string _b64EncodedText = string.Empty;
 
     // Store a cancelation token that will be used to cancel if the user disposes of this component.
     private readonly CancellationTokenSource _cancellationTokenSource = new();
@@ -73,6 +76,23 @@ public sealed partial class Admin : IDisposable
     private async Task RefreshAsync()
     {
         await GetProfileInfoAsync();
+    }
+
+    private void Base64EncodeText()
+    {
+        if (!string.IsNullOrEmpty(_b64DecodedText))
+        {
+            var bytes = Encoding.UTF8.GetBytes(_b64DecodedText);
+            _b64EncodedText = Convert.ToBase64String(bytes);
+        }
+    }
+    private void Base64DecodeText()
+    {
+        if (!string.IsNullOrEmpty(_b64EncodedText))
+        {
+            var bytes = Convert.FromBase64String(_b64EncodedText);
+            _b64DecodedText = Encoding.UTF8.GetString(bytes);
+        }
     }
     private void showInfo(string message)
     {
