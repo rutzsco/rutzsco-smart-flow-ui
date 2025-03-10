@@ -23,3 +23,6 @@
 **/values.dev.yaml
 LICENSE
 README.md
+
+# ignore all appsettings files
+**/appsettings.*.json
