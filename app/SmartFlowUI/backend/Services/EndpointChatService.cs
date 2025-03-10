@@ -22,23 +22,22 @@ internal sealed class EndpointChatService : IChatService
     {
         var payload = System.Text.Json.JsonSerializer.Serialize(request.History);
 
-        var apiRequest = new HttpRequestMessage(HttpMethod.Post, _configuration[profile.AssistantEndpointSettings.APIEndpointSetting]);
+        using var apiRequest = new HttpRequestMessage(HttpMethod.Post, _configuration[profile.AssistantEndpointSettings.APIEndpointSetting]);
         apiRequest.Headers.Add("X-Api-Key", _configuration[profile.AssistantEndpointSettings.APIEndpointKeySetting]);
         apiRequest.Content = new StringContent(payload, Encoding.UTF8, "application/json");
 
         var response = await _httpClient.SendAsync(apiRequest, HttpCompletionOption.ResponseHeadersRead);
         response.EnsureSuccessStatusCode();
-        using (var responseStream = await response.Content.ReadAsStreamAsync())
-        {
-            await foreach (ChatChunkResponse chunk in System.Text.Json.JsonSerializer.DeserializeAsyncEnumerable<ChatChunkResponse>(responseStream, new JsonSerializerOptions { PropertyNameCaseInsensitive = true, DefaultBufferSize = 32 }))
-            {
-                if (chunk == null)
-                    continue;
+        using var responseStream = await response.Content.ReadAsStreamAsync(cancellationToken);
 
-                yield return chunk;
-                await Task.Yield();
-            }
+        await foreach (ChatChunkResponse chunk in System.Text.Json.JsonSerializer.DeserializeAsyncEnumerable<ChatChunkResponse>(responseStream, new JsonSerializerOptions { PropertyNameCaseInsensitive = true, DefaultBufferSize = 32 }))
+        {
+            if (chunk == null)
+                continue;
+
+            yield return chunk;
+            await Task.Yield();
         }
- 
+
     }
 }

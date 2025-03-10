@@ -91,35 +91,36 @@ public static class SKExtensions
         return value.ToLower() == "true";
     }
 
-    public static bool IsChatProfile(this Dictionary<string, string> options)
+    public static bool IsChatProfile(this Dictionary<string, string> options, List<ProfileDefinition> profiles)
     {
-        var profile = options.GetChatProfile();
-        var selected = ProfileDefinition.All.FirstOrDefault(x => x.Name == profile.Name);
+        var profile = options.GetChatProfile(profiles);
+        var selected = profiles.FirstOrDefault(x => x.Name == profile.Name);
         return selected?.Approach.ToUpper() == "CHAT";
     }
-    public static bool IsEndpointAssistantProfile(this Dictionary<string, string> options)
+
+    public static bool IsEndpointAssistantProfile(this Dictionary<string, string> options, List<ProfileDefinition> profiles)
     {
-        var profile = options.GetChatProfile();
-        var selected = ProfileDefinition.All.FirstOrDefault(x => x.Name == profile.Name);
+        var profile = options.GetChatProfile(profiles);
+        var selected = profiles.FirstOrDefault(x => x.Name == profile.Name);
         return selected?.Approach.ToUpper() == "ENDPOINTASSISTANT";
     }
-    public static bool IsEndpointAssistantV2Profile(this Dictionary<string, string> options)
+    public static bool IsEndpointAssistantV2Profile(this Dictionary<string, string> options, List<ProfileDefinition> profiles)
     {
-        var profile = options.GetChatProfile();
-        var selected = ProfileDefinition.All.FirstOrDefault(x => x.Name == profile.Name);
+        var profile = options.GetChatProfile(profiles);
+        var selected = profiles.FirstOrDefault(x => x.Name == profile.Name);
         return selected?.Approach.ToUpper() == "ENDPOINTASSISTANTV2";
     }
-    public static bool IsEndpointAssistantTaskProfile(this Dictionary<string, string> options)
+    public static bool IsEndpointAssistantTaskProfile(this Dictionary<string, string> options, List<ProfileDefinition> profiles)
     {
-        var profile = options.GetChatProfile();
-        var selected = ProfileDefinition.All.FirstOrDefault(x => x.Name == profile.Name);
+        var profile = options.GetChatProfile(profiles);
+        var selected = profiles.FirstOrDefault(x => x.Name == profile.Name);
         return selected?.Approach.ToUpper() == "ENDPOINTASSISTANTTASK";
     }
-    public static ProfileDefinition GetChatProfile(this Dictionary<string, string> options)
+    public static ProfileDefinition GetChatProfile(this Dictionary<string, string> options, List<ProfileDefinition> profiles)
     {
-        var defaultProfile = ProfileDefinition.All.First();
+        var defaultProfile = profiles.First();
         var value = options.GetValueOrDefault("PROFILE", defaultProfile.Name);
-        return ProfileDefinition.All.FirstOrDefault(x => x.Name == value) ?? defaultProfile;
+        return profiles.FirstOrDefault(x => x.Name == value) ?? defaultProfile;
     }
 
     public static string? GetImageContent(this Dictionary<string, string> options)

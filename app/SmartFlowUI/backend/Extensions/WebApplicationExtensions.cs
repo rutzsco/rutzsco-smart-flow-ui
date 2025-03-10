@@ -1,5 +1,7 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 
+using System.Threading.Tasks;
+
 namespace MinimalApi.Extensions;
 
 internal static class WebApplicationExtensions
@@ -27,7 +29,7 @@ internal static class WebApplicationExtensions
         api.MapGet("documents/{fileName}", OnGetSourceFileAsync);
 
         // Get enable logout
-        api.MapGet("user", OnGetUser);
+        api.MapGet("user", (Delegate)OnGetUserAsync);
 
         // User document
         api.MapPost("documents", OnPostDocumentAsync);
@@ -40,7 +42,7 @@ internal static class WebApplicationExtensions
         // Profile Selections
         api.MapGet("profile/selections", OnGetProfileUserSelectionOptionsAsync);
 
-        api.MapGet("profiles/info", OnGetProfilesInfo);
+        api.MapGet("profiles/info", OnGetProfilesInfoAsync);
         // I've tried multiple ways to map this and they don't change the results...
         // See the OnGetProfilesInfo for more details on the problem...
         //api.MapGet("profiles/info", OnGetProfilesInfoAsync);
@@ -50,9 +52,9 @@ internal static class WebApplicationExtensions
         //	var profileInfo = await ProfileService.GetProfileDataAsync();
         //	await context.Response.WriteAsJsonAsync(profileInfo);
         //});
-        api.MapGet("profiles/reload", OnGetProfilesReload);
+        api.MapGet("profiles/reload", OnGetProfilesReloadAsync);
 
-        api.MapGet("token/csrf", OnGetAntiforgeryTokenAsync);
+        api.MapGet("token/csrf", OnGetAntiforgeryToken);
 
         api.MapGet("status", OnGetStatus);
 
@@ -85,7 +87,7 @@ internal static class WebApplicationExtensions
         return Results.Ok("OK");
     }
 
-    private static async Task<IResult> OnGetAntiforgeryTokenAsync(HttpContext context, IAntiforgery antiforgery)
+    private static IResult OnGetAntiforgeryToken(HttpContext context, IAntiforgery antiforgery)
     {
         var tokens = antiforgery.GetAndStoreTokens(context);
         return TypedResults.Ok(tokens?.RequestToken ?? string.Empty);
@@ -93,7 +95,9 @@ internal static class WebApplicationExtensions
 
     private static async Task<IResult> OnGetProfileUserSelectionOptionsAsync(HttpContext context, string profileId, SearchClientFactory searchClientFactory, ILogger<WebApplication> logger)
     {
-        var profileDefinition = ProfileDefinition.All.FirstOrDefault(x => x.Id == profileId);
+        var profileService = context.RequestServices.GetRequiredService<ProfileService>();
+        var profileInfo = await profileService.GetProfileDataAsync();
+        var profileDefinition = profileInfo.Profiles.FirstOrDefault(x => x.Id == profileId);
         if (profileDefinition == null)
             return Results.BadRequest("Profile does not found.");
 
@@ -132,17 +136,19 @@ internal static class WebApplicationExtensions
         return Results.Ok(result);
     }
 
-    private static IResult OnGetProfilesInfo(HttpContext context, ILogger<WebApplication> logger)
+    private static async Task<IResult> OnGetProfilesInfoAsync(HttpContext context, ILogger<WebApplication> logger)
     {
         var jsonOptions = new JsonSerializerOptions { PropertyNameCaseInsensitive = true, IncludeFields = true };
-        var profileInfo = ProfileService.GetProfileData();
+        var profileService = context.RequestServices.GetRequiredService<ProfileService>();
+        var profileInfo = await profileService.GetProfileDataAsync();
         return Results.Json(profileInfo, contentType: "application/json; charset=utf-8", statusCode: 200, options: jsonOptions);
     }
 
-    private static IResult OnGetProfilesReload(HttpContext context, ILogger<WebApplication> logger, IConfiguration configuration)
+    private static async Task<IResult> OnGetProfilesReloadAsync(HttpContext context, ILogger<WebApplication> logger, IConfiguration configuration)
     {
         var jsonOptions = new JsonSerializerOptions { PropertyNameCaseInsensitive = true, IncludeFields = true };
-        var profileInfo = ProfileService.Reload();
+        var profileService = context.RequestServices.GetRequiredService<ProfileService>();
+        var profileInfo = await profileService.ReloadAsync();
         return Results.Json(profileInfo, contentType: "application/json; charset=utf-8", statusCode: 200, options: jsonOptions);
     }
 
@@ -161,8 +167,10 @@ internal static class WebApplicationExtensions
 
 
                 // Get user information
-                var userInfo = context.GetUserInfo();
-                var profile = ProfileDefinition.All.FirstOrDefault(x => x.Id == profileName);
+                var profileService = context.RequestServices.GetRequiredService<ProfileService>();
+                var profileInfo = await profileService.GetProfileDataAsync();
+                var userInfo = await context.GetUserInfoAsync(profileInfo);
+                var profile = profileInfo.Profiles.FirstOrDefault(x => x.Id == profileName);
                 if (profile == null || !userInfo.HasAccess(profile))
                 {
                     throw new UnauthorizedAccessException("User does not have access to this profile");
@@ -204,7 +212,7 @@ internal static class WebApplicationExtensions
         CancellationToken cancellationToken)
     {
         logger.LogInformation("Upload documents");
-        var userInfo = context.GetUserInfo();
+        var userInfo = await context.GetUserInfoAsync();
         var fileMetadataContent = context.Request.Headers["X-FILE-METADATA"];
         var selectedProfile = context.Request.Headers["X-PROFILE-METADATA"];
         Dictionary<string, string>? fileMetadata = null;
@@ -232,31 +240,31 @@ internal static class WebApplicationExtensions
     //    return TypedResults.Ok(response);
     //}
 
-    private static IResult OnGetUser(HttpContext context)
+    private static async Task<IResult> OnGetUserAsync(HttpContext context)
     {
-        var userInfo = context.GetUserInfo();
+        var userInfo = await context.GetUserInfoAsync();
         context.Response.Headers["Cache-Control"] = "no-store, no-cache, must-revalidate, max-age=0";
         context.Response.Headers["Pragma"] = "no-cache";
-        return TypedResults.Ok(userInfo);
+        return Results.Ok(userInfo);
     }
 
     private static async Task<IResult> OnGetUserDocumentsAsync(HttpContext context, IDocumentService documentService)
     {
-        var userInfo = context.GetUserInfo();
+        var userInfo = await context.GetUserInfoAsync();
         var documents = await documentService.GetDocumentUploadsAsync(userInfo, null);
         return TypedResults.Ok(documents.Select(d => new DocumentSummary(d.Id, d.SourceName, d.ContentType, d.Size, d.Status, d.StatusMessage, d.ProcessingProgress, d.Timestamp, d.Metadata)));
     }
 
     private static async Task<IResult> OnGetCollectionDocumentsAsync(HttpContext context, IDocumentService documentService, string profileId)
     {
-        var userInfo = context.GetUserInfo();
+        var userInfo = await context.GetUserInfoAsync();
         var documents = await documentService.GetDocumentUploadsAsync(userInfo, profileId);
         return TypedResults.Ok(documents.Select(d => new DocumentSummary(d.Id, d.SourceName, d.ContentType, d.Size, d.Status, d.StatusMessage, d.ProcessingProgress, d.Timestamp, d.Metadata)));
     }
 
     private static async Task<IResult> OnPostChatRatingAsync(HttpContext context, ChatRatingRequest request, IChatHistoryService chatHistoryService, CancellationToken cancellationToken)
     {
-        var userInfo = context.GetUserInfo();
+        var userInfo = await context.GetUserInfoAsync();
         await chatHistoryService.RecordRatingAsync(userInfo, request);
         return Results.Ok();
     }
@@ -278,8 +286,11 @@ internal static class WebApplicationExtensions
 
     private static async IAsyncEnumerable<ChatChunkResponse> OnPostChatStreamingAsync(HttpContext context, ChatRequest request, ChatService chatService, ReadRetrieveReadStreamingChatService ragChatService, IChatHistoryService chatHistoryService, EndpointChatService endpointChatService, EndpointChatServiceV2 endpointChatServiceV2, EndpointTaskService endpointTaskService, IDocumentService documentService, [EnumeratorCancellation] CancellationToken cancellationToken)
     {
-        var userInfo = context.GetUserInfo();
-        var profile = request.OptionFlags.GetChatProfile();
+        var profileService = context.RequestServices.GetRequiredService<ProfileService>();
+        var profileInfo = await profileService.GetProfileDataAsync();
+        var userInfo = await context.GetUserInfoAsync(profileInfo);
+
+        var profile = request.OptionFlags.GetChatProfile(profileInfo.Profiles);
         if (!userInfo.HasAccess(profile))
         {
             throw new UnauthorizedAccessException("User does not have access to this profile");
@@ -297,7 +308,7 @@ internal static class WebApplicationExtensions
             profile.RAGSettings.DocumentRetrievalIndexName = document.RetrivalIndexName;
         }
 
-        var chat = ResolveChatService(request, chatService, ragChatService, endpointChatService, endpointChatServiceV2, endpointTaskService);
+        var chat = await ResolveChatServiceAsync(request, chatService, ragChatService, endpointChatService, endpointChatServiceV2, endpointTaskService, profileService);
         await foreach (var chunk in chat.ReplyAsync(userInfo, profile, request).WithCancellation(cancellationToken))
         {
             yield return chunk;
@@ -308,18 +319,27 @@ internal static class WebApplicationExtensions
         }
     }
 
-    private static IChatService ResolveChatService(ChatRequest request, ChatService chatService, ReadRetrieveReadStreamingChatService ragChatService, EndpointChatService endpointChatService, EndpointChatServiceV2 endpointChatServiceV2, EndpointTaskService endpointTaskService)
+    private static async Task<IChatService> ResolveChatServiceAsync(
+        ChatRequest request,
+        ChatService chatService,
+        ReadRetrieveReadStreamingChatService ragChatService,
+        EndpointChatService endpointChatService,
+        EndpointChatServiceV2 endpointChatServiceV2,
+        EndpointTaskService endpointTaskService,
+        ProfileService profileService)
     {
-        if (request.OptionFlags.IsChatProfile())
+        var profileInfo = await profileService.GetProfileDataAsync();
+
+        if (request.OptionFlags.IsChatProfile(profileInfo.Profiles))
             return chatService;
 
-        if (request.OptionFlags.IsEndpointAssistantProfile())
+        if (request.OptionFlags.IsEndpointAssistantProfile(profileInfo.Profiles))
             return endpointChatService;
 
-        if (request.OptionFlags.IsEndpointAssistantV2Profile())
+        if (request.OptionFlags.IsEndpointAssistantV2Profile(profileInfo.Profiles))
             return endpointChatServiceV2;
 
-        if (request.OptionFlags.IsEndpointAssistantTaskProfile())
+        if (request.OptionFlags.IsEndpointAssistantTaskProfile(profileInfo.Profiles))
             return endpointTaskService;
 
         return ragChatService;
@@ -327,16 +347,21 @@ internal static class WebApplicationExtensions
 
     private static async Task<IEnumerable<ChatHistoryResponse>> OnGetHistoryAsync(HttpContext context, IChatHistoryService chatHistoryService)
     {
-        var userInfo = context.GetUserInfo();
+        var profileService = context.RequestServices.GetRequiredService<ProfileService>();
+        var profileInfo = await profileService.GetProfileDataAsync();
+
+        var userInfo = await context.GetUserInfoAsync(profileInfo);
         var response = await chatHistoryService.GetMostRecentChatItemsAsync(userInfo);
-        return response.AsFeedbackResponse();
+        return response.AsFeedbackResponse(profileInfo);
     }
 
     private static async Task<IEnumerable<ChatSessionModel>> OnGetHistoryV2Async(HttpContext context, IChatHistoryService chatHistoryService)
     {
-        var userInfo = context.GetUserInfo();
+        var profileService = context.RequestServices.GetRequiredService<ProfileService>();
+        var profileInfo = await profileService.GetProfileDataAsync();
+        var userInfo = await context.GetUserInfoAsync(profileInfo);
         var response = await chatHistoryService.GetMostRecentChatItemsAsync(userInfo);
-        var apiResponseModel = response.AsFeedbackResponse();
+        var apiResponseModel = response.AsFeedbackResponse(profileInfo);
 
         var first = apiResponseModel.First();
         List<ChatSessionModel> sessions = apiResponseModel
@@ -349,17 +374,21 @@ internal static class WebApplicationExtensions
 
     private static async Task<IEnumerable<ChatHistoryResponse>> OnGetChatHistorySessionAsync(string chatId, HttpContext context, IChatHistoryService chatHistoryService)
     {
-        var userInfo = context.GetUserInfo();
+        var profileService = context.RequestServices.GetRequiredService<ProfileService>();
+        var profileInfo = await profileService.GetProfileDataAsync();
+        var userInfo = await context.GetUserInfoAsync(profileInfo);
         var response = await chatHistoryService.GetChatHistoryMessagesAsync(userInfo, chatId);
-        var apiResponseModel = response.AsFeedbackResponse();
+        var apiResponseModel = response.AsFeedbackResponse(profileInfo);
         return apiResponseModel;
     }
 
     private static async Task<IEnumerable<ChatHistoryResponse>> OnGetFeedbackAsync(HttpContext context, IChatHistoryService chatHistoryService)
     {
-        var userInfo = context.GetUserInfo();
+        var profileService = context.RequestServices.GetRequiredService<ProfileService>();
+        var profileInfo = await profileService.GetProfileDataAsync();
+        var userInfo = await context.GetUserInfoAsync(profileInfo);
         var response = await chatHistoryService.GetMostRecentRatingsItemsAsync(userInfo);
-        return response.AsFeedbackResponse();
+        return response.AsFeedbackResponse(profileInfo);
     }
 
     private static async Task<IResult> OnPostTriggerIngestionPipelineAsync([FromServices] IngestionService ingestionService, IngestionRequest ingestionRequest)

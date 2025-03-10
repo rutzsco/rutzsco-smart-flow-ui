@@ -1,10 +1,7 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 
-using Microsoft.AspNetCore.Antiforgery;
 using Microsoft.AspNetCore.DataProtection;
 using MinimalApi;
-using MinimalApi.Services.HealthChecks;
-using MinimalApi.Services.Profile;
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Configuration.AddJsonFile("appsettings.local.json", optional: true, reloadOnChange: true);
@@ -17,22 +14,35 @@ builder.Services.AddRazorPages();
 builder.Services.AddCrossOriginResourceSharing();
 builder.Services.AddHttpContextAccessor();
 
+// bind configuration
+builder.Services.AddOptions<AppConfiguration>()
+.Bind(builder.Configuration)
+.PostConfigure(options =>
+{
+    // set default values for options
+    options.ApplicationInsightsConnectionString = builder.Configuration["APPLICATIONINSIGHTS_CONNECTION_STRING"];
+    options.AzureServicePrincipalClientID = builder.Configuration["AZURE_SP_CLIENT_ID"];
+    options.AzureServicePrincipalClientSecret = builder.Configuration["AZURE_SP_CLIENT_SECRET"];
+    options.AzureTenantID = builder.Configuration["AZURE_TENANT_ID"];
+    options.AzureAuthorityHost = builder.Configuration["AZURE_AUTHORITY_HOST"];
+    options.AzureServicePrincipalOpenAIAudience = builder.Configuration["AZURE_SP_OPENAI_AUDIENCE"];
+})
+.ValidateDataAnnotations()
+.ValidateOnStart();
+
+var appConfiguration = new AppConfiguration();
+builder.Configuration.Bind(appConfiguration);
+
 // Add Azure services to the container.
-var isMIBasedAuthentication = builder.Configuration[AppConfigurationSetting.UseManagedIdentityResourceAccess];
-if (!string.IsNullOrEmpty(isMIBasedAuthentication) && isMIBasedAuthentication.ToLower() == "true")
-    builder.Services.AddAzureWithMICredentialsServices(builder.Configuration);
+if (appConfiguration.UseManagedIdentityResourceAccess)
+    builder.Services.AddAzureWithMICredentialsServices(appConfiguration);
 else
-    builder.Services.AddAzureServices(builder.Configuration);
+    builder.Services.AddAzureServices(appConfiguration);
 
 builder.Services.AddAntiforgery(options => { options.HeaderName = "X-CSRF-TOKEN-HEADER"; options.FormFieldName = "X-CSRF-TOKEN-FORM"; });
 
-var serviceProvider = builder.Services.BuildServiceProvider();
-var blobServiceClient = serviceProvider.GetRequiredService<BlobServiceClient>();
-
-AppConfiguration.Load(builder.Configuration);
-ProfileDefinition.All = ProfileService.Load(builder.Configuration, blobServiceClient);
-
-static string? GetEnvVar(string key) => Environment.GetEnvironmentVariable(key);
+builder.Services.AddSingleton<AppConfiguration>();
+builder.Services.AddSingleton<ProfileService>();
 
 if (builder.Environment.IsDevelopment())
 {
@@ -40,27 +50,24 @@ if (builder.Environment.IsDevelopment())
 }
 else
 {
-    //static string? GetEnvVar(string key) => Environment.GetEnvironmentVariable(key);
-
     // set application telemetry
-    if (GetEnvVar(AppConfigurationSetting.ApplicationInsightsConnectionString) is string appInsightsConnectionString && !string.IsNullOrEmpty(appInsightsConnectionString))
+    if (!string.IsNullOrEmpty(appConfiguration.ApplicationInsightsConnectionString))
     {
         builder.Services.AddApplicationInsightsTelemetry((option) =>
         {
-            option.ConnectionString = appInsightsConnectionString;
+            option.ConnectionString = appConfiguration.ApplicationInsightsConnectionString;
         });
     }
 
-    if (AppConfiguration.EnableDataProtectionBlobKeyStorage)
+    if (appConfiguration.EnableDataProtectionBlobKeyStorage)
     {
-        var container = blobServiceClient.GetBlobContainerClient(AppConfiguration.DataProtectionKeyContainer);
-        if (!await container.ExistsAsync())
-        {
-            await container.CreateAsync();
-            Console.WriteLine("Container created.");
-        }
-        var blobClient = container.GetBlobClient("keys.xml");
-        builder.Services.AddDataProtection().PersistKeysToAzureBlobStorage(blobClient);
+        var containerName = appConfiguration.DataProtectionKeyContainer;
+        var storageAccunt = appConfiguration.AzureStorageAccountEndpoint;
+        var fileName = "keys.xml";
+
+        builder.Services.AddDataProtection().PersistKeysToAzureBlobStorage(storageAccunt, containerName, fileName)
+            .SetApplicationName("SmartFlowUI")
+            .SetDefaultKeyLifetime(TimeSpan.FromDays(90));
     }
 }
 
