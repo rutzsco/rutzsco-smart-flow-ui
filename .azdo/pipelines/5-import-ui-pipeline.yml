@@ -46,7 +46,7 @@ parameters:
   - name: configFileToDeploy
     displayName: Config File to Deploy
     type: string
-    default: 'profileConfig\profiles.json'
+    default: 'profileConfig\profilesDefault.json'
   - name: profileContainer
     displayName: Storage Container for Profiles
     type: string
@@ -143,16 +143,6 @@ jobs:
       script: |
         $containerRegistryUrl="$($sourceAcrName)"
           echo "##vso[task.setvariable variable=containerRegistryUrl]$containerRegistryUrl"
-
-  - task: PowerShell@2
-    name: createConfigVariables
-    displayName: Create Config Variables
-    condition: ${{ parameters.deployStorageConfig }}
-    inputs:
-      targetType: 'inline'
-      script: |
-        $profileContainer="profile"
-          echo "##vso[task.setvariable variable=profileContainer]$profileContainer"
 
   - task: PowerShell@2
     displayName: Display Variables
@@ -277,12 +267,13 @@ jobs:
           --name 'profile' \
           --account-name '$(storageAccountName)' \
           --auth-mode login
-        echo "az storage blob copy start --source-uri '$(Build.SourcesDirectory)\$(configFileToDeploy)' --account-name $(storageAccountName) --destination-container '$(profileContainer)' --destination-blob 'profiles.json' --auth-mode login"
-        az storage blob copy start \
-          --source-uri '$(Build.SourcesDirectory)\$(configFileToDeploy)' \
+        echo "az storage blob upload --account-name $(storageEndpoint) --file '$(Build.SourcesDirectory)\$(configFileToDeploy)' --container-name '$(profileContainer)' --name 'profiles.json' --overwrite --auth-mode login"
+        az storage blob upload \
           --account-name $(storageEndpoint) \
-          --destination-container '$(profileContainer)' \
-          --destination-blob 'profiles.json' \
+          --file '$(Build.SourcesDirectory)\$(configFileToDeploy)' \
+          --container-name '$(profileContainer)' \
+          --name 'profiles.json' \
+          --overwrite \
           --auth-mode login
 # ----------------------------------------------------------------------------------------------------
 # /END FILE COPY 
