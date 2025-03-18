@@ -1,7 +1,8 @@
 # ----------------------------------------------------------------------------------------------------
 # Pipeline to import container image from remote ACR and push to container app
 # ----------------------------------------------------------------------------------------------------
-# NOTE: This pipeline expects to find the following variables set in the variable group as they are unique secrets::
+# NOTE: This pipeline expects to find the following variables set in the variable group 
+#   (or in the vars/var-dev.yml file) as they are unique secrets:
 #   - managedIdentityClientId, appInsightsInstrumentationKey, appInsightsApplicationId, caInstanceLocation
 # ----------------------------------------------------------------------------------------------------
 # Security: Role assignments needed for the storage account upload: Contributor, Reader, Storage Blob Data Contributor
@@ -30,31 +31,26 @@ parameters:
     displayName: Import into Local ACR? (not public)
     type: boolean
     default: false
+  - name: deployStorageConfig
+    displayName: Deploy Storage Config File?
+    type: boolean
+    default: true
   - name: deployFromAcr
     displayName: Deploy from Local ACR? (not public)
     type: boolean
-    default: false
+    default: true
   - name: deployPublicImage
     displayName: Deploy from Public Image? (not local)
     type: boolean
     default: false
-  - name: useStorageConfig
-    displayName: Update Storage Config?
-    type: boolean
-    default: true
   - name: configFileToDeploy
-    displayName: Config File to Use
+    displayName: Config File to Deploy
     type: string
-    default: 'profileConfig\profilesDefault.json'
-  - name: blobCopyMethod
-    displayName: Blob Copy Method
+    default: 'profileConfig\profiles.json'
+  - name: profileContainer
+    displayName: Storage Container for Profiles
     type: string
-    values:
-      - PS
-      - TASK
-      - AZ
-      - ALL
-    default: ALL
+    default: 'profile'
 
 # ----------------------------------------------------------------------------------------------------
 variables:
@@ -72,10 +68,11 @@ variables:
   - name: targetUIImageWithTag
     value: 'smart-flow-ui/smartflowui:LATEST'
   - name: profileContainer
-    value: 'null'
+    value: ${{ parameters.profileContainer }}
   - name: configFileToDeploy
     value: ${{ parameters.configFileToDeploy }}
 
+# ----------------------------------------------------------------------------------------------------
 jobs:
 - job: ImportJob
   displayName: Deploy ${{ parameters.runEnvironment }} objects
@@ -150,7 +147,7 @@ jobs:
   - task: PowerShell@2
     name: createConfigVariables
     displayName: Create Config Variables
-    condition: ${{ parameters.useStorageConfig }}
+    condition: ${{ parameters.deployStorageConfig }}
     inputs:
       targetType: 'inline'
       script: |
@@ -224,57 +221,63 @@ jobs:
 # ----------------------------------------------------------------------------------------------------
 # FILE COPY ROUTINES
 # ----------------------------------------------------------------------------------------------------
-    # Set-AzStorageBlobContent @myFileBlob
-    #   This request is not authorized to perform this operation. HTTP Status Code: 403 - HTTP 
-    #   Error Message: This request is not authorized to perform this operation. ErrorCode: AuthorizationFailure 
-  - task: AzurePowerShell@5
-    displayName: Copy Profile to Blob Storage via PS
-    condition: ${{ and(parameters.useStorageConfig, or(eq(parameters.blobCopyMethod, 'PS'), eq(parameters.blobCopyMethod, 'ALL'))) }}
-    continueOnError: true
-    inputs:
-      AzureSubscription: $(serviceConnectionName)
-      ScriptType: InlineScript
-      azurePowerShellVersion: LatestVersion
-      pwsh: true
-      Inline: |
-       $context = New-AzStorageContext -StorageAccountName '$(storageAccountName)' -UseConnectedAccount
-       $myFileBlob= @{
-         File             = '$(Build.SourcesDirectory)\$(configFileToDeploy)'
-         Container        = '$(profileContainer)'
-         Blob             = 'profiles.json'
-         Context          = $context
-         StandardBlobTier = 'Hot'
-       }
-       Set-AzStorageBlobContent @myFileBlob
-
-  # I've tried many interations of this, but can't seem to resolve this error... 
-  #   [error] Storage account: [name] not found. The selected service connection 'Service Principal' supports storage accounts of Azure Resource Manager type only.
-  - task: AzureFileCopy@6
-    name: AzureFileCopy
-    displayName: Copy Profile to Blob Storage via Task
-    condition: ${{ and(parameters.useStorageConfig, or(eq(parameters.blobCopyMethod, 'TASK'), eq(parameters.blobCopyMethod, 'ALL'))) }}
-    continueOnError: true
-    inputs:
-      AzureSubscription: $(serviceConnectionName)
-      SourcePath: '$(Build.SourcesDirectory)\$(configFileToDeploy)'
-      storage: $(storageEndpoint)
-      Destination: AzureBlob
-      ContainerName: $(profileContainer)
-      BlobPrefix: ''
-
-  # ERROR: <urllib3.connection.HTTPSConnection object at 0x000001A311FD8950>: 
-  # Failed to establish a new connection: [Errno 11001] getaddrinfo failed
-  # ##[error]Script failed with exit code: 1
+#  # Set-AzStorageBlobContent @myFileBlob
+#  #   This request is not authorized to perform this operation. HTTP Status Code: 403 - HTTP 
+#  #   Error Message: This request is not authorized to perform this operation. ErrorCode: AuthorizationFailure 
+#  - task: AzurePowerShell@5
+#    displayName: Copy Profile to Blob Storage via PS
+#    condition: ${{ and(parameters.useStorageConfig, or(eq(parameters.blobCopyMethod, 'PS'), eq(parameters.blobCopyMethod, 'ALL'))) }}
+#    continueOnError: true
+#    inputs:
+#      AzureSubscription: $(serviceConnectionName)
+#      ScriptType: InlineScript
+#      azurePowerShellVersion: LatestVersion
+#      pwsh: true
+#      Inline: |
+#       $context = New-AzStorageContext -StorageAccountName '$(storageAccountName)' -UseConnectedAccount
+#       $myFileBlob= @{
+#         File             = '$(Build.SourcesDirectory)\$(configFileToDeploy)'
+#         Container        = '$(profileContainer)'
+#         Blob             = 'profiles.json'
+#         Context          = $context
+#         StandardBlobTier = 'Hot'
+#       }
+#       Set-AzStorageBlobContent @myFileBlob
+#
+#  # I've tried many interations of this, but can't seem to resolve this error... 
+#  #   [error] Storage account: [name] not found. The selected service connection 'Service Principal' supports storage accounts of Azure Resource Manager type only.
+#  - task: AzureFileCopy@6
+#    name: AzureFileCopy
+#    displayName: Copy Profile to Blob Storage via Task
+#    condition: ${{ and(parameters.useStorageConfig, or(eq(parameters.blobCopyMethod, 'TASK'), eq(parameters.blobCopyMethod, 'ALL'))) }}
+#    continueOnError: true
+#    inputs:
+#      AzureSubscription: $(serviceConnectionName)
+#      SourcePath: '$(Build.SourcesDirectory)\$(configFileToDeploy)'
+#      storage: $(storageEndpoint)
+#      Destination: AzureBlob
+#      ContainerName: $(profileContainer)
+#      BlobPrefix: ''
+#
+#  # ERROR: <urllib3.connection.HTTPSConnection object at 0x000001A311FD8950>: 
+#  # Failed to establish a new connection: [Errno 11001] getaddrinfo failed
+#  # ##[error]Script failed with exit code: 1
   - task: AzureCLI@2
     displayName: Copy Profile to Blob Storage via AZ CLI
-    condition: ${{ and(parameters.useStorageConfig, or(eq(parameters.blobCopyMethod, 'AZ'), eq(parameters.blobCopyMethod, 'ALL'))) }}
+    condition: ${{ parameters.deployStorageConfig }}
+    #condition: ${{ and(parameters.useStorageConfig, or(eq(parameters.blobCopyMethod, 'AZ'), eq(parameters.blobCopyMethod, 'ALL'))) }}
     continueOnError: true
     inputs:
       AzureSubscription: $(serviceConnectionName)
       scriptType: bash
       scriptLocation: inlineScript
       inlineScript: |
-        echo "az storage blob copy start --source-uri '$(Build.SourcesDirectory)\$(configFileToDeploy)' --account-name $(storageEndpoint) --destination-container '$(profileContainer)' --destination-blob 'profiles.json' --auth-mode login"
+        echo "az storage container create --name profile --account-name $(storageAccountName) --auth-mode login"
+        az storage container create \
+          --name 'profile' \
+          --account-name '$(storageAccountName)' \
+          --auth-mode login
+        echo "az storage blob copy start --source-uri '$(Build.SourcesDirectory)\$(configFileToDeploy)' --account-name $(storageAccountName) --destination-container '$(profileContainer)' --destination-blob 'profiles.json' --auth-mode login"
         az storage blob copy start \
           --source-uri '$(Build.SourcesDirectory)\$(configFileToDeploy)' \
           --account-name $(storageEndpoint) \
@@ -287,7 +290,7 @@ jobs:
 
   - task: AzureCLI@2
     displayName: Update UI CA Image
-    condition: ${{ parameters.deployFromAcr }}
+    condition: ${{ or(parameters.deployFromAcr, parameters.deployPublicImage) }}
     continueOnError: true
     inputs:
       AzureSubscription: $(serviceConnectionName)
