@@ -5,17 +5,17 @@ namespace MinimalApi.Services.ChatHistory;
 public class DocumentServiceAzureNative : IDocumentService
 {
     private readonly CosmosClient _cosmosClient;
+    private readonly ProfileService _profileService;
     private readonly Container _cosmosContainer;
     private readonly AzureBlobStorageService _blobStorageService;
     private readonly HttpClient _httpClient;
-    private readonly IConfiguration _configuration;
     private readonly SearchClientFactory _searchClientFactory;
 
-    public DocumentServiceAzureNative(CosmosClient cosmosClient, AzureBlobStorageService blobStorageService, HttpClient httpClient, IConfiguration configuration, SearchClientFactory searchClientFactory)
+    public DocumentServiceAzureNative(CosmosClient cosmosClient, AzureBlobStorageService blobStorageService, HttpClient httpClient,SearchClientFactory searchClientFactory, ProfileService profileService)
     {
         _cosmosClient = cosmosClient;
+        _profileService = profileService;
         _blobStorageService = blobStorageService;
-        _configuration = configuration;
         _searchClientFactory = searchClientFactory;
 
         // Create database if it doesn't exist
@@ -51,7 +51,14 @@ public class DocumentServiceAzureNative : IDocumentService
 
     public async Task<UploadDocumentsResponse> CreateDocumentUploadAsync(UserInformation userInfo, IFormFileCollection files, string selectedProfile, Dictionary<string, string>? fileMetadata, CancellationToken cancellationToken)
     {
-        var selectedProfileDefinition = ProfileDefinition.All.FirstOrDefault(p => p.Id == selectedProfile);
+        var profileInfo = await _profileService.GetProfileDataAsync();
+        var selectedProfileDefinition = profileInfo.Profiles.First(p => p.Id == selectedProfile);
+
+        if (selectedProfileDefinition.RAGSettings == null)
+        {
+            throw new ArgumentException($"Profile {selectedProfile} not found or RAGSettings not set.");
+        }
+
         var indexName = selectedProfileDefinition.RAGSettings.DocumentRetrievalIndexName;
         var metadata = string.Join(",", fileMetadata.Select(kvp => $"{kvp.Key}={kvp.Value}"));
         var response = await _blobStorageService.UploadFilesV2Async(userInfo, files, selectedProfile, fileMetadata, cancellationToken);

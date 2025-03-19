@@ -7,6 +7,7 @@
     <LangVersion>preview</LangVersion>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
     <UserSecretsId>48daa172-8fe4-4b81-94b2-0d5a3a5ad30e</UserSecretsId>
+    <NullabilityInfoContextSupport>true</NullabilityInfoContextSupport>
   </PropertyGroup>
 
   <ItemGroup>

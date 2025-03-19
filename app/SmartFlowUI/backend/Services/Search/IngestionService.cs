@@ -7,18 +7,18 @@ public class IngestionService
 {
     private readonly AzureBlobStorageService _blobStorageService;
     private readonly HttpClient _httpClient;
-    private readonly IConfiguration _configuration;
+    private readonly AppConfiguration _configuration;
 
-    public IngestionService(AzureBlobStorageService blobStorageService, HttpClient httpClient, IConfiguration configuration)
+    public IngestionService(AzureBlobStorageService blobStorageService, HttpClient httpClient, AppConfiguration configuration)
     {
         _blobStorageService = blobStorageService;
 
-        if (configuration[AppConfigurationSetting.IngestionPipelineAPI] != null)
+        if (configuration.IngestionPipelineAPI != null)
         {
             _httpClient = httpClient;
 
-            _httpClient.BaseAddress = new Uri(configuration[AppConfigurationSetting.IngestionPipelineAPI]);
-            _httpClient.DefaultRequestHeaders.Add("x-functions-key", configuration[AppConfigurationSetting.IngestionPipelineAPIKey]);
+            _httpClient.BaseAddress = new Uri(configuration.IngestionPipelineAPI);
+            _httpClient.DefaultRequestHeaders.Add("x-functions-key", configuration.IngestionPipelineAPIKey);
             _httpClient.DefaultRequestHeaders.Add("Accept", "application/json");
             _configuration = configuration;
         }
@@ -81,10 +81,10 @@ public class IngestionService
         var json = System.Text.Json.JsonSerializer.Serialize(request, SerializerOptions.Default);
         using var body = new StringContent(json, Encoding.UTF8, "application/json");
 
-        var httpRequest = new HttpRequestMessage
+        using var httpRequest = new HttpRequestMessage
         {
             Method = HttpMethod.Get,
-            RequestUri = new Uri($"{_configuration[AppConfigurationSetting.IngestionPipelineAPI]}/api/get_active_index"),
+            RequestUri = new Uri($"{_configuration.IngestionPipelineAPI}/api/get_active_index"),
             Content = body
         };
 

@@ -4,7 +4,6 @@ namespace Shared.Models;
 
 public class ProfileDefinition
 {
-    public static List<ProfileDefinition> All;
     public ProfileDefinition()
     {
         Name = "Undefined";
@@ -13,7 +12,15 @@ public class ProfileDefinition
     {
         Name = name;
     }
-    public ProfileDefinition(string name, string id, string approach, string securityModel, List<string> securityModelGroupMembership, List<string> sampleQuestions, RAGSettingsSummary? ragSettingsSummary, AssistantEndpointSettingsSummary? assistantEndpointSettingsSummary)
+    public ProfileDefinition(
+        string name,
+        string id,
+        string approach,
+        string securityModel,
+        List<string> securityModelGroupMembership,
+        List<string> sampleQuestions,
+        RAGSettingsSummary? ragSettingsSummary,
+        AssistantEndpointSettingsSummary? assistantEndpointSettingsSummary)
     {
         Name = name;
         Id = id;

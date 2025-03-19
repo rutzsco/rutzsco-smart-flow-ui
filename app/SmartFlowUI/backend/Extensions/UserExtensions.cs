@@ -1,6 +1,7 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 
 using System.Linq;
+using System.Threading.Tasks;
 using MinimalApi.Services.Profile;
 using MinimalApi.Services.Security;
 
@@ -8,7 +9,7 @@ namespace MinimalApi.Extensions;
 
 internal static class UserExtensions
 {
-    public static UserInformation GetUserInfo(this HttpContext context)
+    public static async Task<UserInformation> GetUserInfoAsync(this HttpContext context, ProfileInfo? profileInfo = null)
     {
         var id = context.Request.Headers["X-MS-CLIENT-PRINCIPAL-ID"];
         var name = context.Request.Headers["X-MS-CLIENT-PRINCIPAL-NAME"];
@@ -26,7 +27,13 @@ internal static class UserExtensions
 
         var enableLogout = !string.IsNullOrEmpty(id);
 
-        var profiles = ProfileDefinition.All.GetAuthorizedProfiles(userGroups).Select(x => new ProfileSummary(x.Id, x.Name, string.Empty, (ProfileApproach)Enum.Parse(typeof(ProfileApproach), x.Approach, true), x.SampleQuestions, x.UserPromptTemplates, SupportsUserSelections(x), SupportsFileUpload(x)));
+        if (profileInfo == null)
+        {
+            var profileService = context.RequestServices.GetRequiredService<ProfileService>();
+            profileInfo = await profileService.GetProfileDataAsync();
+        }
+
+        var profiles = profileInfo.Profiles.GetAuthorizedProfiles(userGroups).Select(x => new ProfileSummary(x.Id, x.Name, string.Empty, (ProfileApproach)Enum.Parse(typeof(ProfileApproach), x.Approach, true), x.SampleQuestions, x.UserPromptTemplates, SupportsUserSelections(x), SupportsFileUpload(x)));
         var user = new UserInformation(enableLogout, name, id, session, profiles, userGroups);
 
         return user;

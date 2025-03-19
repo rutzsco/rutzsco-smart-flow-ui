@@ -1,79 +1,86 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 
+using System.Text.Json.Serialization;
+
 namespace MinimalApi;
 
-public static class AppConfiguration
+public class AppConfiguration
 {
-    public static int SearchIndexDocumentCount { get; private set; }
+    public string DataProtectionKeyContainer { get; private set; } = "dataprotectionkeys";
 
-    public static string AzureStorageAccountConnectionString { get; private set; }
+    public bool EnableDataProtectionBlobKeyStorage { get; private set; }
 
-    public static string DataProtectionKeyContainer { get; private set; }
+    public string UserDocumentUploadBlobStorageContentContainer { get; private set; } = "content";
+    public string UserDocumentUploadBlobStorageExtractContainer { get; private set; } = "content-extract";
 
-    public static bool EnableDataProtectionBlobKeyStorage { get; private set; }
+    public int Port { get; private set; } = 8080;
 
-    public static string UserDocumentUploadBlobStorageContentContainer { get; private set; }
-    public static string UserDocumentUploadBlobStorageExtractContainer { get; private set; }
+    public int SearchIndexDocumentCount { get; init; } = 15;
 
-    public static int Port { get; private set; }
+    public bool UseManagedIdentityResourceAccess { get; init; }
+    public string UserAssignedManagedIdentityClientId { get; init; }
 
-    public static void Load(IConfiguration configuration)
-    {
-        SearchIndexDocumentCount = configuration.GetValue<int>("SearchIndexDocumentCount", 15);
-
-        AzureStorageAccountConnectionString = configuration.GetValue<string>("AzureStorageAccountConnectionString");
-        DataProtectionKeyContainer = configuration.GetValue<string>("SearchIndexSourceFieldName", "dataprotectionkeys");
-        EnableDataProtectionBlobKeyStorage = configuration.GetValue<bool>("EnableDataProtectionBlobKeyStorage", true);
-
-        UserDocumentUploadBlobStorageContentContainer = configuration.GetValue<string>("UserDocumentUploadBlobStorageContentContainer", "content");
-
-        UserDocumentUploadBlobStorageExtractContainer = configuration.GetValue<string>("UserDocumentUploadBlobStorageExtractContainer", "content-extract");
-        Port = configuration.GetValue<int>("PORT", 8080);
-    }
-}
-
-public static class AppConfigurationSetting
-{
-    public static string UseManagedIdentityResourceAccess { get; } = "UseManagedIdentityResourceAccess";
-    public static string UserAssignedManagedIdentityClientId { get; } = "UserAssignedManagedIdentityClientId";
 
     // CosmosDB
-    public static string CosmosDbEndpoint { get; } = "CosmosDbEndpoint";
-    public static string CosmosDBConnectionString { get; } = "CosmosDBConnectionString";
+    public string? CosmosDbEndpoint { get; init; }
+
+    public string? CosmosDBConnectionString { get; init; }
+
 
     // Azure Search
-    public static string AzureSearchServiceEndpoint { get; } = "AzureSearchServiceEndpoint";
-    public static string AzureSearchServiceKey { get; } = "AzureSearchServiceKey";
-    public static string AzureSearchServiceIndexName { get; } = "AzureSearchIndexName";
+    public string? AzureSearchServiceEndpoint { get; init; }
+
+    public string? AzureSearchServiceKey { get; init; }
+
+    public string? AzureSearchServiceIndexName { get; init; }
+
 
     // Azure Storage
-    public static string AzureStorageAccountEndpoint { get; } = "AzureStorageAccountEndpoint";
-    public static string AzureStorageAccountConnectionString { get; } = "AzureStorageAccountConnectionString";
-    public static string AzureStorageUserUploadContainer { get; } = "AzureStorageUserUploadContainer";
-    public static string AzureStorageContainer { get; } = "AzureStorageContainer";
+    public string AzureStorageAccountEndpoint { get; init; }
+    public string AzureStorageAccountConnectionString { get; init; }
 
-    public static string DocumentUploadStrategy { get; } = "DocumentUploadStrategy";
+    public string AzureStorageUserUploadContainer { get; init; }
+
+    public string AzureStorageContainer { get; init; }
+
+
+    public string DocumentUploadStrategy { get; init; } = "AzureNative";
 
 
     // Ingestion Pipeline
-    public static string IngestionPipelineAPI { get; } = "IngestionPipelineAPI";
-    public static string IngestionPipelineAPIKey { get; } = "IngestionPipelineAPIKey";
+    public string? IngestionPipelineAPI { get; init; }
 
-    public static string Port { get; } = "PORT";
+    public string IngestionPipelineAPIKey { get; init; }
 
-    public static string ApplicationInsightsConnectionString { get; } = "APPLICATIONINSIGHTS_CONNECTION_STRING";
+
+    [JsonPropertyName("APPLICATIONINSIGHTS_CONNECTION_STRING")]
+    public string? ApplicationInsightsConnectionString { get; set; }
 
     // On-Behalf-Of (OBO) Flow
-    public static string AzureServicePrincipalClientID { get; } = "AZURE_SP_CLIENT_ID";
-    public static string AzureServicePrincipalClientSecret { get; } = "AZURE_SP_CLIENT_SECRET";
-    public static string AzureTenantID { get; } = "AZURE_TENANT_ID";
-    public static string AzureAuthorityHost { get; } = "AZURE_AUTHORITY_HOST";
-    public static string AzureServicePrincipalOpenAIAudience { get; } = "AZURE_SP_OPENAI_AUDIENCE";
-    public static string OcpApimSubscriptionKey { get; } = "Ocp-Apim-Subscription-Key";
-    public static string XMsTokenAadAccessToken { get; } = "X-MS-TOKEN-AAD-ACCESS-TOKEN";
-    public static string AOAIStandardChatGptDeployment { get; } = "AOAIStandardChatGptDeployment";
-    public static string AOAIStandardServiceEndpoint { get; } = "AOAIStandardServiceEndpoint";
-    public static string AOAIPremiumChatGptDeployment { get; } = "AOAIPremiumChatGptDeployment";
-    public static string AOAIPremiumServiceEndpoint { get; } = "AOAIPremiumServiceEndpoint";
+    [JsonPropertyName("AZURE_SP_CLIENT_ID")]
+    public string? AzureServicePrincipalClientID { get; set; }
+    [JsonPropertyName("AZURE_SP_CLIENT_SECRET")]
+    public string? AzureServicePrincipalClientSecret { get; set; }
+    [JsonPropertyName("AZURE_TENANT_ID")]
+    public string? AzureTenantID { get; set; }
+    [JsonPropertyName("AZURE_AUTHORITY_HOST")]
+    public string? AzureAuthorityHost { get; set; }
+    [JsonPropertyName("AZURE_SP_OPENAI_AUDIENCE")]
+    public string? AzureServicePrincipalOpenAIAudience { get; set; }
+    public string OcpApimSubscriptionHeaderName { get; init; } = "Ocp-Apim-Subscription-Key";
+    public string OcpApimSubscriptionKey { get; init; } = "Ocp-Apim-Subscription-Key";
+    public string XMsTokenAadAccessToken { get; init; } = "X-MS-TOKEN-AAD-ACCESS-TOKEN";
+    public string? AOAIStandardChatGptDeployment { get; init; }
+    public string? AOAIStandardServiceEndpoint { get; init; }
+    public string? AOAIStandardServiceKey { get; init; }
+    public string? AOAIPremiumChatGptDeployment { get; init; }
+    public string? AOAIPremiumServiceEndpoint { get; init; }
+    public string? AOAIPremiumServiceKey { get; init; }
 
+    public string AOAIEmbeddingsDeployment { get; init; } = string.Empty;
+
+    // Profile configuration
+    public string? ProfileConfigurationBlobStorageContainer { get; init; }
+    public string? ProfileConfiguration { get; init; }
+    public string ProfileFileName { get; init; } = "profiles";
 }

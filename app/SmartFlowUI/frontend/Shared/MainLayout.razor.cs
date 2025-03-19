@@ -11,7 +11,7 @@ public sealed partial class MainLayout
         PaletteLight = new PaletteLight
         {
             Primary = AppConfiguration.ColorPaletteLightPrimary,
-            AppbarBackground = AppConfiguration.ColorPaletteLightAppbarBackground, 
+            AppbarBackground = AppConfiguration.ColorPaletteLightAppbarBackground,
             Secondary = AppConfiguration.ColorPaletteLightSecondary
         },
         PaletteDark = new PaletteDark
@@ -25,16 +25,37 @@ public sealed partial class MainLayout
 
     private bool _isDarkTheme
     {
-        get => LocalStorage.GetItem<bool>(StorageKeys.PrefersDarkTheme);
+        // FAILS get => LocalStorage.GetItem<bool>(StorageKeys.PrefersDarkTheme); // FAILS!
+        // FAILS get => GetLocalBool(StorageKeys.PrefersDarkTheme, false);        // FAILS!
+        get => false; // WORKS
         set => LocalStorage.SetItem<bool>(StorageKeys.PrefersDarkTheme, value);
     }
 
     private bool _isReversed
     {
-        //get => LocalStorage.GetItem<bool?>(StorageKeys.PrefersReversedConversationSorting) ?? true;
-        get => false;
+        // FAILS get => LocalStorage.GetItem<bool?>(StorageKeys.PrefersReversedConversationSorting) ?? true; // FAILS!
+        // FAILS get => GetLocalBool(StorageKeys.PrefersReversedConversationSorting, false);                 // FAILS!
+        get => false; // WORKS
         set => LocalStorage.SetItem<bool>(StorageKeys.PrefersReversedConversationSorting, value);
     }
+
+    // // this also fails... why...???
+    // private bool GetLocalBool(string settingName, bool defaultValue = false)
+    // {
+    //     try
+    //     {
+    //         if (LocalStorage != null)
+    //         {
+    //             return LocalStorage.GetItem<bool?>(settingName) ?? defaultValue;
+    //         }
+    //         return defaultValue;
+    //     }
+    //     catch (Exception ex)
+    //     {
+    //         Debug.WriteLine($"Error getting setting {settingName}: {ex.Message}");
+    //         return defaultValue;
+    //     }
+    // }
 
     private bool _isRightToLeft =>
         Thread.CurrentThread.CurrentUICulture is { TextInfo.IsRightToLeft: true };

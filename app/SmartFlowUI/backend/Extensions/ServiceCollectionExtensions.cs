@@ -16,56 +16,46 @@ using Microsoft.SemanticKernel.ChatCompletion;
 using Microsoft.SemanticKernel.Connectors.AzureOpenAI;
 using Microsoft.SemanticKernel.TextGeneration;
 using System.ClientModel.Primitives;
+using Microsoft.AspNetCore.DataProtection;
+using Microsoft.Extensions.Azure;
 
 namespace MinimalApi.Extensions;
 
 internal static class ServiceCollectionExtensions
 {
-    internal static IServiceCollection AddAzureServices(this IServiceCollection services, IConfiguration configuration)
+    internal static IServiceCollection AddAzureServices(this IServiceCollection services, AppConfiguration configuration)
     {
         var sp = services.BuildServiceProvider();
         var httpContextAccessor = sp.GetRequiredService<IHttpContextAccessor>();
 
-        services.AddSingleton<BlobServiceClient>(sp =>
+        services.AddAzureClients(builder =>
         {
-            var config = sp.GetRequiredService<IConfiguration>();
-
-            // Storage accounts should not use key based connection string access
-            //var azureStorageAccountConnectionString = config[AppConfigurationSetting.AzureStorageAccountConnectionString];
-            //ArgumentNullException.ThrowIfNullOrEmpty(azureStorageAccountConnectionString);
-            //var blobServiceClient = new BlobServiceClient(azureStorageAccountConnectionString);
-
-            // changing to always use managed identity instead...
-            DefaultAzureCredential azureCredential = new(new DefaultAzureCredentialOptions
+            builder.UseCredential(new DefaultAzureCredential(new DefaultAzureCredentialOptions
             {
-                ManagedIdentityClientId = configuration[AppConfigurationSetting.UserAssignedManagedIdentityClientId]
-            });
-            var azureStorageAccountEndpoint = configuration[AppConfigurationSetting.AzureStorageAccountEndpoint];
-            ArgumentNullException.ThrowIfNullOrEmpty(azureStorageAccountEndpoint);
-            var blobServiceClient = new BlobServiceClient(new Uri(azureStorageAccountEndpoint), azureCredential);
+                ManagedIdentityClientId = configuration.UserAssignedManagedIdentityClientId
+            }));
 
-            return blobServiceClient;
+            builder.AddBlobServiceClient(configuration.AzureStorageAccountEndpoint);
         });
 
         services.AddSingleton<BlobContainerClient>(sp =>
         {
-            var azureStorageContainer = configuration[AppConfigurationSetting.AzureStorageContainer];
+            var azureStorageContainer = configuration.AzureStorageContainer;
             return sp.GetRequiredService<BlobServiceClient>().GetBlobContainerClient(azureStorageContainer);
         });
 
         services.AddSingleton<OpenAIClientFacade>(sp =>
         {
-            var config = sp.GetRequiredService<IConfiguration>();
-            var standardChatGptDeployment = config["AOAIStandardChatGptDeployment"];
-            var standardServiceEndpoint = config["AOAIStandardServiceEndpoint"];
-            var standardServiceKey = config["AOAIStandardServiceKey"];
+            var standardChatGptDeployment = configuration.AOAIStandardChatGptDeployment;
+            var standardServiceEndpoint = configuration.AOAIStandardServiceEndpoint;
+            var standardServiceKey = configuration.AOAIStandardServiceKey;
 
             ArgumentNullException.ThrowIfNullOrEmpty(standardChatGptDeployment);
             ArgumentNullException.ThrowIfNullOrEmpty(standardServiceEndpoint);
 
-            var premiumChatGptDeployment = config["AOAIPremiumChatGptDeployment"];
-            var premiumServiceEndpoint = config["AOAIPremiumServiceEndpoint"];
-            var premiumServiceKey = config["AOAIPremiumServiceKey"];
+            var premiumChatGptDeployment = configuration.AOAIPremiumChatGptDeployment;
+            var premiumServiceEndpoint = configuration.AOAIPremiumServiceEndpoint;
+            var premiumServiceKey = configuration.AOAIPremiumServiceKey;
 
             // Build Plugins
             var searchClientFactory = sp.GetRequiredService<SearchClientFactory>();
@@ -73,9 +63,9 @@ internal static class ServiceCollectionExtensions
             AzureOpenAIClient? openAIClient3 = null;
             AzureOpenAIClient? openAIClient4 = null;
 
-            if (UseAPIMAIGatewayOBO(config))
+            if (UseAPIMAIGatewayOBO(configuration))
             {
-                SetupOpenAIClientsUsingOnBehalfOfOthersFlowAndSubscriptionKey(sp, httpContextAccessor, config, standardServiceEndpoint, out openAIClient3, out openAIClient4);
+                SetupOpenAIClientsUsingOnBehalfOfOthersFlowAndSubscriptionKey(sp, httpContextAccessor, configuration, standardServiceEndpoint, out openAIClient3, out openAIClient4);
             }
             else
             {
@@ -86,9 +76,9 @@ internal static class ServiceCollectionExtensions
                     openAIClient4 = new AzureOpenAIClient(new Uri(premiumServiceEndpoint), new AzureKeyCredential(premiumServiceKey));
             }
 
-            var retrieveRelatedDocumentPlugin3 = new RetrieveRelatedDocumentSkill(config, searchClientFactory, openAIClient3);
-            var retrieveRelatedDocumentPluginKM = new RetrieveRelatedDocumentSkillKM(config, searchClientFactory, openAIClient3);
-            var retrieveRelatedDocumentPlugin4 = new RetrieveRelatedDocumentSkill(config, searchClientFactory, openAIClient4);
+            var retrieveRelatedDocumentPlugin3 = new RetrieveRelatedDocumentSkill(configuration, searchClientFactory, openAIClient3);
+            var retrieveRelatedDocumentPluginKM = new RetrieveRelatedDocumentSkillKM(configuration, searchClientFactory, openAIClient3);
+            var retrieveRelatedDocumentPlugin4 = new RetrieveRelatedDocumentSkill(configuration, searchClientFactory, openAIClient4);
 
             var generateSearchQueryPlugin = new GenerateSearchQuerySkill();
             var chatPlugin = new ChatSkill();
@@ -154,16 +144,14 @@ internal static class ServiceCollectionExtensions
 
         services.AddSingleton<SearchClientFactory>(sp =>
         {
-            var config = sp.GetRequiredService<IConfiguration>();
-            return new SearchClientFactory(config, null, new AzureKeyCredential(config[AppConfigurationSetting.AzureSearchServiceKey]));
+            return new SearchClientFactory(configuration, null, new AzureKeyCredential(configuration.AzureSearchServiceKey));
         });
 
-        if (!string.IsNullOrEmpty(configuration[AppConfigurationSetting.CosmosDBConnectionString]))
+        if (!string.IsNullOrEmpty(configuration.CosmosDBConnectionString))
         {
-            services.AddSingleton((sp) => {
-                var config = sp.GetRequiredService<IConfiguration>();
-                var cosmosDBConnectionString = config[AppConfigurationSetting.CosmosDBConnectionString];
-                CosmosClientBuilder configurationBuilder = new CosmosClientBuilder(cosmosDBConnectionString);
+            services.AddSingleton((sp) =>
+            {
+                CosmosClientBuilder configurationBuilder = new CosmosClientBuilder(configuration.CosmosDBConnectionString);
                 return configurationBuilder
                         .Build();
             });
@@ -174,18 +162,18 @@ internal static class ServiceCollectionExtensions
         return services;
     }
 
-    internal static IServiceCollection AddAzureWithMICredentialsServices(this IServiceCollection services, IConfiguration configuration)
+    internal static IServiceCollection AddAzureWithMICredentialsServices(this IServiceCollection services, AppConfiguration configuration)
     {
         var sp = services.BuildServiceProvider();
         var httpContextAccessor = sp.GetRequiredService<IHttpContextAccessor>();
         DefaultAzureCredential azureCredential = new(new DefaultAzureCredentialOptions
         {
-            ManagedIdentityClientId = configuration[AppConfigurationSetting.UserAssignedManagedIdentityClientId]
+            ManagedIdentityClientId = configuration.UserAssignedManagedIdentityClientId
         });
 
         services.AddSingleton<BlobServiceClient>(sp =>
         {
-            var azureStorageAccountEndpoint = configuration[AppConfigurationSetting.AzureStorageAccountEndpoint];
+            var azureStorageAccountEndpoint = configuration.AzureStorageAccountEndpoint;
             ArgumentNullException.ThrowIfNullOrEmpty(azureStorageAccountEndpoint);
 
             var blobServiceClient = new BlobServiceClient(new Uri(azureStorageAccountEndpoint), azureCredential);
@@ -195,28 +183,27 @@ internal static class ServiceCollectionExtensions
 
         services.AddSingleton<BlobContainerClient>(sp =>
         {
-            var azureStorageContainer = configuration[AppConfigurationSetting.AzureStorageContainer];
+            var azureStorageContainer = configuration.AzureStorageContainer;
             return sp.GetRequiredService<BlobServiceClient>().GetBlobContainerClient(azureStorageContainer);
         });
 
         services.AddSingleton(sp =>
         {
-            var config = sp.GetRequiredService<IConfiguration>();
-            var standardChatGptDeployment = config[AppConfigurationSetting.AOAIStandardChatGptDeployment];
-            var standardServiceEndpoint = config[AppConfigurationSetting.AOAIStandardServiceEndpoint];
+            var standardChatGptDeployment = configuration.AOAIStandardChatGptDeployment;
+            var standardServiceEndpoint = configuration.AOAIStandardServiceEndpoint;
 
             ArgumentNullException.ThrowIfNullOrEmpty(standardChatGptDeployment);
             ArgumentNullException.ThrowIfNullOrEmpty(standardServiceEndpoint);
 
-            var premiumChatGptDeployment = config[AppConfigurationSetting.AOAIPremiumChatGptDeployment];
-            var premiumServiceEndpoint = config[AppConfigurationSetting.AOAIPremiumServiceEndpoint];
+            var premiumChatGptDeployment = configuration.AOAIPremiumChatGptDeployment;
+            var premiumServiceEndpoint = configuration.AOAIPremiumServiceEndpoint;
 
             AzureOpenAIClient? standardChatGptClient = null;
             AzureOpenAIClient? premiumChatGptClient = null;
 
-            if (UseAPIMAIGatewayOBO(config))
+            if (UseAPIMAIGatewayOBO(configuration))
             {
-                SetupOpenAIClientsUsingOnBehalfOfOthersFlowAndSubscriptionKey(sp, httpContextAccessor, config, standardServiceEndpoint, out standardChatGptClient, out premiumChatGptClient);
+                SetupOpenAIClientsUsingOnBehalfOfOthersFlowAndSubscriptionKey(sp, httpContextAccessor, configuration, standardServiceEndpoint, out standardChatGptClient, out premiumChatGptClient);
             }
             else
             {
@@ -228,8 +215,8 @@ internal static class ServiceCollectionExtensions
             // Build Plugins
             var searchClientFactory = sp.GetRequiredService<SearchClientFactory>();
 
-            var retrieveRelatedDocumentPlugin3 = new RetrieveRelatedDocumentSkill(config, searchClientFactory, standardChatGptClient);
-            var retrieveRelatedDocumentPlugin4 = new RetrieveRelatedDocumentSkill(config, searchClientFactory, premiumChatGptClient);
+            var retrieveRelatedDocumentPlugin3 = new RetrieveRelatedDocumentSkill(configuration, searchClientFactory, standardChatGptClient);
+            var retrieveRelatedDocumentPlugin4 = new RetrieveRelatedDocumentSkill(configuration, searchClientFactory, premiumChatGptClient);
 
             var generateSearchQueryPlugin = new GenerateSearchQuerySkill();
             var chatPlugin = new ChatSkill();
@@ -238,7 +225,7 @@ internal static class ServiceCollectionExtensions
             Kernel? kernelPremium = null;
 
             // Build Kernels
-            if (UseAPIMAIGatewayOBO(config))
+            if (UseAPIMAIGatewayOBO(configuration))
             {
 #pragma warning disable IDE0039 // Use local function
                 Func<IServiceProvider, object?, AzureOpenAIChatCompletionService> factory3 = (serviceProvider, _) => new(standardChatGptDeployment, standardChatGptClient, null, serviceProvider.GetService<ILoggerFactory>());
@@ -287,25 +274,24 @@ internal static class ServiceCollectionExtensions
             }
             return new OpenAIClientFacade(standardChatGptDeployment, kernelStandard, premiumChatGptDeployment, kernelPremium);
         });
-        services.AddSingleton((sp) => {
-            var config = sp.GetRequiredService<IConfiguration>();
-            var cosmosDbEndpoint = config[AppConfigurationSetting.CosmosDbEndpoint];
+        services.AddSingleton((sp) =>
+        {
+            var cosmosDbEndpoint = configuration.CosmosDbEndpoint;
             var client = new CosmosClient(cosmosDbEndpoint, azureCredential);
             return client;
         });
 
         services.AddSingleton<SearchClientFactory>(sp =>
         {
-            var config = sp.GetRequiredService<IConfiguration>();
-            return new SearchClientFactory(config, azureCredential);
+            return new SearchClientFactory(configuration, azureCredential);
         });
 
-        if (!string.IsNullOrEmpty(configuration[AppConfigurationSetting.CosmosDbEndpoint]))
+        if (!string.IsNullOrEmpty(configuration.CosmosDbEndpoint))
         {
-            services.AddSingleton((sp) => {
-                var config = sp.GetRequiredService<IConfiguration>();
-                var endpoint = config[AppConfigurationSetting.CosmosDbEndpoint];
-                CosmosClientBuilder configurationBuilder = new CosmosClientBuilder(endpoint,azureCredential);
+            services.AddSingleton((sp) =>
+            {
+                var endpoint = configuration.CosmosDbEndpoint;
+                CosmosClientBuilder configurationBuilder = new CosmosClientBuilder(endpoint, azureCredential);
                 return configurationBuilder
                         .Build();
             });
@@ -316,12 +302,10 @@ internal static class ServiceCollectionExtensions
         return services;
     }
 
-    private static void RegisterDomainServices(IServiceCollection services, IConfiguration configuration)
+    private static void RegisterDomainServices(IServiceCollection services, AppConfiguration configuration)
     {
-
-
         // Add ChatHistory and document upload services if the connection string is provided
-        if (string.IsNullOrEmpty(configuration[AppConfigurationSetting.CosmosDBConnectionString]) && string.IsNullOrEmpty(configuration[AppConfigurationSetting.CosmosDbEndpoint]))
+        if (string.IsNullOrEmpty(configuration.CosmosDBConnectionString) && string.IsNullOrEmpty(configuration.CosmosDbEndpoint))
         {
             services.AddScoped<IChatHistoryService, ChatHistoryServiceStub>();
             services.AddScoped<IDocumentService, DocumentServiceSub>();
@@ -330,7 +314,7 @@ internal static class ServiceCollectionExtensions
         {
             services.AddSingleton<IChatHistoryService, ChatHistoryService>();
 
-            var documentUploadStrategy = configuration[AppConfigurationSetting.DocumentUploadStrategy] as string;
+            var documentUploadStrategy = configuration.DocumentUploadStrategy;
             if (documentUploadStrategy == "AzureNative")
             {
                 services.AddSingleton<IDocumentService, DocumentServiceAzureNative>();
@@ -357,35 +341,35 @@ internal static class ServiceCollectionExtensions
         });
     }
 
-    private static void SetupOpenAIClientsUsingOnBehalfOfOthersFlowAndSubscriptionKey(IServiceProvider sp, IHttpContextAccessor httpContextAccessor, IConfiguration config, string? standardServiceEndpoint, out AzureOpenAIClient? openAIClient3, out AzureOpenAIClient? openAIClient4)
+    private static void SetupOpenAIClientsUsingOnBehalfOfOthersFlowAndSubscriptionKey(IServiceProvider sp, IHttpContextAccessor httpContextAccessor, AppConfiguration config, string? standardServiceEndpoint, out AzureOpenAIClient? openAIClient3, out AzureOpenAIClient? openAIClient4)
     {
         var credential = new OnBehalfOfCredential(
-                            tenantId: config[AppConfigurationSetting.AzureTenantID],
-                            clientId: config[AppConfigurationSetting.AzureServicePrincipalClientID],
-                            clientSecret: config[AppConfigurationSetting.AzureServicePrincipalClientSecret],
-                            userAssertion: httpContextAccessor.HttpContext?.Request?.Headers[AppConfigurationSetting.XMsTokenAadAccessToken],
+                            tenantId: config.AzureTenantID,
+                            clientId: config.AzureServicePrincipalClientID,
+                            clientSecret: config.AzureServicePrincipalClientSecret,
+                            userAssertion: httpContextAccessor.HttpContext?.Request?.Headers[config.XMsTokenAadAccessToken],
                             new OnBehalfOfCredentialOptions
                             {
-                                AuthorityHost = new Uri(config[AppConfigurationSetting.AzureAuthorityHost])
+                                AuthorityHost = new Uri(config.AzureAuthorityHost)
                             });
 
         var httpClient = sp.GetService<IHttpClientFactory>().CreateClient();
 
         //if the configuration specifies a subscription key, add it to the request headers
-        if (config.GetValue<string>(AppConfigurationSetting.OcpApimSubscriptionKey) != null)
+        if (config.OcpApimSubscriptionKey != null)
         {
-            httpClient.DefaultRequestHeaders.Add(AppConfigurationSetting.OcpApimSubscriptionKey, config[AppConfigurationSetting.OcpApimSubscriptionKey]);
+            httpClient.DefaultRequestHeaders.Add(config.OcpApimSubscriptionHeaderName, config.OcpApimSubscriptionKey);
         }
 
         openAIClient3 = new AzureOpenAIClient(new Uri(standardServiceEndpoint), credential, new AzureOpenAIClientOptions
         {
-            Audience = config[AppConfigurationSetting.AzureServicePrincipalOpenAIAudience],
+            Audience = config.AzureServicePrincipalOpenAIAudience,
             Transport = new HttpClientPipelineTransport(httpClient)
         });
 
         openAIClient4 = new AzureOpenAIClient(new Uri(standardServiceEndpoint), credential, new AzureOpenAIClientOptions
         {
-            Audience = config[AppConfigurationSetting.AzureServicePrincipalOpenAIAudience],
+            Audience = config.AzureServicePrincipalOpenAIAudience,
             Transport = new HttpClientPipelineTransport(httpClient)
         });
     }
@@ -476,12 +460,12 @@ internal static class ServiceCollectionExtensions
             Encoding.UTF8.GetString(memoryStream.ToArray()));
     }
 
-    private static bool UseAPIMAIGatewayOBO(IConfiguration config)
+    private static bool UseAPIMAIGatewayOBO(AppConfiguration config)
     {
-        return config.GetValue<string>(AppConfigurationSetting.AzureServicePrincipalClientID) != null
-                && config.GetValue<string>(AppConfigurationSetting.AzureServicePrincipalClientSecret) != null
-                && config.GetValue<string>(AppConfigurationSetting.AzureTenantID) != null
-                && config.GetValue<string>(AppConfigurationSetting.AzureAuthorityHost) != null
-                && config.GetValue<string>(AppConfigurationSetting.AzureServicePrincipalOpenAIAudience) != null;
+        return config.AzureServicePrincipalClientID != null
+                && config.AzureServicePrincipalClientSecret != null
+                && config.AzureTenantID != null
+                && config.AzureAuthorityHost != null
+                &&config.AzureServicePrincipalOpenAIAudience != null;
     }
 }

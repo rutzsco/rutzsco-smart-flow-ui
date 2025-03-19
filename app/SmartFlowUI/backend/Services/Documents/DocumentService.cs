@@ -1,8 +1,5 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 
-using Microsoft.AspNetCore.DataProtection.KeyManagement;
-using Microsoft.Azure.Cosmos;
-using MinimalApi.Services.Documents;
 using Shared.Json;
 
 namespace MinimalApi.Services.ChatHistory;
@@ -13,19 +10,19 @@ public class DocumentService : IDocumentService
     private readonly Container _cosmosContainer;
     private readonly AzureBlobStorageService _blobStorageService;
     private readonly HttpClient _httpClient;
-    private readonly IConfiguration _configuration;
+    private readonly AppConfiguration _configuration;
 
-    public DocumentService(CosmosClient cosmosClient, AzureBlobStorageService blobStorageService, HttpClient httpClient, IConfiguration configuration)
+    public DocumentService(CosmosClient cosmosClient, AzureBlobStorageService blobStorageService, HttpClient httpClient, AppConfiguration configuration)
     {
         _cosmosClient = cosmosClient;
         _blobStorageService = blobStorageService;
 
-        if (configuration[AppConfigurationSetting.IngestionPipelineAPI] != null)
+        if (configuration.IngestionPipelineAPI != null)
         {
             _httpClient = httpClient;
 
-            _httpClient.BaseAddress = new Uri(configuration[AppConfigurationSetting.IngestionPipelineAPI]);
-            _httpClient.DefaultRequestHeaders.Add("x-functions-key", configuration[AppConfigurationSetting.IngestionPipelineAPIKey]);
+            _httpClient.BaseAddress = new Uri(configuration.IngestionPipelineAPI);
+            _httpClient.DefaultRequestHeaders.Add("x-functions-key", configuration.IngestionPipelineAPIKey);
             _httpClient.DefaultRequestHeaders.Add("Accept", "application/json");
             _configuration = configuration;
         }
@@ -64,8 +61,8 @@ public class DocumentService : IDocumentService
 
         var request = new ProcessingData()
         {
-            source_container = AppConfiguration.UserDocumentUploadBlobStorageContentContainer,
-            extract_container = AppConfiguration.UserDocumentUploadBlobStorageExtractContainer,
+            source_container = _configuration.UserDocumentUploadBlobStorageContentContainer,
+            extract_container = _configuration.UserDocumentUploadBlobStorageExtractContainer,
             prefix_path = fileSummary.FileName,
             entra_id = user.UserId,
             session_id = user.SessionId,
@@ -81,7 +78,7 @@ public class DocumentService : IDocumentService
     }
 
 
-    public async Task<List<DocumentUpload>> GetDocumentUploadsAsync(UserInformation user, string profileId = null)
+    public async Task<List<DocumentUpload>> GetDocumentUploadsAsync(UserInformation user, string? profileId = null)
     {
         var query = _cosmosContainer.GetItemQueryIterator<DocumentUpload>(
             new QueryDefinition("SELECT TOP 100 * FROM c WHERE  c.userId = @username AND c.sessionId = @sessionId ORDER BY c.sourceName DESC")

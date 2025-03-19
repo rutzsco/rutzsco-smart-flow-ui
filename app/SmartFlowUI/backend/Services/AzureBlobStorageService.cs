@@ -1,14 +1,14 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 
-using MinimalApi.Services.Profile;
+using Microsoft.Extensions.Options;
 
 namespace MinimalApi.Services;
 
-public sealed class AzureBlobStorageService(BlobServiceClient blobServiceClient, IConfiguration configuration)
+public sealed class AzureBlobStorageService(BlobServiceClient blobServiceClient, IOptions<AppConfiguration> configuration, ProfileService profileService)
 {
     internal async Task<string> UploadFileAsync(Stream content, string contentType)
     {
-        var azureStorageContainer = configuration[AppConfigurationSetting.AzureStorageUserUploadContainer];
+        var azureStorageContainer = configuration.Value.AzureStorageUserUploadContainer;
         var container = blobServiceClient.GetBlobContainerClient(azureStorageContainer);
         if (!await container.ExistsAsync())
         {
@@ -18,18 +18,27 @@ public sealed class AzureBlobStorageService(BlobServiceClient blobServiceClient,
         }
 
         var blobClient = container.GetBlobClient(Guid.NewGuid().ToString());
-        await blobClient.UploadAsync(content, new BlobHttpHeaders{ContentType = contentType });
+        await blobClient.UploadAsync(content, new BlobHttpHeaders { ContentType = contentType });
         return blobClient.Uri.AbsoluteUri;
     }
 
-    internal async Task<UploadDocumentsResponse> UploadFilesAsync(UserInformation userInfo, IEnumerable<IFormFile> files, string selectedProfile, IDictionary<string,string> metadata, CancellationToken cancellationToken)
+    internal async Task<UploadDocumentsResponse> UploadFilesAsync(UserInformation userInfo, IEnumerable<IFormFile> files, string selectedProfile, IDictionary<string, string> metadata, CancellationToken cancellationToken)
     {
         try
         {
-            var azureStorageContainer = configuration[AppConfigurationSetting.AzureStorageUserUploadContainer];
+            var profileData = await profileService.GetProfileDataAsync();
+            var azureStorageContainer = configuration.Value.AzureStorageUserUploadContainer;
             if (!string.IsNullOrEmpty(selectedProfile))
             {
-                var selectedProfileDefinition = ProfileDefinition.All.FirstOrDefault(p => p.Id == selectedProfile);
+                var selectedProfileDefinition = profileData.Profiles.FirstOrDefault(p => p.Id == selectedProfile);
+                if (selectedProfileDefinition == null)
+                {
+                    return UploadDocumentsResponse.FromError($"Profile {selectedProfile} not found.");
+                }
+                if (selectedProfileDefinition.RAGSettings == null)
+                {
+                    return UploadDocumentsResponse.FromError($"Profile {selectedProfile} not found or RAGSettings not set.");
+                }
                 azureStorageContainer = selectedProfileDefinition.RAGSettings.StorageContianer;
             }
             var container = blobServiceClient.GetBlobContainerClient(azureStorageContainer);
@@ -82,10 +91,20 @@ public sealed class AzureBlobStorageService(BlobServiceClient blobServiceClient,
     {
         try
         {
-            var azureStorageContainer = configuration[AppConfigurationSetting.AzureStorageUserUploadContainer];
+            var azureStorageContainer = configuration.Value.AzureStorageUserUploadContainer;
+            var profileData = await profileService.GetProfileDataAsync();
+
             if (!string.IsNullOrEmpty(selectedProfile))
             {
-                var selectedProfileDefinition = ProfileDefinition.All.FirstOrDefault(p => p.Id == selectedProfile);
+                var selectedProfileDefinition = profileData.Profiles.FirstOrDefault(p => p.Id == selectedProfile);
+                if (selectedProfileDefinition == null)
+                {
+                    return UploadDocumentsResponse.FromError($"Profile {selectedProfile} not found.");
+                }
+                if (selectedProfileDefinition.RAGSettings == null)
+                {
+                    return UploadDocumentsResponse.FromError($"Profile {selectedProfile} not found or RAGSettings not set.");
+                }
                 azureStorageContainer = selectedProfileDefinition.RAGSettings.StorageContianer;
             }
             var container = blobServiceClient.GetBlobContainerClient(azureStorageContainer);

@@ -1,8 +1,6 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 
 using System.ComponentModel;
-using MinimalApi.Services.Profile;
-using MinimalApi.Services.Search;
 using MinimalApi.Services.Search.IndexDefinitions;
 
 
@@ -10,13 +8,13 @@ namespace MinimalApi.Services.Skills;
 
 public sealed class RetrieveRelatedDocumentSkillKM
 {
-    private readonly IConfiguration _config;
+    private readonly AppConfiguration _configuration;
     private readonly SearchClientFactory _searchClientFactory;
     private readonly AzureOpenAIClient _openAIClient;
 
-    public RetrieveRelatedDocumentSkillKM(IConfiguration config, SearchClientFactory searchClientFactory, AzureOpenAIClient openAIClient)
+    public RetrieveRelatedDocumentSkillKM(AppConfiguration config, SearchClientFactory searchClientFactory, AzureOpenAIClient openAIClient)
     {
-        _config= config;
+        _configuration= config;
         _searchClientFactory = searchClientFactory;
         _openAIClient = openAIClient;
     }
@@ -57,7 +55,7 @@ public sealed class RetrieveRelatedDocumentSkillKM
                 arguments[ContextVariableOptions.SelectedFilters] = sb.ToString();
         }
 
-        var searchLogic = ResolveRetrievalLogic(_openAIClient, _searchClientFactory, profile.RAGSettings, _config["AOAIEmbeddingsDeployment"], profile.RAGSettings.DocumentRetrievalPluginQueryFunctionName);
+        var searchLogic = ResolveRetrievalLogic(_openAIClient, _searchClientFactory, profile.RAGSettings, _configuration.AOAIEmbeddingsDeployment, profile.RAGSettings.DocumentRetrievalPluginQueryFunctionName);
         var result = await searchLogic(searchQuery, arguments);
 
         if (!result.Sources.Any())
@@ -71,7 +69,7 @@ public sealed class RetrieveRelatedDocumentSkillKM
 
 
         arguments[ContextVariableOptions.SelectedFilters] = "type eq 'Competitor'";
-        var searchLogicV2 = ResolveRetrievalLogic(_openAIClient, _searchClientFactory, profile.RAGSettings, _config["AOAIEmbeddingsDeployment"], profile.RAGSettings.DocumentRetrievalPluginQueryFunctionName);
+        var searchLogicV2 = ResolveRetrievalLogic(_openAIClient, _searchClientFactory, profile.RAGSettings, _configuration.AOAIEmbeddingsDeployment, profile.RAGSettings.DocumentRetrievalPluginQueryFunctionName);
         var resultV2 = await searchLogic(searchQuery, arguments);
 
         var rsb  = new StringBuilder();
@@ -79,7 +77,7 @@ public sealed class RetrieveRelatedDocumentSkillKM
         rsb.AppendLine(resultV2.FormattedSourceText);
         rsb.AppendLine("INDUSTRY SOURCES");
         rsb.AppendLine(result.FormattedSourceText);
-        
+
         arguments[ContextVariableOptions.Knowledge] = rsb.ToString();
         arguments[ContextVariableOptions.KnowledgeSummary] = result;
 
@@ -124,12 +122,5 @@ public sealed class RetrieveRelatedDocumentSkillKM
         throw new InvalidOperationException("Invalid search implementation.");
     }
 
-    private static int ResolveDocumentCount(int documentRetrievalDocumentCount)
-    {
-        if (documentRetrievalDocumentCount > 0)
-        {
-            return documentRetrievalDocumentCount;
-        }
-        return AppConfiguration.SearchIndexDocumentCount;
-    }
+    private int ResolveDocumentCount(int documentRetrievalDocumentCount) => documentRetrievalDocumentCount > 0 ? documentRetrievalDocumentCount : _configuration.SearchIndexDocumentCount;
 }

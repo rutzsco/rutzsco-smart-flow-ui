@@ -1,82 +1,115 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 
+using Microsoft.Extensions.Options;
+
 namespace MinimalApi.Services.Profile;
 
-public static class ProfileService
+public class ProfileService
 {
-    private static List<ProfileDefinition> _profileData = [];
-    private static string _loadingMessage = string.Empty;
-    private static string _profileSource = string.Empty;
-    private static BlobServiceClient _blobClient = null;
-    private static IConfiguration _config = null;
+    private ProfileInfo? _profileInfo;
+    private readonly BlobServiceClient _blobClient;
+    private readonly AppConfiguration _appConfiguration;
+    private readonly IConfiguration _configuration;
+    private readonly ILogger<ProfileService> _logger;
+    private readonly SemaphoreSlim _semaphore = new(1, 1);
 
-    public static ProfileInfo GetProfileData()
-    {
-        var profileInfo = new ProfileInfo(_profileData,
-            string.IsNullOrWhiteSpace(_profileSource) ? "No source location found!" : _profileSource,
-            string.IsNullOrWhiteSpace(_loadingMessage) ? "No loading message found!" : _loadingMessage,
-            _config);
-        return profileInfo;
-    }
 
-    public static ProfileInfo Reload()
+    public ProfileService(IOptions<AppConfiguration> appConfiguration, IConfiguration configuration, BlobServiceClient blobServiceClient, ILogger<ProfileService> logger)
     {
-        Load(_config, _blobClient);
-        return GetProfileData();
-    }
-
-    public static List<ProfileDefinition> Load(IConfiguration configuration, BlobServiceClient blobServiceClient)
-    {
+        _appConfiguration = appConfiguration.Value;
+        _configuration = configuration;
         _blobClient = blobServiceClient;
-        _config = configuration;
+        _logger = logger;
+    }
 
-        var profileConfigurationBlobStorageContainer = configuration["ProfileConfigurationBlobStorageContainer"];
+
+    public async Task<ProfileInfo> GetProfileDataAsync()
+    {
+        if (_profileInfo?.Profiles.Count > 0)
+        {
+            return _profileInfo!;
+        }
+
+        await _semaphore.WaitAsync();
+        try
+        {
+            if (_profileInfo?.Profiles.Count > 0)
+            {
+                return _profileInfo!;
+            }
+            // need to load
+            return await ReloadAsync();
+        }
+        finally
+        {
+            _semaphore.Release();
+        }
+    }
+
+    public async Task<ProfileInfo> ReloadAsync()
+    {
+        var (data, loadingMsg, source) = await LoadAsync();
+        _profileInfo = new ProfileInfo(data,
+        string.IsNullOrWhiteSpace(source) ? "No source location found!" : source,
+        string.IsNullOrWhiteSpace(loadingMsg) ? "No loading message found!" : loadingMsg,
+        _configuration);
+
+        return _profileInfo;
+    }
+
+    private string LogLoadingMessage(string message)
+    {
+        _logger.LogInformation(message);
+        return message;
+    }
+
+    private async Task<(List<ProfileDefinition> data, string loadingMsg, string source)> LoadAsync()
+    {
+        // Reset the profile data and loading message
+        var loadingMessage = string.Empty;
+        var profileSource = string.Empty;
+
+        var profileConfigurationBlobStorageContainer = _appConfiguration.ProfileConfigurationBlobStorageContainer;
         if (!string.IsNullOrEmpty(profileConfigurationBlobStorageContainer))
         {
-            _loadingMessage += $"Found Profile storage container name, looking for profiles.json there... ";
-            var container = blobServiceClient.GetBlobContainerClient(profileConfigurationBlobStorageContainer);
+            loadingMessage += LogLoadingMessage("Found Profile storage container name, looking for profiles.json there... ");
+            var container = _blobClient.GetBlobContainerClient(profileConfigurationBlobStorageContainer);
             var blobClient = container.GetBlobClient("profiles.json");
-            var downloadResult = blobClient.DownloadContent();
+            var downloadResult = await blobClient.DownloadContentAsync();
+
             var profileStorageData = System.Text.Json.JsonSerializer.Deserialize<List<ProfileDefinition>>(Encoding.UTF8.GetString(downloadResult.Value.Content));
             if (profileStorageData != null)
             {
-                _loadingMessage = $"{profileStorageData.Count} profiles were loaded from storage file on {DateTime.Now:MMMM d} at {DateTime.Now:HH:mm:ss}!";
-                _profileSource = "Storage";
-                Console.WriteLine(_loadingMessage);
-                _profileData = profileStorageData;
-                return profileStorageData;
+                loadingMessage += LogLoadingMessage($"{profileStorageData.Count} profiles were loaded from storage file on {DateTime.Now:MMMM d} at {DateTime.Now:HH:mm:ss}!");
+                profileSource = "Storage";
+                return (profileStorageData, loadingMessage, profileSource);
             }
         }
 
-        var profileConfig = configuration["ProfileConfiguration"];
+        var profileConfig = _appConfiguration.ProfileConfiguration;
         if (!string.IsNullOrEmpty(profileConfig))
         {
-            _loadingMessage += $"Found Profile Configuration Key, decoding the value... ";
+            loadingMessage += LogLoadingMessage("Found Profile Configuration Key, decoding the value... ");
             var bytes = Convert.FromBase64String(profileConfig);
             var profileConfigData = System.Text.Json.JsonSerializer.Deserialize<List<ProfileDefinition>>(Encoding.UTF8.GetString(bytes));
             if (profileConfigData != null)
             {
-                _loadingMessage = $"{profileConfigData.Count} profiles were loaded from configuration key value on {DateTime.Now:MMMM d} at {DateTime.Now:HH:mm:ss}!";
-                _profileSource = "Config";
-                Console.WriteLine(_loadingMessage);
-                _profileData = profileConfigData;
-                return profileConfigData;
+                loadingMessage += LogLoadingMessage($"{profileConfigData.Count} profiles were loaded from configuration key value on {DateTime.Now:MMMM d} at {DateTime.Now:HH:mm:ss}!");
+                profileSource = "Config";
+                return (profileConfigData, loadingMessage, profileSource);
             }
         }
 
-        _loadingMessage += $"Loading Profile from project embedded file... ";
-        var fileName = configuration["ProfileFileName"];
-        fileName ??= "profiles";
+        loadingMessage += LogLoadingMessage("Loading Profile from project embedded file... ");
+        var fileName = _appConfiguration.ProfileFileName;
         var profileFileData = LoadEmbeddedProflies(fileName);
-        _loadingMessage = $"{profileFileData.Count} profiles were loaded from embedded file on {DateTime.Now:MMMM d} at {DateTime.Now:HH:mm:ss}!";
-        _profileSource = "Embedded";
-        Console.WriteLine(_loadingMessage);
-        _profileData = profileFileData;
-        return profileFileData;
+        loadingMessage += LogLoadingMessage($"{profileFileData.Count} profiles were loaded from embedded file on {DateTime.Now:MMMM d} at {DateTime.Now:HH:mm:ss}!");
+        profileSource = "Embedded";
+        return (profileFileData, loadingMessage, profileSource);
     }
 
-	private static List<ProfileDefinition> LoadEmbeddedProflies(string name)
-	{
+    private static List<ProfileDefinition> LoadEmbeddedProflies(string name)
+    {
         var resourceName = $"MinimalApi.Services.Profile.{name}.json";
         var assembly = Assembly.GetExecutingAssembly();
         using Stream stream = assembly.GetManifestResourceStream(resourceName) ?? throw new ArgumentException($"The resource {resourceName} was not found.");
@@ -84,5 +117,5 @@ public static class ProfileService
         var jsonText = reader.ReadToEnd();
         var profiles = Newtonsoft.Json.JsonConvert.DeserializeObject<List<ProfileDefinition>>(jsonText);
         return profiles ?? [];
-	}
+    }
 }
