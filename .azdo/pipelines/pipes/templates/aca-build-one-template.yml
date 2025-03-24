@@ -46,7 +46,13 @@ jobs:
           - template: ../../vars/var-qa.yml
       - ${{ if eq(lower(parameters.environmentName), 'prod') }}:
           - template: ../../vars/var-prod.yml
-
+      - name: projectFolderName
+        value: '${{ parameters.projectFolderName }}'
+      - name: workingDirectory
+        value: '$(System.DefaultWorkingDirectory)/${{ parameters.projectFolderName }}'
+      - name: buildInfoFileName
+        value: '$(System.DefaultWorkingDirectory)/${{ parameters.projectFolderName }}/backend/buildinfo.json'
+        
     steps:
       # ----------------------------------------------------------------------------------------------------
       # Set up the environment variables
@@ -83,6 +89,11 @@ jobs:
             $agentIpAddress = $(Invoke-WebRequest -Uri "https://api.ipify.org").Content
             echo "##vso[task.setvariable variable=agentIpAddress]$agentIpAddress"
 
+            $runDateTime=(Get-Date).ToString("yyyyMMdd-HHmmss")
+            echo "##vso[task.setvariable variable=runDateTime]$runDateTime"
+            $runDateTimeZ=(Get-Date).ToString("yyyyMMddTHHmmss")+"Z"
+            echo "##vso[task.setvariable variable=runDateTimeZ]$runDateTimeZ"
+
             echo "appNameLower=$appNameLower"
             echo "appNameNoDashesLower=$appNameNoDashesLower"
             echo "resourceGroupName=$resourceGroupName"
@@ -93,8 +104,12 @@ jobs:
             echo "imageName=$imageName"
             echo "imageNameBranch=$imageNameBranch"
             echo "agentIpAddress=$agentIpAddress"
-            echo "workingDirectory=$(System.DefaultWorkingDirectory)/${{ parameters.projectFolderName }}"
+            echo "workingDirectory=$(workingDirectory)"
+            echo "projectFolderName=$(projectFolderName)"
+            echo "buildInfoFileName=$(buildInfoFileName)"
             echo "serviceConnectionName=$(serviceConnectionName)"
+            echo "runDateTime=$runDateTime"
+            echo "runDateTimeZ=$runDateTimeZ"
 
             echo "----------------------------------------"
             echo "##[group]Display All Environment Variables:"
@@ -105,6 +120,13 @@ jobs:
             echo "##[group]Directory of pipeline workspace:"
             tree -L 4 $(Pipeline.Workspace)
             echo "##[endgroup]"
+
+      - task: CmdLine@2
+        displayName: "Put Build Details in buildinfo.json"
+        inputs:
+          script: |
+            echo {"buildDate":"$(runDateTime)","buildNumber":"$(Build.BuildNumber)","buildId":"$(Build.BuildId)","branchName":"$(Build.SourceBranchName)","commitHash":"$(Build.SourceVersion)"} > $(buildInfoFileName)
+        continueOnError: true
 
       # ----------------------------------------------------------------------------------------------------
       # Build the image
@@ -117,7 +139,7 @@ jobs:
             docker build . -t $(imageName) -t $(imageNameBranch)
             docker images
             docker save $(imageName) -o $(Pipeline.Workspace)/$(acrAppNameLower).tar
-          workingDirectory: '$(System.DefaultWorkingDirectory)/${{ parameters.projectFolderName }}'
+          workingDirectory: $(workingDirectory)
 
       # ----------------------------------------------------------------------------------------------------
       # ACR Push: Push to ACR, add/remove firewall rules and remove if requested
