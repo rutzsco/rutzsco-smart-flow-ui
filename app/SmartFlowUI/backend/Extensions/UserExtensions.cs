@@ -27,14 +27,22 @@ internal static class UserExtensions
 
         var enableLogout = !string.IsNullOrEmpty(id);
 
-        if (profileInfo == null)
+        var user = new UserInformation(enableLogout, name, id, session, [], userGroups);
+        try
         {
-            var profileService = context.RequestServices.GetRequiredService<ProfileService>();
-            profileInfo = await profileService.GetProfileDataAsync();
+            if (profileInfo == null)
+            {
+                var profileService = context.RequestServices.GetRequiredService<ProfileService>();
+                profileInfo = await profileService.GetProfileDataAsync();
+            }
+            var profiles = profileInfo?.Profiles?.Count > 0 ? profileInfo.Profiles.GetAuthorizedProfiles(userGroups).Select(x => new ProfileSummary(x.Id, x.Name, string.Empty, (ProfileApproach)Enum.Parse(typeof(ProfileApproach), x.Approach, true), x.SampleQuestions, x.UserPromptTemplates, SupportsUserSelections(x), SupportsFileUpload(x))) : [];
+            user = new UserInformation(enableLogout, name, id, session, profiles, userGroups);
         }
-
-        var profiles = profileInfo.Profiles.GetAuthorizedProfiles(userGroups).Select(x => new ProfileSummary(x.Id, x.Name, string.Empty, (ProfileApproach)Enum.Parse(typeof(ProfileApproach), x.Approach, true), x.SampleQuestions, x.UserPromptTemplates, SupportsUserSelections(x), SupportsFileUpload(x)));
-        var user = new UserInformation(enableLogout, name, id, session, profiles, userGroups);
+        catch (Exception ex)
+        {
+            var errorMsg = $"Error loading embedded profile data: {ex.Message}";
+            Debug.WriteLine(errorMsg);
+        }
 
         return user;
     }

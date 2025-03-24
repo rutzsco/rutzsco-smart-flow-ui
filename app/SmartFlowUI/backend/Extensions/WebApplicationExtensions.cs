@@ -43,15 +43,6 @@ internal static class WebApplicationExtensions
         api.MapGet("profile/selections", OnGetProfileUserSelectionOptionsAsync);
 
         api.MapGet("profiles/info", OnGetProfilesInfoAsync);
-        // I've tried multiple ways to map this and they don't change the results...
-        // See the OnGetProfilesInfo for more details on the problem...
-        //api.MapGet("profiles/info", OnGetProfilesInfoAsync);
-        //api.MapGet("profiles/info", (Func<HttpContext, Task<IResult>>)OnGetProfilesInfoAsync);
-        //api.MapGet("profiles/info", async context =>
-        //{
-        //	var profileInfo = await ProfileService.GetProfileDataAsync();
-        //	await context.Response.WriteAsJsonAsync(profileInfo);
-        //});
         api.MapGet("profiles/reload", OnGetProfilesReloadAsync);
 
         api.MapGet("token/csrf", OnGetAntiforgeryToken);

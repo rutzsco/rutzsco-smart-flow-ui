@@ -44,6 +44,9 @@ public sealed partial class Chat
     [CascadingParameter(Name = nameof(IsReversed))] public required bool IsReversed { get; set; }
 
     public bool _showProfiles { get; set; }
+    public bool _errorLoadingProfiles { get; set; }
+    public string _errorLoadingMessage {  get; set; }
+
     public bool _showDocumentUpload { get; set; }
     public bool _showPictureUpload { get; set; }
     [SupplyParameterFromQuery(Name = "cid")] public string? ArchivedChatId { get; set; }
@@ -67,7 +70,11 @@ public sealed partial class Chat
         _profiles = user.Profiles.Where(x => x.Approach != ProfileApproach.UserDocumentChat).ToList();
         _userUploadProfileSummary = user.Profiles.FirstOrDefault(x => x.Approach == ProfileApproach.UserDocumentChat);
 
-        await SetSelectedProfileAsync(_profiles.First());
+        if (_profiles.Count > 0)
+        {
+            await SetSelectedProfileAsync(_profiles.First());
+        }
+        _errorLoadingMessage = _profiles.Count > 0 ? string.Empty : $" Error loading profiles...! {user.SessionId}";
 
         StateHasChanged();
 
@@ -335,21 +342,10 @@ public sealed partial class Chat
 
     private void EvaluateOptions()
     {
-        _showProfiles = true;
-        _showDocumentUpload = true;
-        _showPictureUpload = true;
-        if (_profiles.Count() < 1 || !string.IsNullOrEmpty(_selectedDocument))
-        {
-            _showProfiles = false;
-        }
-
-        if (!_profiles.Any(p => p.Approach == ProfileApproach.UserDocumentChat))
-            _showDocumentUpload = false;
-
-        if (_selectedProfileSummary.Approach != ProfileApproach.Chat || !string.IsNullOrEmpty(_selectedDocument))
-        {
-            _showPictureUpload = false;
-        }
+        _errorLoadingProfiles = _selectedProfileSummary == null;
+        _showProfiles = (_profiles.Count() < 1 || !string.IsNullOrEmpty(_selectedDocument)) && !_errorLoadingProfiles;
+        _showDocumentUpload = !_profiles.Any(p => p.Approach == ProfileApproach.UserDocumentChat) && !_errorLoadingProfiles;
+        _showPictureUpload = (_selectedProfileSummary == null || _selectedProfileSummary.Approach != ProfileApproach.Chat || !string.IsNullOrEmpty(_selectedDocument)) && !_errorLoadingProfiles;
     }
 
     private async Task LoadArchivedChatAsync(CancellationToken cancellationToken, string chatId)

@@ -1,5 +1,9 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 
+using System.Reflection;
+using System.Xml.Linq;
+using Newtonsoft.Json;
+
 namespace ClientApp.Pages;
 
 public sealed partial class Settings : IDisposable
@@ -12,6 +16,7 @@ public sealed partial class Settings : IDisposable
     private string _profileRawData = string.Empty;
     private string _b64DecodedText = string.Empty;
     private string _b64EncodedText = string.Empty;
+    private Models.BuildInfo _buildInfo = new();
 
     // Store a cancelation token that will be used to cancel if the user disposes of this component.
     private readonly CancellationTokenSource _cancellationTokenSource = new();
@@ -31,6 +36,7 @@ public sealed partial class Settings : IDisposable
         if (firstRender)
         {
             await GetProfileInfoAsync();
+            GetBuildInfo();
             StateHasChanged();
         }
     }
@@ -42,6 +48,7 @@ public sealed partial class Settings : IDisposable
         try
         {
             (_profileInfo, _profileRawData) = await Client.GetProfilesInfoAsync();
+            if (_profileInfo == null) { _profileInfo = new ProfileInfo(); }
         }
         catch (Exception ex)
         {
@@ -59,6 +66,7 @@ public sealed partial class Settings : IDisposable
         try
         {
             (_profileInfo, _profileRawData) = await Client.GetProfilesReloadAsync();
+            if (_profileInfo == null) { _profileInfo = new ProfileInfo(); }
         }
         catch (Exception ex)
         {
@@ -88,6 +96,53 @@ public sealed partial class Settings : IDisposable
             var bytes = Convert.FromBase64String(_b64EncodedText);
             _b64DecodedText = Encoding.UTF8.GetString(bytes);
         }
+    }
+    private void GetBuildInfo()
+    {
+        try
+        {
+            var buildInfoData = ReadResource("buildinfo.json");
+            _buildInfo = JsonConvert.DeserializeObject<Models.BuildInfo>(buildInfoData);
+
+            //// this works in my Dad EXE, but not here...  why?  what's wrong with this call...?  Path always comes up empty...!
+            //var exePath = Path.GetDirectoryName(System.Reflection.Assembly.GetExecutingAssembly().Location);
+            ////exePath = string.IsNullOrEmpty(exePath) ? Path.GetDirectoryName(System.Reflection.Assembly.GetCallingAssembly().Location) : exePath;
+            ////exePath = string.IsNullOrEmpty(exePath) ? Path.GetDirectoryName(System.Reflection.Assembly.GetEntryAssembly().Location) : exePath;
+            ////exePath = string.IsNullOrEmpty(exePath) ? Path.GetDirectoryName(System.Reflection.Assembly.GetAssembly().Location) : exePath;
+            //var buildInfoFile = Path.Combine(exePath ?? "PathMissing/", "buildinfo.json");
+            //if (File.Exists(buildInfoFile))
+            //{
+            //    using var r = new StreamReader(buildInfoFile);
+            //    var buildInfoData = r.ReadToEnd();
+            //    var buildInfoObject = JsonConvert.DeserializeObject<Models.BuildInfo>(buildInfoData);
+            //    _buildInfo = buildInfoObject.BuildNumber;
+            //}
+            //else
+            //{
+            //    Debug.Write($"Could not find buildinfo file {buildInfoFile}!");
+            //    _buildInfo = $"Could not find buildinfo file {buildInfoFile}!";
+            //}
+        }
+        catch (Exception ex)
+        {
+            Debug.Write($"Error loading buildinfo.json file! {ex.Message}");
+            _buildInfo = new()
+            {
+                BuildId = "Unknown",
+                BuildNumber = $"Error reading buildinfo file!",
+                BuildDate = $"{DateTime.Now}"
+            };
+        }
+    }
+    public string ReadResource(string name)
+    {
+        // Name: Format: "{Namespace}.{Folder}.{filename}.{Extension}"
+        var assembly = Assembly.GetExecutingAssembly();
+        string resourcePath = name;
+        resourcePath = assembly.GetManifestResourceNames().Single(str => str.EndsWith(name));
+        using Stream stream = assembly.GetManifestResourceStream(resourcePath);
+        using StreamReader reader = new StreamReader(stream);
+        return reader.ReadToEnd();
     }
 
     private void showInfo(string message)

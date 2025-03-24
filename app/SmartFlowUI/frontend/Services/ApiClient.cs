@@ -17,13 +17,32 @@ public sealed class ApiClient(HttpClient httpClient)
         if (Cache.UserInformation != null)
             return Cache.UserInformation;
 
-        var response = await httpClient.GetAsync("api/user");
-        response.EnsureSuccessStatusCode();
+        try
+        {
+            var response = await httpClient.GetAsync("api/user");
+            response.EnsureSuccessStatusCode();
 
-        var user = await response.Content.ReadFromJsonAsync<UserInformation>();
-        Cache.SetUserInformation(user);
+            // sometimes the api/user call is returning an HTML error page... this crashes hard and shows you nothing...
+            //var user = await response.Content.ReadFromJsonAsync<UserInformation>();
 
-        return user;
+            var userInfo = await response.Content.ReadAsStringAsync();
+            // if the input is invalid (i.e. error occurred...)
+            if (userInfo[0..30].Contains("<html", StringComparison.CurrentCultureIgnoreCase))
+            {
+                return new UserInformation(false, "errorUser", "errorUser", "Call to api/user failed!", [], []);
+            }
+
+            // otherwise, if it's good - convert this into a user profile
+            var user = System.Text.Json.JsonSerializer.Deserialize<UserInformation>(userInfo, SerializerOptions.Default);
+            Cache.SetUserInformation(user);
+            return user;
+        }
+        catch (Exception ex)
+        {
+            var errorMessage = $"Error fetching user information: {ex.Message}";
+            Debug.WriteLine(errorMessage);
+            return new UserInformation(false, "ERROR!", "ERROR!", errorMessage, [], []);
+        }
     }
     public async Task<List<DocumentSummary>> GetUserDocumentsAsync()
     {
@@ -217,18 +236,31 @@ public sealed class ApiClient(HttpClient httpClient)
         using var body = new StringContent(json, Encoding.UTF8, "application/json");
         var response = await httpClient.PostAsync(apiRoute, body);
     }
-	public async Task<(ProfileInfo, string)> GetProfilesInfoAsync()
-	{
-		var jsonOptions = new JsonSerializerOptions { PropertyNameCaseInsensitive = true, IncludeFields = true, WriteIndented = true };
-		var profileInfo = await httpClient.GetFromJsonAsync<ProfileInfo>("api/profiles/info", options: jsonOptions);
-		var rawJson = System.Text.Json.JsonSerializer.Serialize(profileInfo, jsonOptions);
-		return (profileInfo!, rawJson);
-	}
-	public async Task<(ProfileInfo, string)> GetProfilesReloadAsync()
-	{
-		var jsonOptions = new JsonSerializerOptions { PropertyNameCaseInsensitive = true, IncludeFields = true, WriteIndented = true };
-		var profileInfo = await httpClient.GetFromJsonAsync<ProfileInfo>("api/profiles/reload", options: jsonOptions);
-		var rawJson = System.Text.Json.JsonSerializer.Serialize(profileInfo, jsonOptions);
-		return (profileInfo!, rawJson);
-	}
+    public async Task<(ProfileInfo, string)> GetProfilesInfoAsync()
+    {
+        return await LoadProfilesAsync("api/profiles/info");
+    }
+    public async Task<(ProfileInfo, string)> GetProfilesReloadAsync()
+    {
+        return await LoadProfilesAsync("api/profiles/reload");
+    }
+    private async Task<(ProfileInfo, string)> LoadProfilesAsync(string apiToCall)
+    {
+       var profileInfo = new ProfileInfo();
+       var rawJson = string.Empty;
+       var jsonOptions = new JsonSerializerOptions { PropertyNameCaseInsensitive = true, IncludeFields = true, WriteIndented = true };
+        try
+        {
+            profileInfo = await httpClient.GetFromJsonAsync<ProfileInfo>(apiToCall, options: jsonOptions);
+            rawJson = System.Text.Json.JsonSerializer.Serialize(profileInfo, jsonOptions);
+        }
+        catch (Exception ex)
+        {
+            var errorMsg = $"Error reading profile info! {ex.Message}";
+            Debug.WriteLine(errorMsg);
+            profileInfo = new ProfileInfo();
+            rawJson = errorMsg;
+        }
+        return (profileInfo!, rawJson);
+    }
 }

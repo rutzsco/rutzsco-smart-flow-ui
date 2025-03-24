@@ -1,6 +1,6 @@
 [
   {
-    "Name": "General",
+    "Name": "ST General",
     "Id": "General",
     "Approach": "Chat",
     "SecurityModel": "None",
@@ -11,7 +11,7 @@
     ]
   },
   {
-    "Name": "Auto Body Damage Analysis",
+    "Name": "ST Auto Body Damage Analysis",
     "Id": "AutoBodyDamageAdvisor",
     "Approach": "ENDPOINTASSISTANTTASK",
     "SecurityModel": "None",
@@ -26,7 +26,7 @@
     }
   },
   {
-    "Name": "Color Blind Image Analysis",
+    "Name": "ST Color Blind Image Analysis",
     "Id": "ColorBlindTester",
     "Approach": "ENDPOINTASSISTANTTASK",
     "SecurityModel": "None",
@@ -37,19 +37,6 @@
     "AssistantEndpointSettings": {
       "APIEndpointSetting": "ColorBlindEndpoint",
       "APIEndpointKeySetting": "ColorBlindApiKey",
-      "AllowFileUpload": true
-    }
-  },
-  {
-    "Name": "Bad Key Endpoint",
-    "Id": "BadKeyTester",
-    "Approach": "ENDPOINTASSISTANTTASK",
-    "SecurityModel": "None",
-    "SecurityModelGroupMembership": [ "LocalDevUser" ],
-    "SampleQuestions": ["Where is the key?", "Why is it defined incorrectly?" ],
-    "AssistantEndpointSettings": {
-      "APIEndpointSetting": "ColorBlindEndpoint",
-      "APIEndpointKeySetting": "BogusKey", // bad key intentionally to test UI view
       "AllowFileUpload": true
     }
   }

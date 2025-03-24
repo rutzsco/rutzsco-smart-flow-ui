@@ -72,40 +72,70 @@ public class ProfileService
         var profileConfigurationBlobStorageContainer = _appConfiguration.ProfileConfigurationBlobStorageContainer;
         if (!string.IsNullOrEmpty(profileConfigurationBlobStorageContainer))
         {
-            loadingMessage += LogLoadingMessage("Found Profile storage container name, looking for profiles.json there... ");
-            var container = _blobClient.GetBlobContainerClient(profileConfigurationBlobStorageContainer);
-            var blobClient = container.GetBlobClient("profiles.json");
-            var downloadResult = await blobClient.DownloadContentAsync();
-
-            var profileStorageData = System.Text.Json.JsonSerializer.Deserialize<List<ProfileDefinition>>(Encoding.UTF8.GetString(downloadResult.Value.Content));
-            if (profileStorageData != null)
+            try
             {
-                loadingMessage += LogLoadingMessage($"{profileStorageData.Count} profiles were loaded from storage file on {DateTime.Now:MMMM d} at {DateTime.Now:HH:mm:ss}!");
                 profileSource = "Storage";
-                return (profileStorageData, loadingMessage, profileSource);
+                loadingMessage += LogLoadingMessage("Found Profile storage container name, looking for profiles.json there... ");
+                var container = _blobClient.GetBlobContainerClient(profileConfigurationBlobStorageContainer);
+                var blobClient = container.GetBlobClient("profiles.json");
+                var downloadResult = await blobClient.DownloadContentAsync();
+
+                var profileStorageData = System.Text.Json.JsonSerializer.Deserialize<List<ProfileDefinition>>(Encoding.UTF8.GetString(downloadResult.Value.Content));
+                if (profileStorageData != null)
+                {
+                    loadingMessage += LogLoadingMessage($"{profileStorageData.Count} profiles were loaded from storage file on {DateTime.Now:MMMM d} at {DateTime.Now:HH:mm:ss}!");
+                    return (profileStorageData, loadingMessage, profileSource);
+                }
+            }
+            catch (Exception ex)
+            {
+                var errorMsg = $"Error loading profiles.json from storage container {profileConfigurationBlobStorageContainer}: {ex.Message}";
+                loadingMessage += LogLoadingMessage(errorMsg);
+                var fakeData = new List<ProfileDefinition> { new(errorMsg) };
+                return (fakeData, loadingMessage, profileSource);
             }
         }
 
         var profileConfig = _appConfiguration.ProfileConfiguration;
         if (!string.IsNullOrEmpty(profileConfig))
         {
-            loadingMessage += LogLoadingMessage("Found Profile Configuration Key, decoding the value... ");
-            var bytes = Convert.FromBase64String(profileConfig);
-            var profileConfigData = System.Text.Json.JsonSerializer.Deserialize<List<ProfileDefinition>>(Encoding.UTF8.GetString(bytes));
-            if (profileConfigData != null)
+            try
             {
-                loadingMessage += LogLoadingMessage($"{profileConfigData.Count} profiles were loaded from configuration key value on {DateTime.Now:MMMM d} at {DateTime.Now:HH:mm:ss}!");
                 profileSource = "Config";
-                return (profileConfigData, loadingMessage, profileSource);
+                loadingMessage += LogLoadingMessage("Found Profile Configuration Key, decoding the value... ");
+                var bytes = Convert.FromBase64String(profileConfig);
+                var profileConfigData = System.Text.Json.JsonSerializer.Deserialize<List<ProfileDefinition>>(Encoding.UTF8.GetString(bytes));
+                if (profileConfigData != null)
+                {
+                    loadingMessage += LogLoadingMessage($"{profileConfigData.Count} profiles were loaded from configuration key value on {DateTime.Now:MMMM d} at {DateTime.Now:HH:mm:ss}!");
+                    return (profileConfigData, loadingMessage, profileSource);
+                }
+            }
+            catch (Exception ex)
+            {
+                var errorMsg = $"Error loading profile data from Config Key: {ex.Message}";
+                loadingMessage += LogLoadingMessage(errorMsg);
+                var fakeData = new List<ProfileDefinition> { new(errorMsg) };
+                return (fakeData, loadingMessage, profileSource);
             }
         }
 
-        loadingMessage += LogLoadingMessage("Loading Profile from project embedded file... ");
-        var fileName = _appConfiguration.ProfileFileName;
-        var profileFileData = LoadEmbeddedProflies(fileName);
-        loadingMessage += LogLoadingMessage($"{profileFileData.Count} profiles were loaded from embedded file on {DateTime.Now:MMMM d} at {DateTime.Now:HH:mm:ss}!");
-        profileSource = "Embedded";
-        return (profileFileData, loadingMessage, profileSource);
+        try
+        {
+            profileSource = "Embedded";
+            loadingMessage += LogLoadingMessage("Loading Profile from project embedded file... ");
+            var fileName = _appConfiguration.ProfileFileName;
+            var profileFileData = LoadEmbeddedProflies(fileName);
+            loadingMessage += LogLoadingMessage($"{profileFileData.Count} profiles were loaded from embedded file on {DateTime.Now:MMMM d} at {DateTime.Now:HH:mm:ss}!");
+            return (profileFileData, loadingMessage, profileSource);
+        }
+        catch (Exception ex)
+        {
+            var errorMsg = $"Error loading embedded profile data: {ex.Message}";
+            loadingMessage += LogLoadingMessage(errorMsg);
+            var fakeData = new List<ProfileDefinition> { new(errorMsg) };
+            return (fakeData, loadingMessage, profileSource);
+        }
     }
 
     private static List<ProfileDefinition> LoadEmbeddedProflies(string name)
