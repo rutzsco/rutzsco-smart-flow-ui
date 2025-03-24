@@ -9,6 +9,8 @@ namespace ClientApp.Models;
 /// </summary>
 public class BuildInfo
 {
+    public static readonly BuildInfo Instance = Create();
+
     /// <summary>
     /// Build Date
     /// </summary>
@@ -42,7 +44,7 @@ public class BuildInfo
     /// <summary>
     /// Constructor
     /// </summary>
-    public BuildInfo()
+    private BuildInfo()
     {
         BuildDate = string.Empty;
         BuildNumber = string.Empty;
@@ -51,15 +53,47 @@ public class BuildInfo
         CommitHash = string.Empty;
     }
 
+    public override string ToString()
+    {
+        return $"Build Date: {BuildDate}, Build Number: {BuildNumber}, Build Id: {BuildId}, Branch Name: {BranchName}, Commit Hash: {CommitHash}";
+    }
+
     /// <summary>
     /// Constructor
     /// </summary>
-    public BuildInfo(string buildDate, string buildNumber, string buildId, string branchName, string commitHash)
+    private BuildInfo(string buildDate, string buildNumber, string buildId, string branchName, string commitHash)
     {
         BuildDate = buildDate;
         BuildNumber = buildNumber;
         BuildId = buildId;
         BranchName = branchName;
         CommitHash = commitHash;
+    }
+
+    private static BuildInfo Create()
+    {
+        try
+        {
+            var assembly = typeof(BuildInfo).Assembly!;
+            string resourceName = assembly.GetManifestResourceNames().Single(str => str.EndsWith("buildinfo.json"));
+            using Stream stream = assembly.GetManifestResourceStream(resourceName)!;
+            using StreamReader reader = new StreamReader(stream);
+            var json = reader.ReadToEnd();
+
+            var buildInfo = JsonConvert.DeserializeObject<BuildInfo>(json);
+            return buildInfo ?? new BuildInfo();
+        }
+        catch
+        {
+            return new BuildInfo
+            {
+                BuildDate = string.Empty,
+                BuildNumber = string.Empty,
+                BuildId = string.Empty,
+                BranchName = string.Empty,
+                CommitHash = string.Empty
+            };
+        }
+
     }
 }

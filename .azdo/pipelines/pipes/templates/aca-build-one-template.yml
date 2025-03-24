@@ -51,7 +51,7 @@ jobs:
       - name: workingDirectory
         value: '$(System.DefaultWorkingDirectory)/${{ parameters.projectFolderName }}'
       - name: buildInfoFileName
-        value: '$(System.DefaultWorkingDirectory)/${{ parameters.projectFolderName }}/backend/buildinfo.json'
+        value: '$(System.DefaultWorkingDirectory)/${{ parameters.projectFolderName }}/shared/Shared/Resources/buildinfo.json'
         
     steps:
       # ----------------------------------------------------------------------------------------------------

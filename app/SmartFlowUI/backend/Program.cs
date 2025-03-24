@@ -1,7 +1,10 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 
+using ClientApp.Models;
 using Microsoft.AspNetCore.DataProtection;
 using MinimalApi;
+
+Console.WriteLine("Starting SmartFlowUI backend... {0}", BuildInfo.Instance);
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Configuration.AddJsonFile("appsettings.local.json", optional: true, reloadOnChange: true);

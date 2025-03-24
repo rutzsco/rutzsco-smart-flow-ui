@@ -45,7 +45,7 @@ public sealed partial class Chat
 
     public bool _showProfiles { get; set; }
     public bool _errorLoadingProfiles { get; set; }
-    public string _errorLoadingMessage {  get; set; }
+    public string _errorLoadingMessage { get; set; } = string.Empty;
 
     public bool _showDocumentUpload { get; set; }
     public bool _showPictureUpload { get; set; }
@@ -65,7 +65,6 @@ public sealed partial class Chat
 
     protected override async Task OnInitializedAsync()
     {
-        //showInfo("Loading profiles...");
         var user = await ApiClient.GetUserAsync();
         _profiles = user.Profiles.Where(x => x.Approach != ProfileApproach.UserDocumentChat).ToList();
         _userUploadProfileSummary = user.Profiles.FirstOrDefault(x => x.Approach == ProfileApproach.UserDocumentChat);
@@ -76,7 +75,6 @@ public sealed partial class Chat
         }
         _errorLoadingMessage = _profiles.Count > 0 ? string.Empty : $" Error loading profiles...! {user.SessionId}";
 
-        StateHasChanged();
 
         if (!string.IsNullOrEmpty(ArchivedChatId))
         {
@@ -84,12 +82,14 @@ public sealed partial class Chat
             await LoadArchivedChatAsync(_cancellationTokenSource.Token, ArchivedChatId);
         }
         EvaluateOptions();
+        StateHasChanged();
     }
+
 
 
     private async Task OnProfileClickAsync(string selection)
     {
-        await SetSelectedProfileAsync(_profiles.FirstOrDefault(x => x.Name == selection));
+        await SetSelectedProfileAsync(_profiles.Single(x => x.Name == selection));
         OnClearChat();
     }
     private async Task SetSelectedProfileAsync(ProfileSummary profile)
@@ -343,9 +343,24 @@ public sealed partial class Chat
     private void EvaluateOptions()
     {
         _errorLoadingProfiles = _selectedProfileSummary == null;
-        _showProfiles = (_profiles.Count() < 1 || !string.IsNullOrEmpty(_selectedDocument)) && !_errorLoadingProfiles;
-        _showDocumentUpload = !_profiles.Any(p => p.Approach == ProfileApproach.UserDocumentChat) && !_errorLoadingProfiles;
-        _showPictureUpload = (_selectedProfileSummary == null || _selectedProfileSummary.Approach != ProfileApproach.Chat || !string.IsNullOrEmpty(_selectedDocument)) && !_errorLoadingProfiles;
+
+        // hide options when no profiles are loaded ?
+        // what about the case where the user is uploading a document?
+        if (_errorLoadingProfiles)
+        {
+            _showProfiles = false;
+            _showDocumentUpload = false;
+            _showPictureUpload = false;
+            return;
+        }
+
+        // show profiles if there are multiple profiles or if there's a document selected
+        _showProfiles = _profiles.Count > 1 || !string.IsNullOrEmpty(_selectedDocument);
+        // hide document upload if there are no profiles that support it
+        _showDocumentUpload = !_profiles.Any(p => p.Approach == ProfileApproach.UserDocumentChat);
+
+        // show picture upload when approach is chat and document is not already selected
+        _showPictureUpload = _selectedProfileSummary?.Approach == ProfileApproach.Chat && string.IsNullOrEmpty(_selectedDocument);
     }
 
     private async Task LoadArchivedChatAsync(CancellationToken cancellationToken, string chatId)
