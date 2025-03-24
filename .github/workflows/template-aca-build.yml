@@ -65,15 +65,31 @@ jobs:
         uses: actions/checkout@v4.1.1
 
       - name: Get the current date
-        id: get-date
-        run: echo "TAG=$(date +'%Y%m%d%H%M')" >> $GITHUB_OUTPUT
-
+        id: vars
+        run: |
+          echo "TAG=$(date +'%Y%m%d%H%M')" >> $GITHUB_OUTPUT
+          readonly rundatetime=$(date +'%Y-%m-%dT%H:%M:%SZ')
+          echo "rundatetime=$rundatetime" >> $GITHUB_OUTPUT
+          readonly rundate=$(date +'%Y.%m.%d')
+          echo "rundate=$rundate" >> $GITHUB_OUTPUT
+          readonly commitbranch=$(echo ${GITHUB_REF#refs/heads/})
+          echo "commitbranch=$commitbranch" >> $GITHUB_OUTPUT
+          readonly commitsha=${GITHUB_SHA::6}
+          echo "commitsha=$commitsha" >> $GITHUB_OUTPUT
+        continue-on-error: true
+  
       - name: Set image name
         id: image-name
         run: |
-          echo "IMAGE_VERSION=${{ steps.get-date.outputs.TAG}}" >> $GITHUB_OUTPUT
-          echo "IMAGE_NAME=${{ inputs.ACR_REPO_NAME }}/${{ inputs.ACR_APP_NAME }}:${{ steps.get-date.outputs.TAG }}" >> $GITHUB_OUTPUT
+          echo "IMAGE_VERSION=${{ steps.vars.outputs.TAG}}" >> $GITHUB_OUTPUT
+          echo "IMAGE_NAME=${{ inputs.ACR_REPO_NAME }}/${{ inputs.ACR_APP_NAME }}:${{ steps.vars.outputs.TAG }}" >> $GITHUB_OUTPUT
           echo "IMAGE_NAME_NO_TAG=${{ inputs.ACR_REPO_NAME }}/${{ inputs.ACR_APP_NAME }}" >> $GITHUB_OUTPUT
+
+      - name: Put Build Details in buildinfo.json
+        shell: bash
+        run: |
+          echo -e -n "{\"buildDate\":\"${{ steps.vars.outputs.rundatetime }}\",\"buildNumber\":\"${{ steps.vars.outputs.rundate }}.${{ github.run_number }}\",\"buildId\":\"${{ github.run_id }}.${{ github.run_attempt }}\",\"run_id\":\"${{ github.run_id }}\",\"run_attempt\":\"${{ github.run_attempt }}\",\"run_number\":\"${{ github.run_number }}\",\"branchName\":\"${{ steps.vars.outputs.commitbranch }}\",\"commitHash\":\"${{ steps.vars.outputs.commitsha }}\"}" > ${{ github.workspace }}/${{ inputs.APP_PATH }}/backend/buildinfo.json
+        continue-on-error: true
 
       - name: Display Variables and Files
         run: |-
@@ -140,7 +156,7 @@ jobs:
             org.opencontainers.image.title=SmartFlow
             org.opencontainers.image.source=msft-mfg-ai.github.com
           tags: |
-            type=raw,enable=true,priority=200,prefix=,suffix=,value=${{ steps.get-date.outputs.TAG }}
+            type=raw,enable=true,priority=200,prefix=,suffix=,value=${{ steps.vars.outputs.TAG }}
             type=ref,event=branch
             type=ref,event=pr
             type=semver,pattern={{version}}
