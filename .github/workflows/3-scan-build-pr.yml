@@ -24,7 +24,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       ENV_CODE: ${{ inputs.deployEnvironment }}
-      ACR_NAME: '${{ vars.APP_NAME_NO_DASHES }}crdev'
+      ACR_NAME: '${{ steps.set-env.outputs.APP_NAME_NO_DASHES }}crdev'
       ACR_REPO_NAME: ${{ env.ACR_REPO_NAME }}
 
       UI_APP_PATH: ${{ env.UI_APP_PATH }}

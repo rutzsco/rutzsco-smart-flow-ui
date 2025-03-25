@@ -13,7 +13,7 @@ on:
   workflow_dispatch:
     inputs:
       deployEnvironment:
-        description: 'Environment'
+        description: Environment
         required: true
         default: 'dev'
         type: choice
@@ -28,7 +28,7 @@ on:
           - nick
           - matt
       parameterFile:
-        description: 'Parameter File'
+        description: Parameter File
         required: true
         default: 'main.gh.bicepparam'
       backendExists:
@@ -36,13 +36,15 @@ on:
         type: boolean
         default: true
       runSecurityScan:
-        description: 'Run Security Scan'
+        description: Run Security Scan?
         required: false
         default: false
         type: boolean
-      # runSmokeTest:
-      #   description: 'Run Smoke Tests'
-      #   required: false
+
+      # GH Actions restrict you to only 10 inputs... so will have to refactor this to use it!
+      # runBuildDeployBatch:
+      #   description: Build and Deploy Batch?
+      #   required: true
       #   default: false
       #   type: boolean
 
@@ -65,19 +67,19 @@ jobs:
     # You can't pass environment variables to templates, so put them in outputs here that you CAN pass
     name: Template Env Variables
     runs-on: ubuntu-latest
+    environment: ${{ inputs.deployEnvironment }}
     outputs:
       PROJECT_ROOT: ${{ github.workspace }}
       ENV_CODE: ${{ inputs.deployEnvironment }}
       APP_NAME: ${{ vars.APP_NAME }}
-      APP_NAME_NO_DASHES: ${{ vars.APP_NAME_NO_DASHES }}
+      APP_NAME_NO_DASHES: ${{ steps.set-env.outputs.APP_NAME_NO_DASHES }}
       RESOURCE_GROUP_NAME: '${{ vars.RESOURCEGROUP_PREFIX }}-${{ inputs.deployEnvironment }}'
 
-      ACR_NAME: '${{ vars.APP_NAME_NO_DASHES }}cr${{ inputs.deployEnvironment }}'
+      ACR_NAME: '${{ steps.set-env.outputs.APP_NAME_NO_DASHES }}cr${{ inputs.deployEnvironment }}'
       ACR_REPO_NAME: ${{ env.ACR_REPO_NAME }}
-      
-      CONTAINER_APP_ENV_NAME: '${{ vars.APP_NAME_NO_DASHES }}-cae-${{ inputs.deployEnvironment }}'
+      CONTAINER_APP_ENV_NAME: '${{ steps.set-env.outputs.APP_NAME_NO_DASHES }}-cae-${{ inputs.deployEnvironment }}'
 
-      UI_CONTAINER_APP_NAME: '${{ vars.APP_NAME_NO_DASHES }}-ca-ui-${{ inputs.deployEnvironment }}'
+      UI_CONTAINER_APP_NAME: '${{ steps.set-env.outputs.APP_NAME_NO_DASHES }}-ca-ui-${{ inputs.deployEnvironment }}'
       UI_APP_PATH: ${{ env.UI_APP_PATH }}
       UI_ACR_APP_NAME: ${{ env.UI_ACR_APP_NAME }}
       UI_PORT: ${{ env.UI_PORT }}
@@ -89,7 +91,11 @@ jobs:
           echo "PROJECT_ROOT: ${{ github.workspace }}"
           echo "inputs.ENV_CODE: ${{ inputs.deployEnvironment }}"
           echo "vars.APP_NAME: ${{ vars.APP_NAME }}"
-          echo "vars.APP_NAME_NO_DASHES: ${{ vars.APP_NAME_NO_DASHES }}"
+    
+          APP_NAME_NO_DASHES="$(echo ${{ vars.APP_NAME }} | tr -d '-' | tr -d '_')"
+          echo "APP_NAME_NO_DASHES=$APP_NAME_NO_DASHES"
+          echo "APP_NAME_NO_DASHES=$APP_NAME_NO_DASHES" >> $GITHUB_OUTPUT
+
           echo "AZURE_RESOURCE_GROUP: ${{ vars.RESOURCEGROUP_PREFIX }}-${{ inputs.deployEnvironment }}"
 
           echo "ACR_REPO_NAME: ${{ env.ACR_REPO_NAME }}"
@@ -108,12 +114,15 @@ jobs:
       actions: read
       contents: write
       checks: write
+      security-events: write
 
   # ------------------------------------------------------------------------------------------------------------------------
   deploy-bicep:
     name: Deploy ${{ inputs.deployEnvironment }} Bicep
     uses: ./.github/workflows/template-create-infra.yml
     secrets: inherit
+    needs:
+      - template-env
     permissions:
       id-token: write
       contents: read

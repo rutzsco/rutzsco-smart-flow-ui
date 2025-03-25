@@ -6,7 +6,8 @@ name: 4 - Scheduled DevOps Scan
 on:
   workflow_dispatch:
   schedule:
-    - cron: "27 3 * * 1"
+    - cron: "0 1 1 * *" # 1st of Every Month at 1AM
+    # - cron: "27 3 * * 1" Every Wednesday at 1AM
 
 # ------------------------------------------------------------------------------------------------------------------------
 jobs:
@@ -18,6 +19,7 @@ jobs:
       actions: read
       contents: write
       checks: write
+      security-events: write
     with:
       runSecurityScan: true
       continueOnScanError: false
