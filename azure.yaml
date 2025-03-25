@@ -2,7 +2,7 @@
 # Pipeline for AZD process
 # This is designed to be installed on top of the Smart-Flow-Public project
 # Note: Copy the AZD setting values from the Smart-Flow-Public project (i.e. the ".azure" folder)
-# Then -- add in the two variables 'APP_NAME_NO_DASHES="xxxx"' and 'ENVIRONMENT_NAME="dev"' 
+# Then -- add in the variable 'ENVIRONMENT_NAME="dev"' 
 # Then the azd up command should work
 # ----------------------------------------------------------------------------------------------------
 name: AI-Document-Review-UI

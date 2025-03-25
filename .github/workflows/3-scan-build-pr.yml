@@ -37,6 +37,10 @@ jobs:
         run: |
           echo "ACR_REPO_NAME: ${{ env.ACR_REPO_NAME }}"
 
+          APP_NAME_NO_DASHES="$(echo ${{ vars.APP_NAME }} | tr -d '-' | tr -d '_')"
+          echo "APP_NAME_NO_DASHES=$APP_NAME_NO_DASHES"
+          echo "APP_NAME_NO_DASHES=$APP_NAME_NO_DASHES" >> $GITHUB_OUTPUT
+
           echo "UI_APP_PATH: ${{ env.UI_APP_PATH }}"
           echo "UI_ACR_APP_NAME: ${{ env.UI_ACR_APP_NAME }}"
           echo "UI_PORT: ${{ env.UI_PORT }}"

@@ -8,7 +8,7 @@ This project has been configured to work with AZD commands to make it fast and e
 
 ## Special Configuration Instructions
 
-Since this is a companion app  to the [SmartFlow API application](https://github.com/msft-mfg-ai/smart-flow-public), if you want to use `azd up`, you should use the same variables to match the existing SmartFlow API application.  Copy the AZD setting values from the Smart-Flow-Public project (i.e. the entire `.azure` folder), then add in the two variables `APP_NAME_NO_DASHES="xxxx"` and `ENVIRONMENT_NAME="dev"` and then the azd up command should work right off first time as designed.
+Since this is a companion app  to the [SmartFlow API application](https://github.com/msft-mfg-ai/smart-flow-public), if you want to use `azd up`, you should use the same variables to match the existing SmartFlow API application.  Copy the AZD setting values from the Smart-Flow-Public project (i.e. the entire `.azure` folder), then add in the variable `ENVIRONMENT_NAME="dev"` and then the azd up command should work right off first time as designed.
 
 ## Configuration Secrets
 
