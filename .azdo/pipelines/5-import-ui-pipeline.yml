@@ -72,7 +72,7 @@ variables:
   - name: configFileToDeploy
     value: ${{ parameters.configFileToDeploy }}
   - name: importIntoAcr
-    value: ${{ contains(parameters.actionToExecute, 'Import into Local') }}
+    value: ${{ contains(parameters.actionToExecute, 'Import into') }}
   - name: deployFromAcr
     value: ${{ contains(parameters.actionToExecute, 'Deploy from Local') }}
   - name: deployPublicImage
