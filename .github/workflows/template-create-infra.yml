@@ -105,7 +105,7 @@ jobs:
           echo "inputs.envCode=${{ inputs.envCode }}"
           echo "env.generatedResourceGroupName=${{ env.generatedResourceGroupName }}"
           echo "vars.APP_NAME=${{ vars.APP_NAME }}"
-          echo "vars.APP_NAME_NO_DASHES=${{ vars.APP_NAME_NO_DASHES }}"
+          echo "vars.APP_NAME_NO_DASHES=${{ env.APP_NAME_NO_DASHES }}"
           echo "vars.APP_PREFIX=${{ vars.APP_PREFIX }}"
           echo "vars.RESOURCEGROUP_PREFIX=${{ vars.RESOURCEGROUP_PREFIX }}"
           echo "vars.RESOURCEGROUP_LOCATION=${{ vars.RESOURCEGROUP_LOCATION }}"
