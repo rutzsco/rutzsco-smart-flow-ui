@@ -20,18 +20,13 @@ variables:
 
 # ----------------------------------------------------------------------------------------------------
 stages:
-  - stage: ScanApplication
-    displayName: Scan Application
-    jobs:
-      - template: pipes/templates/scan-code-template.yml
-        parameters:
-          environmentName: 'DEV'
-          runMSDevSecOpsScan: true
-          runGHASScan: false
-
-  - template: pipes/aca-build-all-pipe.yml
+  - template: pipes/aca-build-one-pipe.yml
     parameters:
       pushToACR: false
-      deployUI: false
-      uiConfig: 
-      { containerAppName: 'ui',   acrAppName: 'smartflowui',   projectFolderName: 'app/SmartFlowUI',       port: '8080' }
+      app: { containerAppName: 'ui', acrAppName: 'smartflowui', projectFolderName: 'app/SmartFlowUI', port: '8080', acrFolderName: 'smartflow' }
+
+  - template: pipes/scan-code-pipe.yml
+    parameters:
+      runMSDevSecOpsScan: true
+      runGHASScan: false
+

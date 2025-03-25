@@ -1,5 +1,9 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 
+using System.Reflection;
+using System.Xml.Linq;
+using Newtonsoft.Json;
+
 namespace ClientApp.Pages;
 
 public sealed partial class Settings : IDisposable
@@ -12,6 +16,7 @@ public sealed partial class Settings : IDisposable
     private string _profileRawData = string.Empty;
     private string _b64DecodedText = string.Empty;
     private string _b64EncodedText = string.Empty;
+    private Models.BuildInfo _buildInfo = BuildInfo.Instance;
 
     // Store a cancelation token that will be used to cancel if the user disposes of this component.
     private readonly CancellationTokenSource _cancellationTokenSource = new();
@@ -42,6 +47,7 @@ public sealed partial class Settings : IDisposable
         try
         {
             (_profileInfo, _profileRawData) = await Client.GetProfilesInfoAsync();
+            if (_profileInfo == null) { _profileInfo = new ProfileInfo(); }
         }
         catch (Exception ex)
         {
@@ -59,6 +65,7 @@ public sealed partial class Settings : IDisposable
         try
         {
             (_profileInfo, _profileRawData) = await Client.GetProfilesReloadAsync();
+            if (_profileInfo == null) { _profileInfo = new ProfileInfo(); }
         }
         catch (Exception ex)
         {

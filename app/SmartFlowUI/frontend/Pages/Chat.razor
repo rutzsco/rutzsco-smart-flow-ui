@@ -131,11 +131,15 @@
 						OnModelSelection="OnModelSelection"
 						SupportsFileUpload=@_supportsFileUpload/>
 					}
-					else
+                    @if (!_showProfiles && !_errorLoadingProfiles)
 					{
-						<MudText Typo="Typo.h5"><MudProgressCircular Color="Color.Secondary" Indeterminate="true" /> Loading...  please wait...</MudText>
-					}
-				</MudItem>
+                      <MudText Typo="Typo.h5"><MudProgressCircular Color="Color.Secondary" Indeterminate="true" /> Loading...  please wait...</MudText>
+                    }
+                    @if (_errorLoadingProfiles)
+                    {
+                      <MudText Typo="Typo.h5" Color="Color.Error">@_errorLoadingMessage</MudText>
+                    }
+                </MudItem>
             </MudGrid>
         </MudItem>
     </MudGrid>
