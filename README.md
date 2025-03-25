@@ -28,7 +28,7 @@ Note: This is a companion app to the [SmartFlow API application](https://github.
 
 For an easy and optimal deployment experience, copy all of the secrets and variables that you used in the the SmartFlow API deploy to this application's repository variables and secrets, then kick off the primary GitHub Workflow or Azure DevOps pipeline, and it should be good to go.
 
-If you want to use `azd up`, you will want to use the same variables to match the existing SmartFlow API application.  Copy the AZD setting values from the Smart-Flow-Public project (i.e. the entire `.azure` folder), then add in the two variables `APP_NAME_NO_DASHES="xxxx"` and `ENVIRONMENT_NAME="dev"` and then the azd up command should work right off first time as designed.
+If you want to use `azd up`, you will want to use the same variables to match the existing SmartFlow API application.  Copy the AZD setting values from the Smart-Flow-Public project (i.e. the entire `.azure` folder), then add in the variable `ENVIRONMENT_NAME="dev"` and then the azd up command should work right off first time as designed.
 
 ---
 

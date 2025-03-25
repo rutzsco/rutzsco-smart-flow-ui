@@ -94,11 +94,18 @@ jobs:
         id: get-date
         run: echo "TAG=$(date +'%Y%m%d%H%M')" >> $GITHUB_OUTPUT
 
+      - name: Create Environment Variables
+        run: |
+          APP_NAME_NO_DASHES="$(echo ${{ vars.APP_NAME }} | tr -d '-' | tr -d '_')"
+          echo "APP_NAME_NO_DASHES=$APP_NAME_NO_DASHES"
+          echo "APP_NAME_NO_DASHES=$APP_NAME_NO_DASHES" >> $GITHUB_ENV
+
       - name: Display Variables and Files
         run: |-
           echo "inputs.envCode=${{ inputs.envCode }}"
           echo "env.generatedResourceGroupName=${{ env.generatedResourceGroupName }}"
           echo "vars.APP_NAME=${{ vars.APP_NAME }}"
+          echo "vars.APP_NAME_NO_DASHES=${{ env.APP_NAME_NO_DASHES }}"
           echo "vars.APP_PREFIX=${{ vars.APP_PREFIX }}"
           echo "vars.RESOURCEGROUP_PREFIX=${{ vars.RESOURCEGROUP_PREFIX }}"
           echo "vars.RESOURCEGROUP_LOCATION=${{ vars.RESOURCEGROUP_LOCATION }}"
