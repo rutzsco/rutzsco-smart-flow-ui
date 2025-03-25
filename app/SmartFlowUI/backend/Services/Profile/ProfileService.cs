@@ -75,7 +75,7 @@ public class ProfileService
             try
             {
                 profileSource = "Storage";
-                loadingMessage += LogLoadingMessage("Found Profile storage container name, looking for profiles.json there... ");
+                loadingMessage += LogLoadingMessage($"Found storage container, looking for profiles.json in {profileConfigurationBlobStorageContainer}... ");
                 var container = _blobClient.GetBlobContainerClient(profileConfigurationBlobStorageContainer);
                 var blobClient = container.GetBlobClient("profiles.json");
                 var downloadResult = await blobClient.DownloadContentAsync();
@@ -83,7 +83,7 @@ public class ProfileService
                 var profileStorageData = System.Text.Json.JsonSerializer.Deserialize<List<ProfileDefinition>>(Encoding.UTF8.GetString(downloadResult.Value.Content));
                 if (profileStorageData != null)
                 {
-                    loadingMessage += LogLoadingMessage($"{profileStorageData.Count} profiles were loaded from storage file on {DateTime.Now:MMMM d} at {DateTime.Now:HH:mm:ss}!");
+                    loadingMessage += LogLoadingMessage($"{profileStorageData.Count} profiles were loaded from storage file in {profileConfigurationBlobStorageContainer} on {DateTime.Now:MMMM d} at {DateTime.Now:HH:mm:ss}!");
                     return (profileStorageData, loadingMessage, profileSource);
                 }
             }
