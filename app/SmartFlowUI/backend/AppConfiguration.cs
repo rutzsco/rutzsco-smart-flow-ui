@@ -19,6 +19,7 @@ public class AppConfiguration
 
     public bool UseManagedIdentityResourceAccess { get; init; }
     public string UserAssignedManagedIdentityClientId { get; init; }
+    public string VisualStudioTenantId { get; init; }
 
 
     // CosmosDB

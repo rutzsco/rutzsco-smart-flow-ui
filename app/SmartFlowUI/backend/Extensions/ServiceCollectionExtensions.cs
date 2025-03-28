@@ -30,10 +30,27 @@ internal static class ServiceCollectionExtensions
 
         services.AddAzureClients(builder =>
         {
-            builder.UseCredential(new DefaultAzureCredential(new DefaultAzureCredentialOptions
+            if (!string.IsNullOrEmpty(configuration.VisualStudioTenantId))
             {
-                ManagedIdentityClientId = configuration.UserAssignedManagedIdentityClientId
-            }));
+                builder.UseCredential(new DefaultAzureCredential(new DefaultAzureCredentialOptions
+                {
+                    VisualStudioTenantId = configuration.VisualStudioTenantId
+                }));
+            }
+            else
+            {
+                if (!string.IsNullOrEmpty(configuration.UserAssignedManagedIdentityClientId))
+                {
+                    builder.UseCredential(new DefaultAzureCredential(new DefaultAzureCredentialOptions
+                    {
+                        ManagedIdentityClientId = configuration.UserAssignedManagedIdentityClientId
+                    }));
+                }
+                else
+                {
+                    builder.UseCredential(new DefaultAzureCredential(new DefaultAzureCredentialOptions()));
+                }
+            }
 
             builder.AddBlobServiceClient(configuration.AzureStorageAccountEndpoint);
         });
@@ -166,11 +183,22 @@ internal static class ServiceCollectionExtensions
     {
         var sp = services.BuildServiceProvider();
         var httpContextAccessor = sp.GetRequiredService<IHttpContextAccessor>();
-        DefaultAzureCredential azureCredential = new(new DefaultAzureCredentialOptions
+        DefaultAzureCredential azureCredential;
+        if (!string.IsNullOrEmpty(configuration.VisualStudioTenantId))
         {
-            ManagedIdentityClientId = configuration.UserAssignedManagedIdentityClientId
-        });
-
+            azureCredential = new(new DefaultAzureCredentialOptions { VisualStudioTenantId = configuration.VisualStudioTenantId });
+        }
+        else
+        {
+            if (!string.IsNullOrEmpty(configuration.UserAssignedManagedIdentityClientId))
+            {
+                azureCredential = new(new DefaultAzureCredentialOptions { ManagedIdentityClientId = configuration.UserAssignedManagedIdentityClientId });
+            }
+            else
+            {
+                azureCredential = new(new DefaultAzureCredentialOptions());
+            }
+        }
         services.AddSingleton<BlobServiceClient>(sp =>
         {
             var azureStorageAccountEndpoint = configuration.AzureStorageAccountEndpoint;
@@ -466,6 +494,6 @@ internal static class ServiceCollectionExtensions
                 && config.AzureServicePrincipalClientSecret != null
                 && config.AzureTenantID != null
                 && config.AzureAuthorityHost != null
-                &&config.AzureServicePrincipalOpenAIAudience != null;
+                && config.AzureServicePrincipalOpenAIAudience != null;
     }
 }
