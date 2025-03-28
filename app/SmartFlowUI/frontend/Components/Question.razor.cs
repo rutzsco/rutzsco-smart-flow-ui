@@ -15,7 +15,7 @@ public sealed partial class Question
 
     protected override void OnParametersSet()
     {
-        _userAnswerHTML = Markdown.ToHtml(UserQuestion, s_pipeline);
+        _userAnswerHTML = !string.IsNullOrEmpty(UserQuestion) ? Markdown.ToHtml(UserQuestion, s_pipeline) : string.Empty;
 
         base.OnParametersSet();
     }
