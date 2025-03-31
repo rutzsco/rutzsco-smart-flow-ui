@@ -48,7 +48,7 @@ parameters:
     # Windows Agent:  default: 'profileConfig\profilesDefault.json'
     # Linux Agent:  default: 'profileConfig/profilesDefault.json'
   - name: profileContainer
-    displayName: 'Storage Container to Deploy Config Into:'
+    displayName: 'Storage Container Containing Config File:'
     type: string
     default: 'profile'
 
