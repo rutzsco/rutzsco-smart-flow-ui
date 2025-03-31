@@ -1,7 +1,7 @@
 # ------------------------------------------------------------------------------------------------------------------------
 # Action: Build and deploy one container app modules
 # ------------------------------------------------------------------------------------------------------------------------
-name: 2c - Build and Deploy UI
+name: 2b - Build and Deploy UI
 run-name: 2b - Build and Deploy UI to ENV ${{ inputs.deployEnvironment }} by @${{ github.actor }}
 
 on:
@@ -143,6 +143,7 @@ jobs:
       CONTAINER_NAME: ${{ needs.template-env.outputs.UI_CONTAINER_APP_NAME }}
       ACR_NAME: ${{ needs.template-env.outputs.ACR_NAME }}
       IMAGE_NAME: ${{ needs.build-ui.outputs.IMAGE_NAME }}
+      IMAGE_VERSION: ${{ needs.build-ui.outputs.IMAGE_VERSION }}
       PORT: ${{ needs.template-env.outputs.UI_PORT }}
 
   # # ------------------------------------------------------------------------------------------------------------------------
