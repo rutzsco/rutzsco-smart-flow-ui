@@ -125,7 +125,7 @@ jobs:
         displayName: "Put Build Details in buildinfo.json"
         inputs:
           script: |
-            echo {"buildDate":"$(runDateTime)","buildNumber":"$(Build.BuildNumber)","buildId":"$(Build.BuildId)","branchName":"$(Build.SourceBranchName)","commitHash":"$(Build.SourceVersion)"} > $(buildInfoFileName)
+            echo {"buildDate":"$(runDateTime)","buildNumber":"$(Build.BuildNumber)","buildId":"$(Build.BuildId)","imageTag":"$(Build.BuildId)","branchName":"$(Build.SourceBranchName)","commitHash":"$(Build.SourceVersion)"} > $(buildInfoFileName)
         continueOnError: true
 
       # ----------------------------------------------------------------------------------------------------
