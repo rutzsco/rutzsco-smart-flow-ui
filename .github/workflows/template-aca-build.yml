@@ -99,8 +99,14 @@ jobs:
           echo "inputs.ACR_APP_NAME=${{ inputs.ACR_APP_NAME }}"
           echo "inputs.APP_PATH=${{ inputs.APP_PATH }}"
 
-          echo "steps.image-name.IMAGE_VERSION=${{ steps.image-name.outputs.IMAGE_VERSION }}"
-          echo "steps.image-name.IMAGE_NAME=${{ steps.image-name.outputs.IMAGE_NAME }}"
+          echo "vars.outputs.TAG=${{ steps.vars.outputs.TAG }}"
+          echo "vars.outputs.rundatetime=${{ steps.vars.outputs.rundatetime }}"
+          echo "vars.outputs.rundate=${{ steps.vars.outputs.rundate }}"
+          echo "vars.outputs.commitbranch=${{ steps.vars.outputs.commitbranch }}"
+          echo "vars.outputs.commitsha=${{ steps.vars.outputs.commitsha }}"
+
+          echo "image-name.outputs.IMAGE_VERSION=${{ steps.image-name.outputs.IMAGE_VERSION }}"
+          echo "image-name.outputs.IMAGE_NAME=${{ steps.image-name.outputs.IMAGE_NAME }}"
 
           echo "---------------------------------"
           echo "##[group]All Variables:"
