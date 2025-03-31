@@ -1,7 +1,7 @@
 # ------------------------------------------------------------------------------------------------------------------------
 # Action: Build and deploy one container app modules
 # ------------------------------------------------------------------------------------------------------------------------
-name: 2c - Build and Deploy UI
+name: 2b - Build and Deploy UI
 run-name: 2b - Build and Deploy UI to ENV ${{ inputs.deployEnvironment }} by @${{ github.actor }}
 
 on:
@@ -111,7 +111,8 @@ jobs:
       actions: read
       contents: write
       checks: write
-
+      security-events: write   # needed to update the security sarif alerts
+      
   # ------------------------------------------------------------------------------------------------------------------------
   build-ui:
     name: Build UI

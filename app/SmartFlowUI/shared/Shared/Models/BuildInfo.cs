@@ -42,6 +42,12 @@ public class BuildInfo
     public string CommitHash { get; set; }
 
     /// <summary>
+    /// Image Tag
+    /// </summary>
+    [JsonProperty("imageTag")]
+    public string ImageTag { get; set; }
+
+    /// <summary>
     /// Constructor
     /// </summary>
     private BuildInfo()
@@ -51,23 +57,25 @@ public class BuildInfo
         BuildId = string.Empty;
         BranchName = string.Empty;
         CommitHash = string.Empty;
+        ImageTag = string.Empty;
     }
 
     public override string ToString()
     {
-        return $"Build Date: {BuildDate}, Build Number: {BuildNumber}, Build Id: {BuildId}, Branch Name: {BranchName}, Commit Hash: {CommitHash}";
+        return $"Build Date: {BuildDate}, Build Number: {BuildNumber}, Build Id: {BuildId}, Image Tag: {ImageTag}, Branch Name: {BranchName}, Commit Hash: {CommitHash}";
     }
 
     /// <summary>
     /// Constructor
     /// </summary>
-    private BuildInfo(string buildDate, string buildNumber, string buildId, string branchName, string commitHash)
+    private BuildInfo(string buildDate, string buildNumber, string buildId, string branchName, string commitHash, string imageTag)
     {
         BuildDate = buildDate;
         BuildNumber = buildNumber;
         BuildId = buildId;
         BranchName = branchName;
         CommitHash = commitHash;
+        ImageTag = ImageTag;
     }
 
     private static BuildInfo Create()
@@ -91,7 +99,8 @@ public class BuildInfo
                 BuildNumber = string.Empty,
                 BuildId = string.Empty,
                 BranchName = string.Empty,
-                CommitHash = string.Empty
+                CommitHash = string.Empty,
+                ImageTag = string.Empty
             };
         }
 
