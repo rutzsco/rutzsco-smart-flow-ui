@@ -143,7 +143,6 @@ jobs:
       CONTAINER_NAME: ${{ needs.template-env.outputs.UI_CONTAINER_APP_NAME }}
       ACR_NAME: ${{ needs.template-env.outputs.ACR_NAME }}
       IMAGE_NAME: ${{ needs.build-ui.outputs.IMAGE_NAME }}
-      IMAGE_VERSION: ${{ needs.build-ui.outputs.IMAGE_VERSION }}
       PORT: ${{ needs.template-env.outputs.UI_PORT }}
 
   # # ------------------------------------------------------------------------------------------------------------------------
