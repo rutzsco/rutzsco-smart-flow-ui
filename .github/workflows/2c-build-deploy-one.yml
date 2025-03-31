@@ -111,7 +111,8 @@ jobs:
       actions: read
       contents: write
       checks: write
-
+      security-events: write   # needed to update the security sarif alerts
+      
   # ------------------------------------------------------------------------------------------------------------------------
   build-ui:
     name: Build UI

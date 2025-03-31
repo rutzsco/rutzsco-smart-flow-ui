@@ -36,6 +36,9 @@ jobs:
       run:
         working-directory: ${{ env.APP_PATH }}
     permissions: write-all
+    outputs:
+      IMAGE_NAME: ${{ steps.vars.outputs.IMAGE_NAME }}
+      IMAGE_VERSION: ${{ steps.vars.outputs.IMAGE_VERSION }}
 
     steps:
       - name: Checkout code

@@ -85,10 +85,6 @@ jobs:
           echo "IMAGE_NAME=${{ inputs.ACR_REPO_NAME }}/${{ inputs.ACR_APP_NAME }}:${{ steps.vars.outputs.TAG }}" >> $GITHUB_OUTPUT
           echo "IMAGE_NAME_NO_TAG=${{ inputs.ACR_REPO_NAME }}/${{ inputs.ACR_APP_NAME }}" >> $GITHUB_OUTPUT
   
-      # - name: Set image name
-      #   id: image-name
-      #   run: |
-
       - name: Put Build Details in buildinfo.json
         shell: bash
         run: |
