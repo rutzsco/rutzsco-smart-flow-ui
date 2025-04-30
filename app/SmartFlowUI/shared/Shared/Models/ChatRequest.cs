@@ -17,3 +17,21 @@ public record class ChatRequest(
 }
 
 public record class ChatRatingRequest(Guid ChatId, Guid MessageId, int Rating, string Feedback, Approach Approach) : ApproachRequest(Approach);
+
+public class RequestDiagnosticsBuilder
+{
+    // Aggregate all the function call results
+    public List<ExecutionStepResult> FunctionCallResults = new();
+
+    public void AddFunctionCallResult(string name, string result)
+    {
+        FunctionCallResults.Add(new ExecutionStepResult(name, result));
+    }
+
+    public void AddFunctionCallResult(string name, string result, List<SupportingContentRecord> sources)
+    {
+        FunctionCallResults.Add(new ExecutionStepResult(name, result, sources));
+    }
+}
+
+public record ExecutionStepResult(string Name, string Result, List<SupportingContentRecord> Sources = null);

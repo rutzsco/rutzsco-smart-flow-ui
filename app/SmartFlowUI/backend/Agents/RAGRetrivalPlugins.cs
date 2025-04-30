@@ -29,14 +29,14 @@ public class RAGRetrivalPlugins
             var results = await logic.SearchAsync(searchQuery);
 
             // Add kernel context for diagnostics
-            //kernel.AddFunctionCallResult("get_knowledge_articles", $"Search Query: {searchQuery} /n {System.Text.Json.JsonSerializer.Serialize(results)}", results);
+            kernel.AddFunctionCallResult("get_knowledge_articles", $"Search Query: {searchQuery} /n {System.Text.Json.JsonSerializer.Serialize(results)}", results);
 
             return results;
         }
         catch (Exception ex)
         {
             // Log the exception
-            //kernel.AddFunctionCallResult("get_knowledge_articles", $"Error: {ex.Message}", null);
+            kernel.AddFunctionCallResult("get_knowledge_articles", $"Error: {ex.Message}", null);
             throw;
         }
     }

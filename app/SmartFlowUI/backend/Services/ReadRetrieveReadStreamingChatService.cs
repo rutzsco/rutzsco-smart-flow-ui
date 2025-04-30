@@ -88,7 +88,7 @@ internal sealed class ReadRetrieveReadStreamingChatService : IChatService
 
 
         var requestTokenCount = chatHistory.GetTokenCount();
-        var result = context.BuildStreamingResoponse(profile, request, requestTokenCount, sb.ToString(), _configuration, _openAIClientFacade.GetKernelDeploymentName(), sw.ElapsedMilliseconds, requestProperties);
+        var result = context.BuildStreamingResoponse(kernel, profile, request, requestTokenCount, sb.ToString(), _configuration, _openAIClientFacade.GetKernelDeploymentName(), sw.ElapsedMilliseconds, requestProperties);
 
         _logger.LogInformation($"Chat Complete - Profile: {result.Context.Profile}, ChatId: {result.Context.ChatId}, ChatMessageId: {result.Context.MessageId}, ModelDeploymentName: {result.Context.Diagnostics.ModelDeploymentName}, TotalTokens: {result.Context.Diagnostics.AnswerDiagnostics.TotalTokens}");
 
