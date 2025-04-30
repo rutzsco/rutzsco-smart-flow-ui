@@ -1,5 +1,8 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 
+using Azure.AI.OpenAI;
+using Azure.Search.Documents;
+using Azure.Search.Documents.Models;
 using TiktokenSharp;
 
 namespace MinimalApi.Services.Search;
@@ -8,45 +11,39 @@ public class SearchLogic<T> where T : IKnowledgeSource
 {
     private readonly SearchClient _searchClient;
     private readonly AzureOpenAIClient _openAIClient;
-    private readonly string _embeddingModelName;
-    private readonly string _embeddingFieldName;
     private readonly List<string> _selectFields;
-    private readonly int _documentFilesCount;
-    private readonly int _maxSourceTokens;
-  
-    public SearchLogic(AzureOpenAIClient openAIClient, SearchClientFactory factory, string indexName, string embeddingModelName, string embeddingFieldName, List<string> selectFields, int documentFilesCount, int maxSourceTokens)
+    private readonly VectorSearchSettings _settings;
+    private readonly string _embeddingFieldName;
+
+    public SearchLogic(AzureOpenAIClient openAIClient, SearchClientFactory factory, List<string> selectFields, string embeddingFieldName, VectorSearchSettings settings)
     {
-        _searchClient = factory.GetOrCreateClient(indexName);
+        _searchClient = factory.GetOrCreateClient(settings.IndexName);
         _openAIClient = openAIClient;
-        _embeddingModelName = embeddingModelName;
-        _embeddingFieldName = embeddingFieldName;
         _selectFields = selectFields;
-        _documentFilesCount = documentFilesCount;
-        _maxSourceTokens = maxSourceTokens;
+        _settings = settings;
+        _embeddingFieldName = embeddingFieldName;
     }
 
-    public async Task<KnowledgeSourceSummary> SearchAsync(string query, KernelArguments arguments)
+    public async Task<List<KnowledgeSource>> SearchAsync(string query)
     {
         // Generate the embedding for the query
         var queryEmbeddings = await GenerateEmbeddingsAsync(query, _openAIClient);
-        var ragSettings = arguments.GetProfileRAGSettingsDefinition();
+
 
         var searchOptions = new SearchOptions
         {
-            Size = _documentFilesCount,
+            Size = _settings.DocumentCount,
             VectorSearch = new()
             {
-                Queries = { new VectorizedQuery(queryEmbeddings.ToArray()) { KNearestNeighborsCount = ragSettings.KNearestNeighborsCount, Fields = { _embeddingFieldName }, Exhaustive = ragSettings.Exhaustive } }
+                Queries = { new VectorizedQuery(queryEmbeddings.ToArray()) { KNearestNeighborsCount = _settings.KNearestNeighborsCount, Fields = { _embeddingFieldName }, Exhaustive = _settings.Exhaustive } }
             }
         };
-
-
-        
-        if (ragSettings.UseSemanticRanker)
+      
+        if (_settings.UseSemanticRanker)
         {
             searchOptions.SemanticSearch = new SemanticSearchOptions
             {
-                SemanticConfigurationName = ragSettings.SemanticConfigurationName
+                SemanticConfigurationName = _settings.SemanticConfigurationName
             };
             searchOptions.QueryType = SearchQueryType.Semantic;
         }
@@ -54,30 +51,6 @@ public class SearchLogic<T> where T : IKnowledgeSource
         foreach (var field in _selectFields)
         {
             searchOptions.Select.Add(field);
-        }
-
-        //if (ragSettings.UserLevelSecurity)
-        //{
-        //    var userId = arguments[ContextVariableOptions.UserId] as string;
-        //    var sessionId = arguments[ContextVariableOptions.SessionId] as string;
-        //    var filter = $"entra_id eq '{userId}' and session_id eq '{sessionId}'";
-        //    if (arguments.ContainsName(ContextVariableOptions.SelectedDocuments))
-        //    {
-        //        var sourcefiles = arguments[ContextVariableOptions.SelectedDocuments] as IEnumerable<string>;
-        //        if (sourcefiles.Any())
-        //        {
-
-        //            var sourcefilesString = string.Join(",", sourcefiles);
-        //            searchOptions.Filter = $"{filter} and search.in(sourcefile, '{sourcefilesString}')";
-        //        }
-        //    }
-
-        //    searchOptions.Filter = filter;
-        //}
-
-        if (arguments.ContainsName(ContextVariableOptions.SelectedFilters))
-        {
-            searchOptions.Filter = arguments[ContextVariableOptions.SelectedFilters] as string;
         }
 
         // Perform the search and build the results
@@ -89,35 +62,32 @@ public class SearchLogic<T> where T : IKnowledgeSource
         }
 
         // Filter the results by the maximum request token size
-        var sourceSummary = FilterByMaxRequestTokenSize(list, _maxSourceTokens, ragSettings.CitationUseSourcePage);
-        return sourceSummary;
+        var sources = FilterByMaxRequestTokenSize(list, _settings.MaxSourceTokens, _settings.CitationUseSourcePage);
+        return sources.ToList();
     }
 
-    private KnowledgeSourceSummary FilterByMaxRequestTokenSize(IReadOnlyList<T> sources, int maxRequestTokens, bool citationUseSourcePage)
+    private IEnumerable<KnowledgeSource> FilterByMaxRequestTokenSize(IReadOnlyList<T> sources, int maxRequestTokens, bool citationUseSourcePage)
     {
         int sourceSize = 0;
         int tokenSize = 0;
         var documents = new List<IKnowledgeSource>();
         var tikToken = TikToken.EncodingForModel("gpt-3.5-turbo");
-        var sb = new StringBuilder();
         foreach (var document in sources)
         {
-            var text = document.FormatAsOpenAISourceText(citationUseSourcePage);
+            var text = document.GetSource().Content;
             sourceSize += text.Length;
             tokenSize += tikToken.Encode(text).Count;
             if (tokenSize > maxRequestTokens)
             {
                 break;
             }
-            documents.Add(document);
-            sb.AppendLine(text);
+            yield return document.GetSource(citationUseSourcePage);
         }
-        return new KnowledgeSourceSummary(sb.ToString(), documents);
     }
 
     private async Task<ReadOnlyMemory<float>> GenerateEmbeddingsAsync(string text, AzureOpenAIClient openAIClient)
     {
-        var response = await openAIClient.GetEmbeddingClient(_embeddingModelName).GenerateEmbeddingsAsync(new List<string>{ text });
+        var response = await openAIClient.GetEmbeddingClient(_settings.EmbeddingModelName).GenerateEmbeddingsAsync(new List<string>{ text });
         return response.Value[0].ToFloats();
     }
 }

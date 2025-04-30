@@ -1,4 +1,6 @@
-﻿namespace MinimalApi.Extensions;
+﻿using Microsoft.SemanticKernel.Connectors.OpenAI;
+
+namespace MinimalApi.Extensions;
 
 public static class DefaultSettings
 {
@@ -23,6 +25,8 @@ public static class DefaultSettings
             { "top_p", 1 },
         }
     };
+
+    public static PromptExecutionSettings AIChatRequestSettingsV2 = new OpenAIPromptExecutionSettings { FunctionChoiceBehavior = FunctionChoiceBehavior.Auto(), Temperature = 0.0, MaxTokens = 2024, TopP = 1 };
 
     public static string DocumentRetrievalPluginName = "DocumentRetrieval";
     public static string DocumentRetrievalPluginNameKM = "DocumentRetrievalKM";

@@ -26,7 +26,7 @@ internal sealed class ChatService : IChatService
 
         var sw = Stopwatch.StartNew();
 
-        var kernel = _openAIClientFacade.GetKernel(request.OptionFlags.IsChatGpt4Enabled());
+        var kernel = _openAIClientFacade.BuildKernel(string.Empty);
         var context = new KernelArguments().AddUserParameters(request, profile, user);
 
         // Chat Step
@@ -97,7 +97,7 @@ internal sealed class ChatService : IChatService
 
 
         var requestTokenCount = chatHistory.GetTokenCount();
-        var result = context.BuildChatSimpleResponse(profile, request, requestTokenCount, sb.ToString(), _configuration, _openAIClientFacade.GetKernelDeploymentName(request.OptionFlags.IsChatGpt4Enabled()), sw.ElapsedMilliseconds);
+        var result = context.BuildChatSimpleResponse(profile, request, requestTokenCount, sb.ToString(), _configuration, _openAIClientFacade.GetKernelDeploymentName(), sw.ElapsedMilliseconds);
         yield return new ChatChunkResponse(string.Empty, result);
     }
 }

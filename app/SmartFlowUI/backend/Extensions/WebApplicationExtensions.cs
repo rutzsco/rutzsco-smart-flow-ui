@@ -51,7 +51,6 @@ internal static class WebApplicationExtensions
 
         api.MapGet("tag", OnTagSyncAsync);
 
-        api.MapPost("ingestion/trigger", OnPostTriggerIngestionPipelineAsync);
         api.MapGet("headers", OnGetHeadersAsync);
         return app;
     }
@@ -382,11 +381,6 @@ internal static class WebApplicationExtensions
         return response.AsFeedbackResponse(profileInfo);
     }
 
-    private static async Task<IResult> OnPostTriggerIngestionPipelineAsync([FromServices] IngestionService ingestionService, IngestionRequest ingestionRequest)
-    {
-        await ingestionService.TriggerIngestionPipelineAsync(ingestionRequest);
-        return Results.Ok();
-    }
 
     private static async Task<IResult> OnTagSyncAsync([FromServices] BlobServiceClient blobServiceClient)
     {

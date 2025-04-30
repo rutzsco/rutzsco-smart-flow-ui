@@ -148,7 +148,7 @@ public static class SKExtensions
         ArgumentNullException.ThrowIfNull(profile.RAGSettings, "Profile RAGSettings is null");
         ArgumentNullException.ThrowIfNull(result.Usage, "Result Usage is null");
 
-        var dataSources = knowledgeSourceSummary?.Sources.Select(x => new SupportingContentRecord(x.GetFilepath(profile.RAGSettings.CitationUseSourcePage), x.GetContent())).ToArray();
+        var dataSources = knowledgeSourceSummary?.Sources.Select(x => new SupportingContentRecord(x.FilePath, x.Content)).ToArray();
 
         var chatDiagnostics = new CompletionsDiagnostics(result.Usage.CompletionTokens, result.Usage.PromptTokens, result.Usage.TotalTokens, result.DurationMilliseconds);
         var diagnostics = new Diagnostics(chatDiagnostics, modelDeploymentName, workflowDurationMilliseconds);
@@ -176,7 +176,7 @@ public static class SKExtensions
                 ArgumentNullException.ThrowIfNull(knowledgeSourceSummary, "knowledgeSourceSummary is null");
                 ArgumentNullException.ThrowIfNull(profile.RAGSettings, "profile.RAGSettings is null");
 
-                dataSources = knowledgeSourceSummary.Sources.Select(x => new SupportingContentRecord(x.GetFilepath(profile.RAGSettings.CitationUseSourcePage), x.GetContent())).ToArray();
+                dataSources = knowledgeSourceSummary.Sources.Select(x => new SupportingContentRecord(x.FilePath, x.Content)).ToArray();
             }
         }
 
@@ -312,6 +312,35 @@ public static class SKExtensions
         }
 
         return results;
+    }
+}
+
+public static class VectorSearchExtensions
+{
+    /// <summary>
+    /// Creates VectorSearchSettings from profile RAGSettings and adds it to the kernel
+    /// </summary>
+    /// <param name="kernel">The kernel to add settings to</param>
+    /// <param name="profile">Profile containing RAG settings</param>
+    /// <returns>The provided kernel for chaining</returns>
+    public static Kernel AddVectorSearchSettings(this Kernel kernel, ProfileDefinition profile)
+    {
+        ArgumentNullException.ThrowIfNull(profile?.RAGSettings, "profile.RAGSettings");
+        
+        kernel.Data["VectorSearchSettings"] = new VectorSearchSettings(
+            profile.RAGSettings.DocumentRetrievalIndexName,
+            profile.RAGSettings.DocumentRetrievalDocumentCount,
+            profile.RAGSettings.DocumentRetrievalPluginQueryFunctionName,
+            "text-embedding",
+            profile.RAGSettings.DocumentRetrievalMaxSourceTokens,
+            profile.RAGSettings.KNearestNeighborsCount,
+            profile.RAGSettings.Exhaustive,
+            profile.RAGSettings.UseSemanticRanker,
+            profile.RAGSettings.SemanticConfigurationName,
+            profile.RAGSettings.StorageContianer,
+            profile.RAGSettings.CitationUseSourcePage);
+            
+        return kernel;
     }
 }
 

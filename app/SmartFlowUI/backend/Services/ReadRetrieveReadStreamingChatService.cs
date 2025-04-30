@@ -1,7 +1,7 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 
 using Microsoft.SemanticKernel.ChatCompletion;
-using MinimalApi.Services.Profile;
+using Microsoft.SemanticKernel.Connectors.OpenAI;
 using MinimalApi.Services.Profile.Prompts;
 
 namespace MinimalApi.Services;
@@ -27,20 +27,10 @@ internal sealed class ReadRetrieveReadStreamingChatService : IChatService
         var sw = Stopwatch.StartNew();
 
         // Kernel setup
-        var kernel = _openAIClientFacade.GetKernel(request.OptionFlags.IsChatGpt4Enabled());
+        var kernel = _openAIClientFacade.BuildKernel("RAG");
+        kernel.AddVectorSearchSettings(profile);
 
-        var generateSearchQueryFunction = kernel.Plugins.GetFunction(profile.RAGSettings.GenerateSearchQueryPluginName, profile.RAGSettings.GenerateSearchQueryPluginQueryFunctionName);
-        var documentLookupFunction = kernel.Plugins.GetFunction(profile.RAGSettings.DocumentRetrievalPluginName, "Retrieval");
         var context = new KernelArguments().AddUserParameters(request, profile, user);
-
-        // RAG Steps
-        await kernel.InvokeAsync(generateSearchQueryFunction, context);
-        if (context.TryGetValue(ContextVariableOptions.ResponsibleAIPolicyViolation, out var policyViolationObj) && policyViolationObj is bool policyViolation && policyViolation)
-        {
-            yield return new ChatChunkResponse("The response was filtered due to the prompt triggering Azure OpenAI's content management policy.", new ApproachResponse("The response was filtered due to the prompt triggering Azure OpenAI's content management policy.",string.Empty, null));
-            yield break;
-        }
-        await kernel.InvokeAsync(documentLookupFunction, context);
 
         // Chat Step
         var chatGpt = kernel.Services.GetService<IChatCompletionService>();
@@ -83,11 +73,9 @@ internal sealed class ReadRetrieveReadStreamingChatService : IChatService
             chatHistory.AddUserMessage(userMessage);
         }
 
-
-
         var requestProperties = GenerateRequestProperties(chatHistory, DefaultSettings.AIChatRequestSettings);
         var sb = new StringBuilder();
-        await foreach (StreamingChatMessageContent chatUpdate in chatGpt.GetStreamingChatMessageContentsAsync(chatHistory, DefaultSettings.AIChatRequestSettings, null, cancellationToken))
+        await foreach (StreamingChatMessageContent chatUpdate in chatGpt.GetStreamingChatMessageContentsAsync(chatHistory, DefaultSettings.AIChatRequestSettingsV2, kernel, cancellationToken))
         {
             if (chatUpdate.Content != null)
             {
@@ -100,7 +88,7 @@ internal sealed class ReadRetrieveReadStreamingChatService : IChatService
 
 
         var requestTokenCount = chatHistory.GetTokenCount();
-        var result = context.BuildStreamingResoponse(profile, request, requestTokenCount, sb.ToString(), _configuration, _openAIClientFacade.GetKernelDeploymentName(request.OptionFlags.IsChatGpt4Enabled()), sw.ElapsedMilliseconds, requestProperties);
+        var result = context.BuildStreamingResoponse(profile, request, requestTokenCount, sb.ToString(), _configuration, _openAIClientFacade.GetKernelDeploymentName(), sw.ElapsedMilliseconds, requestProperties);
 
         _logger.LogInformation($"Chat Complete - Profile: {result.Context.Profile}, ChatId: {result.Context.ChatId}, ChatMessageId: {result.Context.MessageId}, ModelDeploymentName: {result.Context.Diagnostics.ModelDeploymentName}, TotalTokens: {result.Context.Diagnostics.AnswerDiagnostics.TotalTokens}");
 
