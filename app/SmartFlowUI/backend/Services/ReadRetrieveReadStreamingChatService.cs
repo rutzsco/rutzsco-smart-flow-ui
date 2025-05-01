@@ -73,7 +73,6 @@ internal sealed class ReadRetrieveReadStreamingChatService : IChatService
             chatHistory.AddUserMessage(userMessage);
         }
 
-        var requestProperties = GenerateRequestProperties(chatHistory, DefaultSettings.AIChatRequestSettings);
         var sb = new StringBuilder();
         await foreach (StreamingChatMessageContent chatUpdate in chatGpt.GetStreamingChatMessageContentsAsync(chatHistory, DefaultSettings.AIChatRequestSettingsV2, kernel, cancellationToken))
         {
@@ -86,35 +85,13 @@ internal sealed class ReadRetrieveReadStreamingChatService : IChatService
         }
         sw.Stop();
 
-
-        var requestTokenCount = chatHistory.GetTokenCount();
-        var result = context.BuildStreamingResoponse(kernel, profile, request, requestTokenCount, sb.ToString(), _configuration, _openAIClientFacade.GetKernelDeploymentName(), sw.ElapsedMilliseconds, requestProperties);
+        var result = context.BuildStreamingResoponse(kernel, profile, request, chatHistory, sb.ToString(), _configuration, _openAIClientFacade.GetKernelDeploymentName(), sw.ElapsedMilliseconds);
 
         _logger.LogInformation($"Chat Complete - Profile: {result.Context.Profile}, ChatId: {result.Context.ChatId}, ChatMessageId: {result.Context.MessageId}, ModelDeploymentName: {result.Context.Diagnostics.ModelDeploymentName}, TotalTokens: {result.Context.Diagnostics.AnswerDiagnostics.TotalTokens}");
 
         yield return new ChatChunkResponse(string.Empty, result);
     }
 
-    private List<KeyValuePair<string, string>> GenerateRequestProperties(Microsoft.SemanticKernel.ChatCompletion.ChatHistory chatHistory, PromptExecutionSettings settings)
-    {
-        var results = new List<KeyValuePair<string,string>>();
-        foreach (var item in chatHistory)
-        {
-            if (item is ChatMessageContent chatMessageContent)
-            {
-                var content = chatMessageContent.Content;
-                var role = chatMessageContent.Role;
-                results.Add(new KeyValuePair<string,string>($"PROMPTMESSAGE:{role}", content));
-            }
-        }
-
-        foreach (var item in settings.ExtensionData)
-        {
-            results.Add(new KeyValuePair<string, string>($"PROMPTKEY:{item.Key}", item.Value.ToString()));
-        }
-
-        return results;
-    }
 
     private string ResolveSystemMessage(ProfileDefinition profile)
     {

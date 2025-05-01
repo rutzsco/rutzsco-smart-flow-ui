@@ -90,8 +90,9 @@ public static class SKExtensions
     }
 
 
-    public static ApproachResponse BuildStreamingResoponse(this KernelArguments context, Kernel kernel, ProfileDefinition profile, ChatRequest request, int requestTokenCount, string answer, IConfiguration configuration, string modelDeploymentName, long workflowDurationMilliseconds, List<KeyValuePair<string, string>>? requestSettings = null)
+    public static ApproachResponse BuildStreamingResoponse(this KernelArguments context, Kernel kernel, ProfileDefinition profile, ChatRequest request, ChatHistory chatHistory, string answer, IConfiguration configuration, string modelDeploymentName, long workflowDurationMilliseconds)
     {
+        var requestTokenCount = chatHistory.GetTokenCount();
         var dataSources = new SupportingContentRecord[] { };
         if (context.ContainsName(ContextVariableOptions.Knowledge))
         {
@@ -111,7 +112,7 @@ public static class SKExtensions
         var chatDiagnostics = new CompletionsDiagnostics(completionTokens, requestTokenCount, totalTokens, 0);
         var diagnostics = new Diagnostics(chatDiagnostics, modelDeploymentName, workflowDurationMilliseconds);
 
-        var thoughts = kernel.GetThoughtProcess(string.Empty, string.Empty); 
+        var thoughts = kernel.GetThoughtProcess(chatHistory.FirstOrDefault(x => x.Role == AuthorRole.System).Content, answer); 
         var contextData = new ResponseContext(profile.Name, dataSources, thoughts.Select(x => new ThoughtRecord(x.Name, x.Result)).ToArray(), request.ChatTurnId, request.ChatId, diagnostics);
 
         return new ApproachResponse(

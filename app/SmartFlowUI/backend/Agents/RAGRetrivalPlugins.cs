@@ -29,7 +29,9 @@ public class RAGRetrivalPlugins
             var results = await logic.SearchAsync(searchQuery);
 
             // Add kernel context for diagnostics
-            kernel.AddFunctionCallResult("get_knowledge_articles", $"Search Query: {searchQuery} /n {System.Text.Json.JsonSerializer.Serialize(results)}", results);
+            kernel.AddFunctionCallResult("get_knowledge_articles", 
+                $"Search Query: {searchQuery} /n {System.Text.Json.JsonSerializer.Serialize(results, new System.Text.Json.JsonSerializerOptions { WriteIndented = true })}", 
+                results);
 
             return results;
         }
