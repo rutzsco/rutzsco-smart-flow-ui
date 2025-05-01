@@ -1,10 +1,9 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 
 using Microsoft.SemanticKernel.ChatCompletion;
-using MinimalApi.Agents;
 using MinimalApi.Services.Profile.Prompts;
 
-namespace MinimalApi.Services;
+namespace MinimalApi.Agents;
 
 internal sealed class ChatService : IChatService
 {
@@ -46,7 +45,7 @@ internal sealed class ChatService : IChatService
             context[ContextVariableOptions.SystemMessagePrompt] = systemMessagePrompt;
         }
 
-        var chatHistory = new Microsoft.SemanticKernel.ChatCompletion.ChatHistory(systemMessagePrompt).AddChatHistory(request.History);
+        var chatHistory = new ChatHistory(systemMessagePrompt).AddChatHistory(request.History);
         var userMessage = await PromptService.RenderPromptAsync(kernel, PromptService.GetPromptByName(PromptService.ChatSimpleUserPrompt), context);
         context["UserMessage"] = userMessage;
 
@@ -61,9 +60,7 @@ internal sealed class ChatService : IChatService
             {
                 DataUriParser parser = new DataUriParser(file.DataUrl);
                 if (parser.MediaType == "image/jpeg" || parser.MediaType == "image/png")
-                {
                     chatMessageContentItemCollection.Add(new ImageContent(parser.Data, parser.MediaType));
-                }
                 else if (parser.MediaType == "application/pdf")
                 {
                     string pdfData = PDFTextExtractor.ExtractTextFromPdf(parser.Data);
@@ -71,7 +68,7 @@ internal sealed class ChatService : IChatService
                 }
                 else
                 {
-                    string csvData = System.Text.Encoding.UTF8.GetString(parser.Data);
+                    string csvData = Encoding.UTF8.GetString(parser.Data);
                     chatMessageContentItemCollection.Add(new TextContent(csvData));
 
                 }
@@ -80,20 +77,16 @@ internal sealed class ChatService : IChatService
             chatHistory.AddUserMessage(chatMessageContentItemCollection);
         }
         else
-        {
             chatHistory.AddUserMessage(userMessage);
-        }
 
         var sb = new StringBuilder();
         await foreach (StreamingChatMessageContent chatUpdate in chatGpt.GetStreamingChatMessageContentsAsync(chatHistory, DefaultSettings.AIChatRequestSettings))
-        {
             if (chatUpdate.Content != null)
             {
                 sb.Append(chatUpdate.Content);
                 yield return new ChatChunkResponse(chatUpdate.Content);
                 await Task.Yield();
             }
-        }
         sw.Stop();
 
 

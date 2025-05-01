@@ -1,5 +1,6 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 
+using MinimalApi.Agents;
 using MinimalApi.Services.Profile;
 
 namespace MinimalApi.Services;
