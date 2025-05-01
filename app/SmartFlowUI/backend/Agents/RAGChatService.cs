@@ -4,16 +4,16 @@ using Microsoft.SemanticKernel.ChatCompletion;
 using Microsoft.SemanticKernel.Connectors.OpenAI;
 using MinimalApi.Services.Profile.Prompts;
 
-namespace MinimalApi.Services;
+namespace MinimalApi.Agents;
 
-internal sealed class ReadRetrieveReadStreamingChatService : IChatService
+internal sealed class RAGChatService : IChatService
 {
-    private readonly ILogger<ReadRetrieveReadStreamingChatService> _logger;
+    private readonly ILogger<RAGChatService> _logger;
     private readonly IConfiguration _configuration;
     private readonly OpenAIClientFacade _openAIClientFacade;
 
-    public ReadRetrieveReadStreamingChatService(OpenAIClientFacade openAIClientFacade,
-                                                ILogger<ReadRetrieveReadStreamingChatService> logger,
+    public RAGChatService(OpenAIClientFacade openAIClientFacade,
+                                                ILogger<RAGChatService> logger,
                                                 IConfiguration configuration)
     {
         _openAIClientFacade = openAIClientFacade;
@@ -36,7 +36,7 @@ internal sealed class ReadRetrieveReadStreamingChatService : IChatService
         var chatGpt = kernel.Services.GetService<IChatCompletionService>();
         var systemMessagePrompt = ResolveSystemMessage(profile);
         context[ContextVariableOptions.SystemMessagePrompt] = systemMessagePrompt;
-        var chatHistory = new Microsoft.SemanticKernel.ChatCompletion.ChatHistory(systemMessagePrompt).AddChatHistory(request.History);
+        var chatHistory = new ChatHistory(systemMessagePrompt).AddChatHistory(request.History);
 
 
         var userMessage = await ResolveUserMessageAsync(profile, kernel, context);
@@ -50,9 +50,7 @@ internal sealed class ReadRetrieveReadStreamingChatService : IChatService
             {
                 DataUriParser parser = new DataUriParser(file.DataUrl);
                 if (parser.MediaType == "image/jpeg" || parser.MediaType == "image/png")
-                {
                     chatMessageContentItemCollection.Add(new ImageContent(parser.Data, parser.MediaType));
-                }
                 else if (parser.MediaType == "application/pdf")
                 {
                     string pdfData = PDFTextExtractor.ExtractTextFromPdf(parser.Data);
@@ -60,7 +58,7 @@ internal sealed class ReadRetrieveReadStreamingChatService : IChatService
                 }
                 else
                 {
-                    string csvData = System.Text.Encoding.UTF8.GetString(parser.Data);
+                    string csvData = Encoding.UTF8.GetString(parser.Data);
                     chatMessageContentItemCollection.Add(new TextContent(csvData));
 
                 }
@@ -69,20 +67,16 @@ internal sealed class ReadRetrieveReadStreamingChatService : IChatService
             chatHistory.AddUserMessage(chatMessageContentItemCollection);
         }
         else
-        {
             chatHistory.AddUserMessage(userMessage);
-        }
 
         var sb = new StringBuilder();
         await foreach (StreamingChatMessageContent chatUpdate in chatGpt.GetStreamingChatMessageContentsAsync(chatHistory, DefaultSettings.AIChatRequestSettingsV2, kernel, cancellationToken))
-        {
             if (chatUpdate.Content != null)
             {
                 sb.Append(chatUpdate.Content);
                 yield return new ChatChunkResponse( chatUpdate.Content);
                 await Task.Yield();
             }
-        }
         sw.Stop();
 
         var result = context.BuildStreamingResoponse(kernel, profile, request, chatHistory, sb.ToString(), _configuration, _openAIClientFacade.GetKernelDeploymentName(), sw.ElapsedMilliseconds);
@@ -99,9 +93,7 @@ internal sealed class ReadRetrieveReadStreamingChatService : IChatService
 
         var systemMessagePrompt = string.Empty;
         if (!string.IsNullOrEmpty(profile.RAGSettings.ChatSystemMessageFile))
-        {
             systemMessagePrompt = PromptService.GetPromptByName(profile.RAGSettings.ChatSystemMessageFile);
-        }
 
         if (!string.IsNullOrEmpty(profile.RAGSettings.ChatSystemMessage))
         {
@@ -122,9 +114,7 @@ internal sealed class ReadRetrieveReadStreamingChatService : IChatService
             userMessage = Encoding.UTF8.GetString(bytes);
         }
         else
-        {
             userMessage = await PromptService.RenderPromptAsync(kernel, PromptService.GetPromptByName(PromptService.ChatUserPrompt), context);
-        }
 
         return userMessage;
     }

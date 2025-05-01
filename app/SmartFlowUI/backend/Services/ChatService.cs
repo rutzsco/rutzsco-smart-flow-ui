@@ -1,18 +1,19 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 
 using Microsoft.SemanticKernel.ChatCompletion;
+using MinimalApi.Agents;
 using MinimalApi.Services.Profile.Prompts;
 
 namespace MinimalApi.Services;
 
 internal sealed class ChatService : IChatService
 {
-    private readonly ILogger<ReadRetrieveReadStreamingChatService> _logger;
+    private readonly ILogger<RAGChatService> _logger;
     private readonly IConfiguration _configuration;
     private readonly OpenAIClientFacade _openAIClientFacade;
     private readonly AzureBlobStorageService _blobStorageService;
 
-    public ChatService(OpenAIClientFacade openAIClientFacade, AzureBlobStorageService blobStorageService, ILogger<ReadRetrieveReadStreamingChatService> logger, IConfiguration configuration)
+    public ChatService(OpenAIClientFacade openAIClientFacade, AzureBlobStorageService blobStorageService, ILogger<RAGChatService> logger, IConfiguration configuration)
     {
         _openAIClientFacade = openAIClientFacade;
         _blobStorageService = blobStorageService;

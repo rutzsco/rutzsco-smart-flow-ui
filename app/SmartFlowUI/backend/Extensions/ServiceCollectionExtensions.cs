@@ -12,6 +12,7 @@ using Microsoft.SemanticKernel.Connectors.AzureOpenAI;
 using Microsoft.SemanticKernel.TextGeneration;
 using System.ClientModel.Primitives;
 using Microsoft.Extensions.Azure;
+using MinimalApi.Agents;
 
 namespace MinimalApi.Extensions;
 
@@ -177,7 +178,7 @@ internal static class ServiceCollectionExtensions
         }
 
         services.AddSingleton<ChatService>();
-        services.AddSingleton<ReadRetrieveReadStreamingChatService>();
+        services.AddSingleton<RAGChatService>();
         services.AddSingleton<EndpointChatService>();
         services.AddSingleton<EndpointChatServiceV2>();
         services.AddSingleton<EndpointTaskService>();

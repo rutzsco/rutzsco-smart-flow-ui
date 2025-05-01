@@ -1,6 +1,7 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 
 using System.Threading.Tasks;
+using MinimalApi.Agents;
 
 namespace MinimalApi.Extensions;
 
@@ -259,7 +260,7 @@ internal static class WebApplicationExtensions
         return Results.Ok();
     }
 
-    private static async Task<ApproachResponse> OnPostChatAsync(HttpContext context, ChatRequest request, ChatService chatService, ReadRetrieveReadStreamingChatService ragChatService, IChatHistoryService chatHistoryService, EndpointChatService endpointChatService, EndpointChatServiceV2 endpointChatServiceV2, EndpointTaskService endpointTaskService, IDocumentService documentService, [EnumeratorCancellation] CancellationToken cancellationToken)
+    private static async Task<ApproachResponse> OnPostChatAsync(HttpContext context, ChatRequest request, ChatService chatService, RAGChatService ragChatService, IChatHistoryService chatHistoryService, EndpointChatService endpointChatService, EndpointChatServiceV2 endpointChatServiceV2, EndpointTaskService endpointTaskService, IDocumentService documentService, [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         ApproachResponse response = null;
         var resultChunks = OnPostChatStreamingAsync(context, request, chatService, ragChatService, chatHistoryService, endpointChatService, endpointChatServiceV2, endpointTaskService, documentService, cancellationToken);
@@ -274,7 +275,7 @@ internal static class WebApplicationExtensions
         return response;
     }
 
-    private static async IAsyncEnumerable<ChatChunkResponse> OnPostChatStreamingAsync(HttpContext context, ChatRequest request, ChatService chatService, ReadRetrieveReadStreamingChatService ragChatService, IChatHistoryService chatHistoryService, EndpointChatService endpointChatService, EndpointChatServiceV2 endpointChatServiceV2, EndpointTaskService endpointTaskService, IDocumentService documentService, [EnumeratorCancellation] CancellationToken cancellationToken)
+    private static async IAsyncEnumerable<ChatChunkResponse> OnPostChatStreamingAsync(HttpContext context, ChatRequest request, ChatService chatService, RAGChatService ragChatService, IChatHistoryService chatHistoryService, EndpointChatService endpointChatService, EndpointChatServiceV2 endpointChatServiceV2, EndpointTaskService endpointTaskService, IDocumentService documentService, [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         var profileService = context.RequestServices.GetRequiredService<ProfileService>();
         var profileInfo = await profileService.GetProfileDataAsync();
@@ -312,7 +313,7 @@ internal static class WebApplicationExtensions
     private static async Task<IChatService> ResolveChatServiceAsync(
         ChatRequest request,
         ChatService chatService,
-        ReadRetrieveReadStreamingChatService ragChatService,
+        RAGChatService ragChatService,
         EndpointChatService endpointChatService,
         EndpointChatServiceV2 endpointChatServiceV2,
         EndpointTaskService endpointTaskService,
