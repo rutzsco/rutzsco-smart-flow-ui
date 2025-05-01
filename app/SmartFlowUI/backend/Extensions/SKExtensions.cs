@@ -93,17 +93,14 @@ public static class SKExtensions
     public static ApproachResponse BuildStreamingResoponse(this KernelArguments context, Kernel kernel, ProfileDefinition profile, ChatRequest request, ChatHistory chatHistory, string answer, IConfiguration configuration, string modelDeploymentName, long workflowDurationMilliseconds)
     {
         var requestTokenCount = chatHistory.GetTokenCount();
-        var dataSources = new SupportingContentRecord[] { };
-        if (context.ContainsName(ContextVariableOptions.Knowledge))
-        {
-            var sources = context[ContextVariableOptions.Knowledge] as string;
-            if (sources != "NO_SOURCES")
-            {
-                var knowledgeSourceSummary = context[ContextVariableOptions.KnowledgeSummary] as KnowledgeSourceSummary;
-                ArgumentNullException.ThrowIfNull(knowledgeSourceSummary, "knowledgeSourceSummary is null");
-                ArgumentNullException.ThrowIfNull(profile.RAGSettings, "profile.RAGSettings is null");
 
-                dataSources = knowledgeSourceSummary.Sources.Select(x => new SupportingContentRecord(x.FilePath, x.Content)).ToArray();
+        var dataSources = new List<SupportingContentRecord>();
+        var functionCallResults = kernel.GetFunctionCallResults();
+        foreach (var result in functionCallResults)
+        {
+            if (result.Sources != null && result.Sources.Any())
+            {
+                dataSources.AddRange(result.Sources);
             }
         }
 
@@ -112,8 +109,14 @@ public static class SKExtensions
         var chatDiagnostics = new CompletionsDiagnostics(completionTokens, requestTokenCount, totalTokens, 0);
         var diagnostics = new Diagnostics(chatDiagnostics, modelDeploymentName, workflowDurationMilliseconds);
 
-        var thoughts = kernel.GetThoughtProcess(chatHistory.FirstOrDefault(x => x.Role == AuthorRole.System).Content, answer); 
-        var contextData = new ResponseContext(profile.Name, dataSources, thoughts.Select(x => new ThoughtRecord(x.Name, x.Result)).ToArray(), request.ChatTurnId, request.ChatId, diagnostics);
+        var thoughts = kernel.GetThoughtProcess(chatHistory.FirstOrDefault(x => x.Role == AuthorRole.System).Content, answer);
+        var contextData = new ResponseContext(
+            profile.Name, 
+            dataSources.Distinct().ToArray(), // Remove duplicates
+            thoughts.Select(x => new ThoughtRecord(x.Name, x.Result)).ToArray(), 
+            request.ChatTurnId, 
+            request.ChatId, 
+            diagnostics);
 
         return new ApproachResponse(
             Answer: NormalizeResponseText(answer),
@@ -161,8 +164,17 @@ public static class SKExtensions
     public static void AddFunctionCallResult(this Kernel kernel, string name, string result, List<KnowledgeSource> sources = null)
     {
         var diagnosticsBuilder = GetRequestDiagnosticsBuilder(kernel);
-        diagnosticsBuilder.AddFunctionCallResult(name, result);
+        if (sources != null && sources.Any())
+        {
+            var supportingContent = sources.Select(x => new SupportingContentRecord(x.FilePath, x.Content)).ToList();
+            diagnosticsBuilder.AddFunctionCallResult(name, result, supportingContent);
+        }
+        else
+        {
+            diagnosticsBuilder.AddFunctionCallResult(name, result);
+        }
     }
+
     public static RequestDiagnosticsBuilder GetRequestDiagnosticsBuilder(this Kernel kernel)
     {
         if (!kernel.Data.ContainsKey("DiagnosticsBuilder"))
