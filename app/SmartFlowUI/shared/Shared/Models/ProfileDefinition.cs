@@ -47,10 +47,8 @@ public class ProfileDefinition
 
 public class RAGSettingsSummary
 {
-    public required string GenerateSearchQueryPluginName { get; set; }
-    public required string GenerateSearchQueryPluginQueryFunctionName { get; set; }
-    public required string DocumentRetrievalPluginName { get; set; }
-    public required string DocumentRetrievalPluginQueryFunctionName { get; set; }
+    public required string DocumentRetrievalSchema { get; set; }
+    public required string DocumentRetrievalEmbeddingsDeployment { get; set; }
     public required string DocumentRetrievalIndexName { get; set; }
     public string? DocumentIndexerName { get; set; }
     public required int DocumentRetrievalDocumentCount { get; set; }

@@ -25,13 +25,12 @@ public class RAGRetrivalPlugins
             if (settings == null)
                 throw new ArgumentNullException(nameof(settings), "VectorSearchSettings cannot be null");
 
-            var logic = new SearchLogic<KwiecienCustomIndexDefinitionV2>(_azureOpenAIClient, _searchClientFactory, KwiecienCustomIndexDefinitionV2.SelectFieldNames, KwiecienCustomIndexDefinitionV2.EmbeddingsFieldName, settings);
-            var results = await logic.SearchAsync(searchQuery);
+            // Get the appropriate search function based on the index schema definition
+            var searchLogic = GetSearchLogic(settings);
+            var results = await searchLogic(searchQuery);
 
             // Add kernel context for diagnostics
-            kernel.AddFunctionCallResult("get_knowledge_articles", 
-                $"Search Query: {searchQuery} /n {System.Text.Json.JsonSerializer.Serialize(results, new System.Text.Json.JsonSerializerOptions { WriteIndented = true })}", 
-                results);
+            kernel.AddFunctionCallResult("get_knowledge_articles",  $"Search Query: {searchQuery} /n {System.Text.Json.JsonSerializer.Serialize(results, new System.Text.Json.JsonSerializerOptions { WriteIndented = true })}", results.ToList());
 
             return results;
         }
@@ -40,6 +39,34 @@ public class RAGRetrivalPlugins
             // Log the exception
             kernel.AddFunctionCallResult("get_knowledge_articles", $"Error: {ex.Message}", null);
             throw;
+        }
+    }
+
+    private Func<string, Task<IEnumerable<KnowledgeSource>>> GetSearchLogic(VectorSearchSettings settings)
+    {
+        switch (settings.IndexSchemaDefinition)
+        {
+            case "KwiecienV2":
+                var kwiecienLogic = new SearchLogic<KwiecienCustomIndexDefinitionV2>(
+                    _azureOpenAIClient, 
+                    _searchClientFactory, 
+                    KwiecienCustomIndexDefinitionV2.SelectFieldNames, 
+                    KwiecienCustomIndexDefinitionV2.EmbeddingsFieldName, 
+                    settings);
+                return async (query) => await kwiecienLogic.SearchAsync(query);
+
+            case "AISearchV1":
+                var aiSearchLogic = new SearchLogic<AISearchIndexerIndexDefinintion>(
+                    _azureOpenAIClient, 
+                    _searchClientFactory, 
+                    AISearchIndexerIndexDefinintion.SelectFieldNames, 
+                    AISearchIndexerIndexDefinintion.EmbeddingsFieldName, 
+                    settings);
+                return async (query) => await aiSearchLogic.SearchAsync(query);
+
+            default:
+                throw new ArgumentException($"Unsupported IndexSchemaDefinition: {settings.IndexSchemaDefinition}", 
+                    nameof(settings.IndexSchemaDefinition));
         }
     }
 }

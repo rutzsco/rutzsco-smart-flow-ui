@@ -22,18 +22,36 @@
       "What is the air filter part number?"
     ],
     "RAGSettings": {
-      "GenerateSearchQueryPluginName": "GenerateSearchQuery",
-      "GenerateSearchQueryPluginQueryFunctionName": "GenerateSearchQuery",
-      "DocumentRetrievalPluginName": "DocumentRetrieval",
-      "DocumentRetrievalPluginQueryFunctionName": "KwiecienV2",
+      "DocumentRetrievalSchema": "KwiecienV2",
+      "DocumentRetrievalEmbeddingsDeployment": "text-embedding",
       "DocumentRetrievalIndexName": "manuals-auto-ci-20240528182950",
       "ChatSystemMessageFile": "RAGChatSystemPrompt",
       "StorageContianer": "manuals-auto-chunks",
       "CitationUseSourcePage": true,
-      "DocumentRetrievalDocumentCount": 50,
+      "DocumentRetrievalDocumentCount": 15,
       "UseSemanticRanker": true,
       "SemanticConfigurationName": "Default",
       "AllowFileUpload": false
+    }
+  },
+  {
+    "Name": "Boat Service Advisor",
+    "Id": "BoatServiceAdvisor",
+    "Approach": "RAG",
+    "SecurityModel": "None",
+    "SecurityModelGroupMembership": [ "LocalDevUser" ],
+    "SampleQuestions": [
+      "How do I change the oil?",
+      "How do I winterize?",
+      "How calibrate the gas gauge?"
+    ],
+    "RAGSettings": {
+      "DocumentRetrievalSchema": "KwiecienV2",
+      "DocumentRetrievalEmbeddingsDeployment": "text-embedding",
+      "DocumentRetrievalIndexName": "manuals-boat-ci-20240708121734",
+      "DocumentRetrievalDocumentCount": 15,
+      "ChatSystemMessageFile": "RAGChatSystemPrompt",
+      "StorageContianer": "manuals-boat"
     }
   }
   //{

@@ -224,8 +224,8 @@ public static class VectorSearchExtensions
         kernel.Data["VectorSearchSettings"] = new VectorSearchSettings(
             profile.RAGSettings.DocumentRetrievalIndexName,
             profile.RAGSettings.DocumentRetrievalDocumentCount,
-            profile.RAGSettings.DocumentRetrievalPluginQueryFunctionName,
-            "text-embedding",
+            profile.RAGSettings.DocumentRetrievalSchema,
+            profile.RAGSettings.DocumentRetrievalEmbeddingsDeployment,
             profile.RAGSettings.DocumentRetrievalMaxSourceTokens,
             profile.RAGSettings.KNearestNeighborsCount,
             profile.RAGSettings.Exhaustive,
