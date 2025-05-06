@@ -6,14 +6,15 @@
         <MudNavLink Href="documents" aria-label="View user documents." Icon="@Icons.Material.Filled.FileUpload">Documents</MudNavLink>
     }
 
-@* 	@if (_user != null && _user.Profiles.Where(p => p.SupportsFileUpload).Any())
+    @* 	@if (_user != null && _user.Profiles.Where(p => p.SupportsFileUpload).Any())
     {
         <MudNavLink Href="collections" aria-label="View user documents." Icon="@Icons.Material.Filled.FileUpload">Collections</MudNavLink>
     } *@
 
 	<MudNavLink Href="v2/history" aria-label="View chat history." Icon="@Icons.Material.Filled.List">History</MudNavLink>
 
-	<MudNavLink Href="settings" aria-label="Settings Page" Icon="@Icons.Material.Filled.Settings">Settings</MudNavLink>
+    @* TODO: Add to user profile. Only Admin users should see settings *@
+    @* 	<MudNavLink Href="settings" aria-label="Settings Page" Icon="@Icons.Material.Filled.Settings">Settings</MudNavLink> *@
 
 </MudNavMenu>
 
