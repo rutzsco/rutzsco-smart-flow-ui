@@ -2,10 +2,10 @@
 
 namespace MinimalApi.Services.Security;
 
-public class UserAccessListSecurityModel
-{
-    public bool HasAccess(string userPrincipalId)
-    {
-        return true;
-    }
-}
+//public class UserAccessListSecurityModel
+//{
+//    public bool HasAccess(string userPrincipalId)
+//    {
+//        return true;
+//    }
+//}
