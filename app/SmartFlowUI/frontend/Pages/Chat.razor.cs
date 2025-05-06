@@ -96,8 +96,8 @@ public sealed partial class Chat
     {
         _selectedProfile = profile.Name;
         _selectedProfileSummary = profile;
-        _supportsFileUpload = _selectedProfileSummary.Approach == ProfileApproach.Chat || _selectedProfileSummary.Approach == ProfileApproach.EndpointAssistantV2 || _selectedProfileSummary.SupportsFileUpload;
-        if (_supportsFileUpload)
+        _supportsFileUpload = _selectedProfileSummary.SupportsFileUpload;
+        if (_userUploadProfileSummary != null)
         {
             var userDocuments = await ApiClient.GetUserDocumentsAsync();
             _userDocuments = userDocuments.ToList();
@@ -325,8 +325,9 @@ public sealed partial class Chat
 
         // show profiles if there are multiple profiles or if there's a document selected
         _showProfiles = _profiles.Count > 1 || !string.IsNullOrEmpty(_selectedDocument);
-        // hide document upload if there are no profiles that support it
-        _showDocumentUpload = !_profiles.Any(p => p.Approach == ProfileApproach.UserDocumentChat);
+
+        // show document upload if there are no profiles that support it
+        _showDocumentUpload = _profiles.Any(p => p.Approach == ProfileApproach.UserDocumentChat);
 
         // show picture upload when approach is chat and document is not already selected
         _showPictureUpload = _selectedProfileSummary?.Approach == ProfileApproach.Chat && string.IsNullOrEmpty(_selectedDocument);

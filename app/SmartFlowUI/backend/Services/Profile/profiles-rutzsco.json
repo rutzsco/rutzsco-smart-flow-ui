@@ -4,6 +4,7 @@
     "Id": "General",
     "Approach": "Chat",
     "SecurityModel": "None",
+    "AllowFileUpload": true,
     "ChatSystemMessageFile": "ChatSimpleSystemPrompt",
     "SampleQuestions": [
       "Write a function in C# that will invoke a rest API",
@@ -30,8 +31,7 @@
       "CitationUseSourcePage": true,
       "DocumentRetrievalDocumentCount": 15,
       "UseSemanticRanker": true,
-      "SemanticConfigurationName": "Default",
-      "AllowFileUpload": false
+      "SemanticConfigurationName": "Default"
     }
   },
   {
