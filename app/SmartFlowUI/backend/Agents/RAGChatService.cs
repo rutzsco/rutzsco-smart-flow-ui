@@ -70,7 +70,7 @@ internal sealed class RAGChatService : IChatService
             chatHistory.AddUserMessage(userMessage);
 
         var sb = new StringBuilder();
-        await foreach (StreamingChatMessageContent chatUpdate in chatGpt.GetStreamingChatMessageContentsAsync(chatHistory, DefaultSettings.AIChatRequestSettingsV2, kernel, cancellationToken))
+        await foreach (StreamingChatMessageContent chatUpdate in chatGpt.GetStreamingChatMessageContentsAsync(chatHistory, DefaultSettings.AIChatWithToolsRequestSettings, kernel, cancellationToken))
             if (chatUpdate.Content != null)
             {
                 sb.Append(chatUpdate.Content);
