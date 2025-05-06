@@ -19,7 +19,7 @@ public sealed partial class MainLayout
             Primary = "#1277bd",
         }
     };
-    private bool _drawerOpen = true;
+    private bool _drawerOpen = false;
     private bool _settingsOpen = false;
     private SettingsPanel? _settingsPanel;
 
