@@ -9,14 +9,13 @@ public record class ChatRequest(
     IEnumerable<string> SelectedUserCollectionFiles,
     IEnumerable<FileSummary> FileUploads,
     Dictionary<string, string> OptionFlags,
-    Approach Approach,
     UserSelectionModel? UserSelectionModel,
-    RequestOverrides? Overrides = null) : ApproachRequest(Approach)
+    RequestOverrides? Overrides = null)
 {
     public string? LastUserQuestion => History?.LastOrDefault()?.User;
 }
 
-public record class ChatRatingRequest(Guid ChatId, Guid MessageId, int Rating, string Feedback, Approach Approach) : ApproachRequest(Approach);
+public record class ChatRatingRequest(Guid ChatId, Guid MessageId, int Rating, string Feedback);
 
 public class RequestDiagnosticsBuilder
 {

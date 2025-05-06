@@ -181,7 +181,6 @@ public sealed partial class Chat
                 SelectedDocuments.Select(x => x.Name),
                 _files,
                 options,
-                Approach.ReadRetrieveRead,
                 _userSelectionModel,
                 null);
 
