@@ -2,14 +2,10 @@
 // Copyright (c) Microsoft. All rights reserved.
 
 using Azure;
-using Azure.Storage;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.Azure.Cosmos.Fluent;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
 using MinimalApi.Services.HealthChecks;
-using Microsoft.SemanticKernel.ChatCompletion;
-using Microsoft.SemanticKernel.Connectors.AzureOpenAI;
-using Microsoft.SemanticKernel.TextGeneration;
 using System.ClientModel.Primitives;
 using Microsoft.Extensions.Azure;
 using MinimalApi.Agents;

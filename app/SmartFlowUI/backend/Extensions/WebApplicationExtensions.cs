@@ -1,6 +1,4 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
-
-using System.Threading.Tasks;
 using MinimalApi.Agents;
 
 namespace MinimalApi.Extensions;

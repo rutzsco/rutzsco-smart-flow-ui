@@ -2,7 +2,6 @@
 using Azure.Core;
 using Azure;
 using Assistants.Hub.API.Assistants.RAG;
-using MinimalApi;
 
 namespace MinimalApi.Extensions;
 

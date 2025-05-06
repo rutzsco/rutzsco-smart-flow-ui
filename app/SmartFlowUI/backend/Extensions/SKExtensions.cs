@@ -1,7 +1,4 @@
-﻿using Azure.AI.Inference;
-using Microsoft.SemanticKernel.ChatCompletion;
-using MinimalApi.Services.Profile;
-using MinimalApi.Services.Search;
+﻿using Microsoft.SemanticKernel.ChatCompletion;
 using TiktokenSharp;
 
 namespace MinimalApi.Extensions;
