@@ -17,6 +17,7 @@ public class ProfileDefinition
         string id,
         string approach,
         string securityModel,
+        bool allowFileUpload,
         List<string> securityModelGroupMembership,
         List<string> sampleQuestions,
         RAGSettingsSummary? ragSettingsSummary,
@@ -26,6 +27,7 @@ public class ProfileDefinition
         Id = id;
         Approach = approach;
         SecurityModel = securityModel;
+        AllowFileUpload = allowFileUpload;
         SampleQuestions = sampleQuestions;
         RAGSettings = ragSettingsSummary;
         AssistantEndpointSettings = assistantEndpointSettingsSummary;
@@ -36,6 +38,7 @@ public class ProfileDefinition
     public string Id { get; set; }
     public string Approach { get; set; }
     public string SecurityModel { get; set; }
+    public bool AllowFileUpload { get; set; }
     public List<string> SecurityModelGroupMembership { get; set; }
     public RAGSettingsSummary? RAGSettings { get; set; }
     public AssistantEndpointSettingsSummary? AssistantEndpointSettings { get; set; }
@@ -47,10 +50,8 @@ public class ProfileDefinition
 
 public class RAGSettingsSummary
 {
-    public required string GenerateSearchQueryPluginName { get; set; }
-    public required string GenerateSearchQueryPluginQueryFunctionName { get; set; }
-    public required string DocumentRetrievalPluginName { get; set; }
-    public required string DocumentRetrievalPluginQueryFunctionName { get; set; }
+    public required string DocumentRetrievalSchema { get; set; }
+    public required string DocumentRetrievalEmbeddingsDeployment { get; set; }
     public required string DocumentRetrievalIndexName { get; set; }
     public string? DocumentIndexerName { get; set; }
     public required int DocumentRetrievalDocumentCount { get; set; }
@@ -64,7 +65,7 @@ public class RAGSettingsSummary
     public string? SemanticConfigurationName { get; set; }
     public required int KNearestNeighborsCount { get; set; } = 3;
     public required bool Exhaustive { get; set; } = false;
-    public required bool AllowFileUpload { get; set; }
+    
     public required IEnumerable<ProfileUserSelectionOption> ProfileUserSelectionOptions { get; set; }
 }
 

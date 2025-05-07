@@ -1,24 +1,10 @@
-﻿using Azure.AI.Inference;
-using Microsoft.SemanticKernel.ChatCompletion;
-using MinimalApi.Services.Profile;
-using MinimalApi.Services.Search;
+﻿using Microsoft.SemanticKernel.ChatCompletion;
 using TiktokenSharp;
 
 namespace MinimalApi.Extensions;
 
 public static class SKExtensions
 {
-    public static async Task<SKResult> GetChatCompletionsWithUsageAsync(this IChatCompletionService chatGpt, ChatHistory chatHistory)
-    {
-        var sw = Stopwatch.StartNew();
-        var result = await chatGpt.GetChatMessageContentAsync(chatHistory, DefaultSettings.AIChatRequestSettings);
-        sw.Stop();
-
-        var answer = result.Content;
-        var usage = result.Metadata?["Usage"] as CompletionsUsage;
-        return new SKResult(answer, usage, sw.ElapsedMilliseconds);
-    }
-
     public static KernelArguments AddUserParameters(this KernelArguments arguments, ChatRequest request, ProfileDefinition profile, UserInformation user)
     {
         arguments[ContextVariableOptions.Profile] = profile;
@@ -52,24 +38,6 @@ public static class SKExtensions
         return arguments;
     }
 
-    public static ProfileDefinition GetProfileDefinition(this KernelArguments arguments)
-    {
-        var profile = arguments[ContextVariableOptions.Profile] as ProfileDefinition;
-
-        ArgumentNullException.ThrowIfNull(profile, "Profile is not set.");
-        ArgumentNullException.ThrowIfNull(profile.RAGSettings, "Profile RAGSettings is not set.");
-
-        return profile;
-    }
-    public static RAGSettingsSummary GetProfileRAGSettingsDefinition(this KernelArguments arguments)
-    {
-        var profile = arguments[ContextVariableOptions.Profile] as ProfileDefinition;
-
-        ArgumentNullException.ThrowIfNull(profile, "Profile is not set.");
-        ArgumentNullException.ThrowIfNull(profile.RAGSettings, "Profile RAGSettings is not set.");
-
-        return profile.RAGSettings;
-    }
 
     public static ChatHistory AddChatHistory(this ChatHistory chatHistory, ChatTurn[] history)
     {
@@ -85,11 +53,6 @@ public static class SKExtensions
         return chatHistory;
     }
 
-    public static bool IsChatGpt4Enabled(this Dictionary<string, string> options)
-    {
-        var value = options.GetValueOrDefault("GPT4ENABLED", "false");
-        return value.ToLower() == "true";
-    }
 
     public static bool IsChatProfile(this Dictionary<string, string> options, List<ProfileDefinition> profiles)
     {
@@ -123,60 +86,18 @@ public static class SKExtensions
         return profiles.FirstOrDefault(x => x.Name == value) ?? defaultProfile;
     }
 
-    public static string? GetImageContent(this Dictionary<string, string> options)
+
+    public static ApproachResponse BuildStreamingResoponse(this KernelArguments context, Kernel kernel, ProfileDefinition profile, ChatRequest request, ChatHistory chatHistory, string answer, IConfiguration configuration, string modelDeploymentName, long workflowDurationMilliseconds)
     {
-        if (options.TryGetValue("IMAGECONTENT", out var value))
-            return value;
+        var requestTokenCount = chatHistory.GetTokenCount();
 
-        return null;
-    }
-    public static bool ImageContentExists(this Dictionary<string, string> options)
-    {
-        return options.ContainsKey("IMAGECONTENT");
-    }
-    public static ApproachResponse BuildResponse(this KernelArguments context, ProfileDefinition profile, ChatRequest request, IConfiguration configuration, string modelDeploymentName, long workflowDurationMilliseconds)
-    {
-        var result = context[ContextVariableOptions.ChatResult] as SKResult;
-        var knowledgeSourceSummary = context[ContextVariableOptions.KnowledgeSummary] as KnowledgeSourceSummary;
-        var systemMessagePrompt = context[ContextVariableOptions.SystemMessagePrompt] as string;
-        var userMessage = context[ContextVariableOptions.UserMessage] as string;
-
-        ArgumentNullException.ThrowIfNull(result, "ChatResult is null");
-        ArgumentNullException.ThrowIfNull(knowledgeSourceSummary, "KnowledgeSummary is null");
-        ArgumentNullException.ThrowIfNull(systemMessagePrompt, "SystemMessagePrompt is null");
-        ArgumentNullException.ThrowIfNull(userMessage, "UserMessage is null");
-        ArgumentNullException.ThrowIfNull(profile.RAGSettings, "Profile RAGSettings is null");
-        ArgumentNullException.ThrowIfNull(result.Usage, "Result Usage is null");
-
-        var dataSources = knowledgeSourceSummary?.Sources.Select(x => new SupportingContentRecord(x.GetFilepath(profile.RAGSettings.CitationUseSourcePage), x.GetContent())).ToArray();
-
-        var chatDiagnostics = new CompletionsDiagnostics(result.Usage.CompletionTokens, result.Usage.PromptTokens, result.Usage.TotalTokens, result.DurationMilliseconds);
-        var diagnostics = new Diagnostics(chatDiagnostics, modelDeploymentName, workflowDurationMilliseconds);
-
-
-        var thoughts = GetThoughtsRAG(context, result.Answer);
-        var contextData = new ResponseContext(profile.Name, dataSources, thoughts.ToArray(), request.ChatTurnId, request.ChatId, diagnostics);
-
-        return new ApproachResponse(
-            Answer: result.Answer.Replace("\n", "<br>"),
-            CitationBaseUrl: profile.Id,
-            contextData);
-    }
-
-
-    public static ApproachResponse BuildStreamingResoponse(this KernelArguments context, ProfileDefinition profile, ChatRequest request, int requestTokenCount, string answer, IConfiguration configuration, string modelDeploymentName, long workflowDurationMilliseconds, List<KeyValuePair<string, string>>? requestSettings = null)
-    {
-        var dataSources = new SupportingContentRecord[] { };
-        if (context.ContainsName(ContextVariableOptions.Knowledge))
+        var dataSources = new List<SupportingContentRecord>();
+        var functionCallResults = kernel.GetFunctionCallResults();
+        foreach (var result in functionCallResults)
         {
-            var sources = context[ContextVariableOptions.Knowledge] as string;
-            if (sources != "NO_SOURCES")
+            if (result.Sources != null && result.Sources.Any())
             {
-                var knowledgeSourceSummary = context[ContextVariableOptions.KnowledgeSummary] as KnowledgeSourceSummary;
-                ArgumentNullException.ThrowIfNull(knowledgeSourceSummary, "knowledgeSourceSummary is null");
-                ArgumentNullException.ThrowIfNull(profile.RAGSettings, "profile.RAGSettings is null");
-
-                dataSources = knowledgeSourceSummary.Sources.Select(x => new SupportingContentRecord(x.GetFilepath(profile.RAGSettings.CitationUseSourcePage), x.GetContent())).ToArray();
+                dataSources.AddRange(result.Sources);
             }
         }
 
@@ -185,8 +106,14 @@ public static class SKExtensions
         var chatDiagnostics = new CompletionsDiagnostics(completionTokens, requestTokenCount, totalTokens, 0);
         var diagnostics = new Diagnostics(chatDiagnostics, modelDeploymentName, workflowDurationMilliseconds);
 
-        var thoughts = GetThoughtsRAGV2(context, answer, requestSettings);
-        var contextData = new ResponseContext(profile.Name, dataSources, thoughts.ToArray(), request.ChatTurnId, request.ChatId, diagnostics);
+        var thoughts = kernel.GetThoughtProcess(chatHistory.FirstOrDefault(x => x.Role == AuthorRole.System).Content, answer);
+        var contextData = new ResponseContext(
+            profile.Name, 
+            dataSources.Distinct().ToArray(), // Remove duplicates
+            thoughts.Select(x => new ThoughtRecord(x.Name, x.Result)).ToArray(), 
+            request.ChatTurnId, 
+            request.ChatId, 
+            diagnostics);
 
         return new ApproachResponse(
             Answer: NormalizeResponseText(answer),
@@ -201,8 +128,7 @@ public static class SKExtensions
         var chatDiagnostics = new CompletionsDiagnostics(completionTokens, requestTokenCount, totalTokens, 0);
         var diagnostics = new Diagnostics(chatDiagnostics, modelDeploymentName, workflowDurationMilliseconds);
 
-        var thoughts = GetThoughts(context, answer);
-        var contextData = new ResponseContext(profile.Name, null, thoughts.ToArray(), request.ChatTurnId, request.ChatId, diagnostics);
+        var contextData = new ResponseContext(profile.Name, null, Array.Empty<ThoughtRecord>(), request.ChatTurnId, request.ChatId, diagnostics);
 
         return new ApproachResponse(
             Answer: NormalizeResponseText(answer),
@@ -232,86 +158,80 @@ public static class SKExtensions
         return tikToken.Encode(text).Count;
     }
 
-    private static IEnumerable<ThoughtRecord> GetThoughtsRAG(KernelArguments context, string answer)
+    public static void AddFunctionCallResult(this Kernel kernel, string name, string result, List<KnowledgeSource> sources = null)
     {
-        var intent = context["intent"] as string;
-        var systemMessagePrompt = context["SystemMessagePrompt"] as string;
-        var userMessage = context["UserMessage"] as string;
-
-        var thoughts = new List<ThoughtRecord>
-            {
-                new("Generated search query", intent),
-                new("Prompt", $"System:\n\n{systemMessagePrompt}\n\nUser:\n\n{userMessage}"),
-                new("Answer", answer)
-            };
-
-        return thoughts;
-    }
-
-    private static IEnumerable<ThoughtRecord> GetThoughtsRAGV2(KernelArguments context, string answer, List<KeyValuePair<string, string>> requestSettings)
-    {
-        if (requestSettings == null)
-            return new List<ThoughtRecord>();
-
-        var searchRequestDiagnostics = context[ContextVariableOptions.SearchDiagnostics] as List<KeyValuePair<string, string>>;
-        var thoughts = new List<ThoughtRecord>
-            {
-                new("Generated search query", BuildPromptContext(searchRequestDiagnostics)),
-                new("Prompt", BuildPromptContext(requestSettings)),
-                new("Answer", answer)
-            };
-
-        return thoughts;
-    }
-
-    private static IEnumerable<ThoughtRecord> GetThoughts(KernelArguments context, string answer)
-    {
-        var userMessage = context["UserMessage"] as string;
-        var thoughts = new List<ThoughtRecord>
-            {
-                new("Prompt", userMessage),
-                new("Answer", answer)
-            };
-
-        return thoughts;
-    }
-
-    private static string BuildPromptContext(List<KeyValuePair<string, string>> requestSettings)
-    {
-        var sb = new StringBuilder();
-        foreach (var setting in requestSettings.Where(x => x.Key.StartsWith("PROMPTMESSAGE:")))
+        var diagnosticsBuilder = GetRequestDiagnosticsBuilder(kernel);
+        if (sources != null && sources.Any())
         {
+            var supportingContent = sources.Select(x => new SupportingContentRecord(x.FilePath, x.Content)).ToList();
+            diagnosticsBuilder.AddFunctionCallResult(name, result, supportingContent);
+        }
+        else
+        {
+            diagnosticsBuilder.AddFunctionCallResult(name, result);
+        }
+    }
 
-            sb.AppendLine($"{setting.Key.Replace("PROMPTMESSAGE:", "")}:\n\n{setting.Value}\n");
+    public static RequestDiagnosticsBuilder GetRequestDiagnosticsBuilder(this Kernel kernel)
+    {
+        if (!kernel.Data.ContainsKey("DiagnosticsBuilder"))
+        {
+            var diagnosticsBuilder = new RequestDiagnosticsBuilder();
+            kernel.Data.Add("DiagnosticsBuilder", diagnosticsBuilder);
+            return diagnosticsBuilder;
         }
 
-        sb.AppendLine("Settings: \n");
-        foreach (var setting in requestSettings.Where(x => x.Key.StartsWith("PROMPTKEY:")))
-        {
-            sb.AppendLine($"{setting.Key.Replace("PROMPTKEY:", "")}: {setting.Value}");
-        }
-        return sb.ToString();
+        return kernel.Data["DiagnosticsBuilder"] as RequestDiagnosticsBuilder;
     }
-
-    public static List<KeyValuePair<string, string>> GenerateRequestProperties(this Microsoft.SemanticKernel.ChatCompletion.ChatHistory chatHistory, PromptExecutionSettings settings)
+    public static IEnumerable<ExecutionStepResult> GetFunctionCallResults(this Kernel kernel)
     {
-        var results = new List<KeyValuePair<string, string>>();
-        foreach (var item in chatHistory)
+        if (kernel.Data.ContainsKey("DiagnosticsBuilder"))
         {
-            if (item is ChatMessageContent chatMessageContent)
+            var diagnosticsBuilder = kernel.Data["DiagnosticsBuilder"] as RequestDiagnosticsBuilder;
+            foreach (var item in diagnosticsBuilder.FunctionCallResults)
             {
-                var content = chatMessageContent.Content;
-                var role = chatMessageContent.Role;
-                results.Add(new KeyValuePair<string, string>($"PROMPTMESSAGE:{role}", content));
+                yield return item;
             }
         }
+    }
 
-        foreach (var item in settings.ExtensionData ?? new Dictionary<string, object>())
+    public static IEnumerable<ExecutionStepResult> GetThoughtProcess(this Kernel kernel, string systemPrompt, string answer)
+    {
+        var functionCallResults = kernel.GetFunctionCallResults();
+        foreach (var item in functionCallResults)
         {
-            results.Add(new KeyValuePair<string, string>($"PROMPTKEY:{item.Key}", item.Value.ToString()));
+            yield return item;
         }
+        yield return new ExecutionStepResult("chat_completion", $"{systemPrompt} \n {answer}");
+    }
+}
 
-        return results;
+public static class VectorSearchExtensions
+{
+    /// <summary>
+    /// Creates VectorSearchSettings from profile RAGSettings and adds it to the kernel
+    /// </summary>
+    /// <param name="kernel">The kernel to add settings to</param>
+    /// <param name="profile">Profile containing RAG settings</param>
+    /// <returns>The provided kernel for chaining</returns>
+    public static Kernel AddVectorSearchSettings(this Kernel kernel, ProfileDefinition profile)
+    {
+        ArgumentNullException.ThrowIfNull(profile?.RAGSettings, "profile.RAGSettings");
+        
+        kernel.Data["VectorSearchSettings"] = new VectorSearchSettings(
+            profile.RAGSettings.DocumentRetrievalIndexName,
+            profile.RAGSettings.DocumentRetrievalDocumentCount,
+            profile.RAGSettings.DocumentRetrievalSchema,
+            profile.RAGSettings.DocumentRetrievalEmbeddingsDeployment,
+            profile.RAGSettings.DocumentRetrievalMaxSourceTokens,
+            profile.RAGSettings.KNearestNeighborsCount,
+            profile.RAGSettings.Exhaustive,
+            profile.RAGSettings.UseSemanticRanker,
+            profile.RAGSettings.SemanticConfigurationName,
+            profile.RAGSettings.StorageContianer,
+            profile.RAGSettings.CitationUseSourcePage);
+            
+        return kernel;
     }
 }
 

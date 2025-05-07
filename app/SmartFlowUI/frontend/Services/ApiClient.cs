@@ -230,7 +230,7 @@ public sealed class ApiClient(HttpClient httpClient)
     {
         await PostBasicAsync(request, "api/chat/rating");
     }
-    private async Task PostBasicAsync<TRequest>(TRequest request, string apiRoute) where TRequest : ApproachRequest
+    private async Task PostBasicAsync<TRequest>(TRequest request, string apiRoute)
     {
         var json = System.Text.Json.JsonSerializer.Serialize(request, SerializerOptions.Default);
         using var body = new StringContent(json, Encoding.UTF8, "application/json");

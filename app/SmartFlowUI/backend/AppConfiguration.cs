@@ -13,9 +13,6 @@ public class AppConfiguration
     public string UserDocumentUploadBlobStorageContentContainer { get; private set; } = "content";
     public string UserDocumentUploadBlobStorageExtractContainer { get; private set; } = "content-extract";
 
-    public int Port { get; private set; } = 8080;
-
-    public int SearchIndexDocumentCount { get; init; } = 15;
 
     public bool UseManagedIdentityResourceAccess { get; init; }
     public string UserAssignedManagedIdentityClientId { get; init; }
@@ -68,17 +65,15 @@ public class AppConfiguration
     public string? AzureAuthorityHost { get; set; }
     [JsonPropertyName("AZURE_SP_OPENAI_AUDIENCE")]
     public string? AzureServicePrincipalOpenAIAudience { get; set; }
+
     public string OcpApimSubscriptionHeaderName { get; init; } = "Ocp-Apim-Subscription-Key";
     public string OcpApimSubscriptionKey { get; init; } = "Ocp-Apim-Subscription-Key";
     public string XMsTokenAadAccessToken { get; init; } = "X-MS-TOKEN-AAD-ACCESS-TOKEN";
+
     public string? AOAIStandardChatGptDeployment { get; init; }
     public string? AOAIStandardServiceEndpoint { get; init; }
     public string? AOAIStandardServiceKey { get; init; }
-    public string? AOAIPremiumChatGptDeployment { get; init; }
-    public string? AOAIPremiumServiceEndpoint { get; init; }
-    public string? AOAIPremiumServiceKey { get; init; }
 
-    public string AOAIEmbeddingsDeployment { get; init; } = string.Empty;
 
     // Profile configuration
     public string? ProfileConfigurationBlobStorageContainer { get; init; }

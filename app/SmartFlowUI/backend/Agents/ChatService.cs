@@ -3,16 +3,16 @@
 using Microsoft.SemanticKernel.ChatCompletion;
 using MinimalApi.Services.Profile.Prompts;
 
-namespace MinimalApi.Services;
+namespace MinimalApi.Agents;
 
 internal sealed class ChatService : IChatService
 {
-    private readonly ILogger<ReadRetrieveReadStreamingChatService> _logger;
+    private readonly ILogger<RAGChatService> _logger;
     private readonly IConfiguration _configuration;
     private readonly OpenAIClientFacade _openAIClientFacade;
     private readonly AzureBlobStorageService _blobStorageService;
 
-    public ChatService(OpenAIClientFacade openAIClientFacade, AzureBlobStorageService blobStorageService, ILogger<ReadRetrieveReadStreamingChatService> logger, IConfiguration configuration)
+    public ChatService(OpenAIClientFacade openAIClientFacade, AzureBlobStorageService blobStorageService, ILogger<RAGChatService> logger, IConfiguration configuration)
     {
         _openAIClientFacade = openAIClientFacade;
         _blobStorageService = blobStorageService;
@@ -26,7 +26,7 @@ internal sealed class ChatService : IChatService
 
         var sw = Stopwatch.StartNew();
 
-        var kernel = _openAIClientFacade.GetKernel(request.OptionFlags.IsChatGpt4Enabled());
+        var kernel = _openAIClientFacade.BuildKernel(string.Empty);
         var context = new KernelArguments().AddUserParameters(request, profile, user);
 
         // Chat Step
@@ -45,7 +45,7 @@ internal sealed class ChatService : IChatService
             context[ContextVariableOptions.SystemMessagePrompt] = systemMessagePrompt;
         }
 
-        var chatHistory = new Microsoft.SemanticKernel.ChatCompletion.ChatHistory(systemMessagePrompt).AddChatHistory(request.History);
+        var chatHistory = new ChatHistory(systemMessagePrompt).AddChatHistory(request.History);
         var userMessage = await PromptService.RenderPromptAsync(kernel, PromptService.GetPromptByName(PromptService.ChatSimpleUserPrompt), context);
         context["UserMessage"] = userMessage;
 
@@ -60,9 +60,7 @@ internal sealed class ChatService : IChatService
             {
                 DataUriParser parser = new DataUriParser(file.DataUrl);
                 if (parser.MediaType == "image/jpeg" || parser.MediaType == "image/png")
-                {
                     chatMessageContentItemCollection.Add(new ImageContent(parser.Data, parser.MediaType));
-                }
                 else if (parser.MediaType == "application/pdf")
                 {
                     string pdfData = PDFTextExtractor.ExtractTextFromPdf(parser.Data);
@@ -70,7 +68,7 @@ internal sealed class ChatService : IChatService
                 }
                 else
                 {
-                    string csvData = System.Text.Encoding.UTF8.GetString(parser.Data);
+                    string csvData = Encoding.UTF8.GetString(parser.Data);
                     chatMessageContentItemCollection.Add(new TextContent(csvData));
 
                 }
@@ -79,25 +77,21 @@ internal sealed class ChatService : IChatService
             chatHistory.AddUserMessage(chatMessageContentItemCollection);
         }
         else
-        {
             chatHistory.AddUserMessage(userMessage);
-        }
 
         var sb = new StringBuilder();
         await foreach (StreamingChatMessageContent chatUpdate in chatGpt.GetStreamingChatMessageContentsAsync(chatHistory, DefaultSettings.AIChatRequestSettings))
-        {
             if (chatUpdate.Content != null)
             {
                 sb.Append(chatUpdate.Content);
                 yield return new ChatChunkResponse(chatUpdate.Content);
                 await Task.Yield();
             }
-        }
         sw.Stop();
 
 
         var requestTokenCount = chatHistory.GetTokenCount();
-        var result = context.BuildChatSimpleResponse(profile, request, requestTokenCount, sb.ToString(), _configuration, _openAIClientFacade.GetKernelDeploymentName(request.OptionFlags.IsChatGpt4Enabled()), sw.ElapsedMilliseconds);
+        var result = context.BuildChatSimpleResponse(profile, request, requestTokenCount, sb.ToString(), _configuration, _openAIClientFacade.GetKernelDeploymentName(), sw.ElapsedMilliseconds);
         yield return new ChatChunkResponse(string.Empty, result);
     }
 }

@@ -1,5 +1,7 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 
+using MinimalApi.Agents;
+
 namespace MinimalApi.Services;
 
 internal sealed class EndpointTaskService : IChatService

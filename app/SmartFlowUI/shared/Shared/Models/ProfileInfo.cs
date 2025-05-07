@@ -48,8 +48,7 @@ public record ProfileInfo
                 APIEndpointSettingValue = epSettingValue ?? string.Empty,
                 APIEndpointSettingIsValid = epSettingIsValid,
                 APIEndpointKeySettingName = epKeyName,
-                APIEndpointKeySettingIsValid = epKeyIsValid,
-                AllowFileUpload = profile.RAGSettings?.AllowFileUpload ?? false
+                APIEndpointKeySettingIsValid = epKeyIsValid
             };
             Keys.Add(keys);
         }

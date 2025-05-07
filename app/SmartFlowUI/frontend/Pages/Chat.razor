@@ -120,21 +120,15 @@
 					</MudButtonGroup>
 				</MudItem>
 				<MudItem xs="12" lg="12">
-					@if (_showProfiles)
-					{
-						<TextInputV3 Label="Prompt"
-						Placeholder="Enter your message..."
+					<TextInputV3 Label="Prompt"
+					    Placeholder="Enter your message..."
 						Disabled=@_isReceivingResponse
 						OnEnterKeyPressed="OnAskQuestionAsync"
 						OnResetPressed="OnClearChat"
 						OnFileUpload="OnFileUpload"
 						OnModelSelection="OnModelSelection"
 						SupportsFileUpload=@_supportsFileUpload/>
-					}
-                    @if (!_showProfiles && !_errorLoadingProfiles)
-					{
-                      <MudText Typo="Typo.h5"><MudProgressCircular Color="Color.Secondary" Indeterminate="true" /> Loading...  please wait...</MudText>
-                    }
+					
                     @if (_errorLoadingProfiles)
                     {
                       <MudText Typo="Typo.h5" Color="Color.Error">@_errorLoadingMessage</MudText>
@@ -157,10 +151,7 @@
     }
 
     .footer {
-        padding: 10px 0;
-        position: fixed;
-        width: calc(100% - 300px);
-        bottom: 15px;
+        padding: 0px 16px;
     }
 
     .content {
@@ -168,8 +159,8 @@
         padding: 15px;
         background: #fff;
         margin-top: 0px;
-        margin-bottom: 175px;
-        height: calc(100% - 150px);
+/*         margin-bottom: 175px; */
+        height: 100%;
     }
 
     table {

@@ -35,7 +35,7 @@ internal static class UserExtensions
                 var profileService = context.RequestServices.GetRequiredService<ProfileService>();
                 profileInfo = await profileService.GetProfileDataAsync();
             }
-            var profiles = profileInfo?.Profiles?.Count > 0 ? profileInfo.Profiles.GetAuthorizedProfiles(userGroups).Select(x => new ProfileSummary(x.Id, x.Name, string.Empty, (ProfileApproach)Enum.Parse(typeof(ProfileApproach), x.Approach, true), x.SampleQuestions, x.UserPromptTemplates, SupportsUserSelections(x), SupportsFileUpload(x))) : [];
+            var profiles = profileInfo?.Profiles?.Count > 0 ? profileInfo.Profiles.GetAuthorizedProfiles(userGroups).Select(x => new ProfileSummary(x.Id, x.Name, string.Empty, (ProfileApproach)Enum.Parse(typeof(ProfileApproach), x.Approach, true), x.SampleQuestions, x.UserPromptTemplates, SupportsUserSelections(x), x.AllowFileUpload)) : [];
             user = new UserInformation(enableLogout, name, id, session, profiles, userGroups);
         }
         catch (Exception ex)
@@ -50,10 +50,5 @@ internal static class UserExtensions
     public static bool SupportsUserSelections(ProfileDefinition p)
     {
         return p.RAGSettings != null && p.RAGSettings.ProfileUserSelectionOptions != null && p.RAGSettings.ProfileUserSelectionOptions.Any();
-    }
-
-    public static bool SupportsFileUpload(ProfileDefinition p)
-    {
-        return (p.RAGSettings != null && p.RAGSettings.AllowFileUpload) || (p.AssistantEndpointSettings != null && p.AssistantEndpointSettings.AllowFileUpload);
     }
 }
