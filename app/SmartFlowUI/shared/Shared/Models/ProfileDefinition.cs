@@ -18,6 +18,7 @@ public class ProfileDefinition
         string approach,
         string securityModel,
         bool allowFileUpload,
+        string? azureAIAgentID,
         List<string> securityModelGroupMembership,
         List<string> sampleQuestions,
         RAGSettingsSummary? ragSettingsSummary,
@@ -28,6 +29,7 @@ public class ProfileDefinition
         Approach = approach;
         SecurityModel = securityModel;
         AllowFileUpload = allowFileUpload;
+        AzureAIAgentID = azureAIAgentID;
         SampleQuestions = sampleQuestions;
         RAGSettings = ragSettingsSummary;
         AssistantEndpointSettings = assistantEndpointSettingsSummary;
@@ -46,6 +48,7 @@ public class ProfileDefinition
     public string ChatSystemMessage { get; set; }
     public List<string> SampleQuestions { get; set; }
     public List<UserPromptTemplate> UserPromptTemplates { get; set; }
+    public string? AzureAIAgentID { get; set; }
 }
 
 public class RAGSettingsSummary

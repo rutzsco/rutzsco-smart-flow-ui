@@ -12,6 +12,19 @@
     ]
   },
   {
+    "Name": "General Agent Chat",
+    "Id": "GeneralAgentChat",
+    "Approach": "AzureAIAgentChatProfile",
+    "SecurityModel": "None",
+    "AllowFileUpload": true,
+    "AzureAIAgentID": "asst_g8KPAp9JzA8LpqJOIiwIisL8",
+    "ChatSystemMessageFile": "ChatSimpleSystemPrompt",
+    "SampleQuestions": [
+      "Write a function in C# that will invoke a rest API",
+      "Explain why popcorn pops to a kid who loves watching it in the microwave."
+    ]
+  },
+  {
     "Name": "Auto Service Advisor",
     "Id": "AutoServiceAdvisor",
     "Approach": "RAG",

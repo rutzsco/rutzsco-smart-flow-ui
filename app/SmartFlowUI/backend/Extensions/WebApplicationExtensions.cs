@@ -258,10 +258,10 @@ internal static class WebApplicationExtensions
         return Results.Ok();
     }
 
-    private static async Task<ApproachResponse> OnPostChatAsync(HttpContext context, ChatRequest request, ChatService chatService, RAGChatService ragChatService, IChatHistoryService chatHistoryService, EndpointChatService endpointChatService, EndpointChatServiceV2 endpointChatServiceV2, EndpointTaskService endpointTaskService, IDocumentService documentService, [EnumeratorCancellation] CancellationToken cancellationToken)
+    private static async Task<ApproachResponse> OnPostChatAsync(HttpContext context, ChatRequest request, ChatService chatService, RAGChatService ragChatService, IChatHistoryService chatHistoryService, EndpointChatService endpointChatService, EndpointChatServiceV2 endpointChatServiceV2, EndpointTaskService endpointTaskService, AzureAIAgentChatService azureAIAgentChatService, IDocumentService documentService, [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         ApproachResponse response = null;
-        var resultChunks = OnPostChatStreamingAsync(context, request, chatService, ragChatService, chatHistoryService, endpointChatService, endpointChatServiceV2, endpointTaskService, documentService, cancellationToken);
+        var resultChunks = OnPostChatStreamingAsync(context, request, chatService, ragChatService, azureAIAgentChatService, chatHistoryService, endpointChatService, endpointChatServiceV2, endpointTaskService, documentService, cancellationToken);
         await foreach (var chunk in resultChunks)
         {
             if (chunk.FinalResult != null)
@@ -273,7 +273,7 @@ internal static class WebApplicationExtensions
         return response;
     }
 
-    private static async IAsyncEnumerable<ChatChunkResponse> OnPostChatStreamingAsync(HttpContext context, ChatRequest request, ChatService chatService, RAGChatService ragChatService, IChatHistoryService chatHistoryService, EndpointChatService endpointChatService, EndpointChatServiceV2 endpointChatServiceV2, EndpointTaskService endpointTaskService, IDocumentService documentService, [EnumeratorCancellation] CancellationToken cancellationToken)
+    private static async IAsyncEnumerable<ChatChunkResponse> OnPostChatStreamingAsync(HttpContext context, ChatRequest request, ChatService chatService, RAGChatService ragChatService, AzureAIAgentChatService azureAIAgentChatService, IChatHistoryService chatHistoryService, EndpointChatService endpointChatService, EndpointChatServiceV2 endpointChatServiceV2, EndpointTaskService endpointTaskService, IDocumentService documentService, [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         var profileService = context.RequestServices.GetRequiredService<ProfileService>();
         var profileInfo = await profileService.GetProfileDataAsync();
@@ -297,7 +297,7 @@ internal static class WebApplicationExtensions
             profile.RAGSettings.DocumentRetrievalIndexName = document.RetrivalIndexName;
         }
 
-        var chat = await ResolveChatServiceAsync(request, chatService, ragChatService, endpointChatService, endpointChatServiceV2, endpointTaskService, profileService);
+        var chat = await ResolveChatServiceAsync(request, chatService, ragChatService, endpointChatService, endpointChatServiceV2, endpointTaskService, azureAIAgentChatService, profileService);
         await foreach (var chunk in chat.ReplyAsync(userInfo, profile, request).WithCancellation(cancellationToken))
         {
             yield return chunk;
@@ -315,6 +315,7 @@ internal static class WebApplicationExtensions
         EndpointChatService endpointChatService,
         EndpointChatServiceV2 endpointChatServiceV2,
         EndpointTaskService endpointTaskService,
+        AzureAIAgentChatService azureAIAgentChatService,
         ProfileService profileService)
     {
         var profileInfo = await profileService.GetProfileDataAsync();
@@ -330,6 +331,9 @@ internal static class WebApplicationExtensions
 
         if (request.OptionFlags.IsEndpointAssistantTaskProfile(profileInfo.Profiles))
             return endpointTaskService;
+
+        if (request.OptionFlags.IsAzureAIAgentChatProfile(profileInfo.Profiles))
+            return azureAIAgentChatService;
 
         return ragChatService;
     }
