@@ -1,13 +1,8 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 
 using Azure.AI.Projects;
-using ClientApp.Components;
-using Microsoft.SemanticKernel;
-using Microsoft.SemanticKernel.Agents;
 using Microsoft.SemanticKernel.Agents.AzureAI;
 using Microsoft.SemanticKernel.ChatCompletion;
-using MinimalApi.Services.Profile.Prompts;
-using Shared.Models;
 
 namespace MinimalApi.Agents;
 
@@ -36,12 +31,29 @@ public class AzureAIAgentChatService : IChatService
         var sb = new StringBuilder();
         var userMessage = request.LastUserQuestion;
 
-        var definition = _agentsClient.GetAgent(profile.AzureAIAgentID);
         var kernel = _openAIClientFacade.BuildKernel(string.Empty);
+        var definition = _agentsClient.GetAgent(profile.AzureAIAgentID);
         var agent = new AzureAIAgent(definition, _agentsClient, kernel.Plugins);
 
         var agentThread = new AzureAIAgentThread(agent.Client);
-        ChatMessageContent message = new(AuthorRole.User, userMessage);
+        if (request.FileUploads.Any())
+        {
+            var fileList = new List<AgentFile>();
+            foreach (var inputFile in request.FileUploads)
+            {
+                var file = request.FileUploads.First();
+                DataUriParser parser = new DataUriParser(file.DataUrl);
+                var uploadFile = await _agentsClient.UploadFileAsync(new MemoryStream(parser.Data), AgentFilePurpose.Agents, file.FileName);
+                fileList.Add(uploadFile);
+            }
+
+            var vectorStore = await _agentsClient.CreateVectorStoreAsync(fileList.Select(x => x.Id).ToList());
+            FileSearchToolResource fileSearchToolResource = new FileSearchToolResource();
+            fileSearchToolResource.VectorStoreIds.Add(vectorStore.Value.Id);
+            agentThread = new AzureAIAgentThread(agent.Client, toolResources: new ToolResources() { FileSearch = fileSearchToolResource });
+        }
+   
+        var message = new ChatMessageContent (AuthorRole.User, userMessage);
         await foreach (StreamingChatMessageContent contentChunk in agent.InvokeStreamingAsync(message, agentThread))
         {
             sb.Append(contentChunk.Content);
