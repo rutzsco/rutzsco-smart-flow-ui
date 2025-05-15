@@ -86,7 +86,12 @@ public static class SKExtensions
         var selected = profiles.FirstOrDefault(x => x.Name == profile.Name);
         return selected?.Approach.ToUpper() == "AZUREAIAGENTCHATPROFILE";
     }
-    
+    public static bool IsImangeChatProfile(this Dictionary<string, string> options, List<ProfileDefinition> profiles)
+    {
+        var profile = options.GetChatProfile(profiles);
+        var selected = profiles.FirstOrDefault(x => x.Name == profile.Name);
+        return selected?.Approach.ToUpper() == "IMAGECHAT";
+    }
     public static ProfileDefinition GetChatProfile(this Dictionary<string, string> options, List<ProfileDefinition> profiles)
     {
         var defaultProfile = profiles.First();

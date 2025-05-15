@@ -17,7 +17,8 @@ public enum ProfileApproach
     EndpointAssistant,
     EndpointAssistantV2,
     EndpointAssistantTask,
-    AzureAIAgentChatProfile
+    AzureAIAgentChatProfile,
+    ImageChat
 };
 public record UserPromptTemplate(string Name, string PromptTemplate, UserPromptTemplateVariable[] Variables);
 public class UserPromptTemplateVariable
