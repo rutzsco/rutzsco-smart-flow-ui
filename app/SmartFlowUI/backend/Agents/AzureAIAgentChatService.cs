@@ -35,7 +35,11 @@ public class AzureAIAgentChatService : IChatService
         var definition = _agentsClient.GetAgent(profile.AzureAIAgentID);
         var agent = new AzureAIAgent(definition, _agentsClient, kernel.Plugins);
 
-        var agentThread = new AzureAIAgentThread(agent.Client);
+        // Get or create a agent thread
+        var agentThread = request.ThreadId != null
+            ? await _agentsClient.GetThreadAsync(request.ThreadId)
+            : await _agentsClient.CreateThreadAsync();
+
         if (request.FileUploads.Any())
         {
             var fileList = new List<AgentFile>();
@@ -47,14 +51,28 @@ public class AzureAIAgentChatService : IChatService
                 fileList.Add(uploadFile);
             }
 
-            var vectorStore = await _agentsClient.CreateVectorStoreAsync(fileList.Select(x => x.Id).ToList());
-            FileSearchToolResource fileSearchToolResource = new FileSearchToolResource();
-            fileSearchToolResource.VectorStoreIds.Add(vectorStore.Value.Id);
-            agentThread = new AzureAIAgentThread(agent.Client, toolResources: new ToolResources() { FileSearch = fileSearchToolResource });
+            // Check if the agent thread already has a vector store ID
+            var vectorStoreId = agentThread.Value.ToolResources?.FileSearch?.VectorStoreIds?.FirstOrDefault();
+            if (string.IsNullOrEmpty(vectorStoreId))
+            {
+                // Create a new vector store if it doesn't exist
+                var vectorStore = await _agentsClient.CreateVectorStoreAsync(fileList.Select(x => x.Id).ToList());
+                vectorStoreId = vectorStore.Value.Id;
+
+                // Update the agent thread with the new vector store ID
+                FileSearchToolResource fileSearchToolResource = new FileSearchToolResource();
+                fileSearchToolResource.VectorStoreIds.Add(vectorStoreId);
+                await _agentsClient.UpdateThreadAsync(agentThread.Value.Id, toolResources: new ToolResources() { FileSearch = fileSearchToolResource });
+            }
+            else
+            {
+                // Add the files to the existing vector store
+                await _agentsClient.CreateVectorStoreFileAsync(vectorStoreId, fileList.FirstOrDefault().Id);
+            }
         }
-   
-        var message = new ChatMessageContent (AuthorRole.User, userMessage);
-        await foreach (StreamingChatMessageContent contentChunk in agent.InvokeStreamingAsync(message, agentThread))
+
+        var message = new ChatMessageContent(AuthorRole.User, userMessage);
+        await foreach (StreamingChatMessageContent contentChunk in agent.InvokeStreamingAsync(message, new AzureAIAgentThread(_agentsClient,agentThread.Value.Id)))
         {
             sb.Append(contentChunk.Content);
             yield return new ChatChunkResponse(contentChunk.Content);
@@ -63,7 +81,7 @@ public class AzureAIAgentChatService : IChatService
         sw.Stop();
 
         var contextData = new ResponseContext(profile.Name, null, Array.Empty<ThoughtRecord>(), request.ChatTurnId, request.ChatId, null);
-        var result = new ApproachResponse(Answer: sb.ToString(),CitationBaseUrl: string.Empty, contextData);
+        var result = new ApproachResponse(Answer: sb.ToString(), CitationBaseUrl: string.Empty, contextData);
 
         yield return new ChatChunkResponse(string.Empty, result);
     }
