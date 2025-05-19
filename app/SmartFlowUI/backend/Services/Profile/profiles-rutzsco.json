@@ -1,5 +1,17 @@
 [
   {
+    "Name": "Image Generation",
+    "Id": "ImageGeneration",
+    "Approach": "IMAGECHAT",
+    "SecurityModel": "None",
+    "SecurityModelGroupMembership": [ "LocalDevUser" ],
+    "SampleQuestions": [
+      "Sunset over a mountain lake?",
+      "Robot playing guitar on stage",
+      "Cute cat in a wizard hat"
+    ]
+  },
+  {
     "Name": "General",
     "Id": "General",
     "Approach": "Chat",
