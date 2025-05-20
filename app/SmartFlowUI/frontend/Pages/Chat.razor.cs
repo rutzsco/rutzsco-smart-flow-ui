@@ -50,6 +50,8 @@ public sealed partial class Chat
     public bool _showDocumentUpload { get; set; }
     public bool _showPictureUpload { get; set; }
     [SupplyParameterFromQuery(Name = "cid")] public string? ArchivedChatId { get; set; }
+    [SupplyParameterFromQuery(Name = "profile")] public string? QueryProfileName { get; set; }
+    [SupplyParameterFromQuery(Name = "message")] public string? QueryInitialMessage { get; set; }
 
     private HashSet<DocumentSummary> _selectedDocuments = new HashSet<DocumentSummary>();
 
@@ -69,23 +71,43 @@ public sealed partial class Chat
         _profiles = user.Profiles.Where(x => x.Approach != ProfileApproach.UserDocumentChat).ToList();
         _userUploadProfileSummary = user.Profiles.FirstOrDefault(x => x.Approach == ProfileApproach.UserDocumentChat);
 
-        if (_profiles.Count > 0)
+        if (!string.IsNullOrEmpty(QueryProfileName) && !string.IsNullOrEmpty(QueryInitialMessage))
         {
-            await SetSelectedProfileAsync(_profiles.First());
+            var profileToSelect = _profiles.FirstOrDefault(p => p.Name.Equals(QueryProfileName, StringComparison.OrdinalIgnoreCase));
+            if (profileToSelect != null)
+            {
+                await SetSelectedProfileAsync(profileToSelect);
+                _userQuestion = QueryInitialMessage; 
+                _ = OnAskClickedAsync(); 
+            }
+            else
+            {
+                showWarning($"Profile '{QueryProfileName}' not found. Defaulting to standard behavior.");
+                await LoadDefaultProfileOrArchivedChatAsync();
+            }
         }
+        else
+        {
+            await LoadDefaultProfileOrArchivedChatAsync();
+        }
+        
         _errorLoadingMessage = _profiles.Count > 0 ? string.Empty : $" Error loading profiles...! {user.SessionId}";
+        EvaluateOptions();
+        StateHasChanged();
+    }
 
-
+    private async Task LoadDefaultProfileOrArchivedChatAsync()
+    {
         if (!string.IsNullOrEmpty(ArchivedChatId))
         {
             showInfo("Loading chat history...");
             await LoadArchivedChatAsync(_cancellationTokenSource.Token, ArchivedChatId);
         }
-        EvaluateOptions();
-        StateHasChanged();
+        else if (_profiles.Count > 0 && _selectedProfileSummary == null) // Only set default if no profile is selected yet
+        {
+            await SetSelectedProfileAsync(_profiles.First());
+        }
     }
-
-
 
     private async Task OnProfileClickAsync(string selection)
     {
