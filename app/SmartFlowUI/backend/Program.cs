@@ -107,6 +107,7 @@ app.Use(next => context =>
 });
 app.MapFallbackToFile("index.html");
 
+app.MapChatApi();
 app.MapApi();
 
 app.MapCustomHealthChecks();
