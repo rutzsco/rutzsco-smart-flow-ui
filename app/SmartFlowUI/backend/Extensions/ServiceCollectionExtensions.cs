@@ -173,8 +173,10 @@ internal static class ServiceCollectionExtensions
             }
         }
 
+        services.AddSingleton<ImageGenerationChatAgent>();
         services.AddSingleton<ChatService>();
         services.AddSingleton<RAGChatService>();
+        services.AddSingleton<AzureAIAgentChatService>();
         services.AddSingleton<EndpointChatService>();
         services.AddSingleton<EndpointChatServiceV2>();
         services.AddSingleton<EndpointTaskService>();

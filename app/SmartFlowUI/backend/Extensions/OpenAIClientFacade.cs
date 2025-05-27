@@ -51,6 +51,10 @@ public class OpenAIClientFacade
             kernel.ImportPluginFromObject(new RAGRetrivalPlugins(_searchClientFactory, _standardChatGptClient), "RAGChat");
         }
 
+        if(toolPackage == "ImageGen")
+        {
+            kernel = BuildImageGenerationKernelBasedOnIdentity();
+        }
         return kernel;
     }
 
@@ -70,4 +74,25 @@ public class OpenAIClientFacade
 
         return kernel;
     }
+
+    #pragma warning disable SKEXP0010
+    private Kernel BuildImageGenerationKernelBasedOnIdentity()
+    {
+        if (_azureKeyCredential != null)
+        {
+
+            var keyKernel = Kernel.CreateBuilder()
+                .AddAzureOpenAITextToImage(_standardChatGptDeployment, _standardServiceEndpoint,_config.AOAIStandardServiceKey)
+                .Build();
+
+            return keyKernel;
+        }
+
+        var kernel = Kernel.CreateBuilder()
+            .AddAzureOpenAITextToImage("dall-e-3", _standardServiceEndpoint, _tokenCredential)
+            .Build();
+
+        return kernel;
+    }
+    #pragma warning restore SKEXP0010
 }

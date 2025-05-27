@@ -13,10 +13,9 @@
 			@if (_questionAndAnswerMap is { Count: 0 })
 			{
 				<div class="d-flex align-content-center flex-wrap flex-grow-1 full-height">
-					@if (_showProfiles)
-					{
+	
 					<Examples Profile=@_selectedProfileSummary Message="@AppConfiguration.HelloText" OnExampleClicked="@OnAskQuestionAsync" />
-					}
+
 					@if (_selectedProfileSummary != null && _selectedProfileSummary.PromptTemplates != null && _selectedProfileSummary.PromptTemplates.Any())
 					{
 

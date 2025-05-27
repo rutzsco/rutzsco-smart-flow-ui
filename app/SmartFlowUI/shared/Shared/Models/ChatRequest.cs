@@ -10,6 +10,7 @@ public record class ChatRequest(
     IEnumerable<FileSummary> FileUploads,
     Dictionary<string, string> OptionFlags,
     UserSelectionModel? UserSelectionModel,
+    string? ThreadId = null,
     RequestOverrides? Overrides = null)
 {
     public string? LastUserQuestion => History?.LastOrDefault()?.User;
