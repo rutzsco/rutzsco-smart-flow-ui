@@ -29,7 +29,7 @@
     "Approach": "AzureAIAgentChatProfile",
     "SecurityModel": "None",
     "AllowFileUpload": true,
-    "AzureAIAgentID": "asst_tn4Rc2jldoqtNn3VorGYTJpo",
+    "AzureAIAgentID": "asst_mlfEFWZnbcghar2dIH4pTdNB",
     "ChatSystemMessageFile": "ChatSimpleSystemPrompt",
     "SampleQuestions": [
       "Write a function in C# that will invoke a rest API",
