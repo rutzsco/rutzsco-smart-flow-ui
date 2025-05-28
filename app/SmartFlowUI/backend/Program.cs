@@ -107,6 +107,7 @@ app.Use(next => context =>
 });
 app.MapFallbackToFile("index.html");
 
+app.MapAgentManagementApi();
 app.MapChatApi();
 app.MapApi();
 

@@ -173,6 +173,8 @@ internal static class ServiceCollectionExtensions
             }
         }
 
+
+        services.AddSingleton<AzureAIAgentManagementService>();
         services.AddSingleton<ImageGenerationChatAgent>();
         services.AddSingleton<ChatService>();
         services.AddSingleton<RAGChatService>();

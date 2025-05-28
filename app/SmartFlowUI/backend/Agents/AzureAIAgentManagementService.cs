@@ -8,26 +8,26 @@ using System.Reflection;
 namespace MinimalApi.Agents
 {        
     #pragma warning disable SKEXP0110
-    public class AzureAIAgentBuilder
+    public class AzureAIAgentManagementService
     { 
 
-        private readonly Kernel _kernel;
+        private readonly OpenAIClientFacade _openAIClientFacade;
         private readonly IConfiguration _configuration;
 
 
-        public AzureAIAgentBuilder(Kernel kernel, IConfiguration configuration)
+        public AzureAIAgentManagementService(OpenAIClientFacade openAIClientFacade, IConfiguration configuration)
         {    
             _configuration = configuration;
-            _kernel = kernel;
+            _openAIClientFacade = openAIClientFacade;
         }
 
         public async Task<AzureAIAgent> CreateAgentIfNotExistsAsync()
         {
             var agentsClient = AzureAIAgent.CreateAgentsClient(_configuration["AzureAIFoundryProjectEndpoint"], new DefaultAzureCredential());
-
+            var kernel = _openAIClientFacade.BuildKernel("RAG");
 
             var tools = new List<FunctionToolDefinition>();
-            foreach (var plugin in _kernel.Plugins)
+            foreach (var plugin in kernel.Plugins)
             {
                 var pluginTools = plugin.Select(f => f.ToToolDefinition(plugin.Name));
                 tools.AddRange(pluginTools);
@@ -40,9 +40,20 @@ namespace MinimalApi.Agents
                 instructions: LoadEmbeddedResource("MinimalApi.Services.Profile.Prompts.RAGChatSystemPrompt.txt"),
                 tools: tools);
 
-            AzureAIAgent agent = new(definition, agentsClient, plugins: _kernel.Plugins);
+            AzureAIAgent agent = new(definition, agentsClient, plugins: kernel.Plugins);
 
             return agent;
+        }
+
+        public async Task<IEnumerable<PersistentAgent>> ListAgentsAsync()
+        {
+            var agentsClient = AzureAIAgent.CreateAgentsClient(_configuration["AzureAIFoundryProjectEndpoint"], new DefaultAzureCredential());
+            var agents = new List<PersistentAgent>();
+            await foreach (var agentDefinition in agentsClient.Administration.GetAgentsAsync())
+            {
+                agents.Add(agentDefinition);
+            }
+            return agents;
         }
 
         private string LoadEmbeddedResource(string resourceName)

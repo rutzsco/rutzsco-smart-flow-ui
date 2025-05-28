@@ -1,0 +1,116 @@
+@page "/agents"
+@using MinimalApi.Models
+@using ClientApp.Components
+
+@inject HttpClient Http
+@inject IDialogService DialogService
+
+<PageTitle>Available Agents</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
+    <MudToolBar>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" OnClick="OpenCreateAgentDialog">New agent</MudButton>
+        <MudButton Variant="Variant.Text" StartIcon="@Icons.Material.Filled.Refresh" OnClick="RefreshAgents">Refresh</MudButton>
+        <MudSpacer />
+        <MudTextField @bind-Value="_searchString" Placeholder="Search" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" IconSize="Size.Medium" Class="mt-0"></MudTextField>
+        <MudButton Variant="Variant.Text" StartIcon="@Icons.Material.Filled.FilterList">Filter</MudButton>
+    </MudToolBar>
+
+    @if (_agents == null)
+    {
+        <MudProgressCircular Indeterminate="true" />
+    }
+    else
+    {
+        <MudTable Items="@FilteredAgents" Hover="true" Dense="true" Striped="true" Class="mt-4">
+            <HeaderContent>
+                <MudTh>Name</MudTh>
+                <MudTh>ID</MudTh>
+                <MudTh>Created</MudTh>
+                <MudTh>Model</MudTh>
+                <MudTh>Tools</MudTh>
+                <MudTh>Description</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd DataLabel="Name">@context.Name</MudTd>
+                <MudTd DataLabel="ID">@context.Id</MudTd>
+                <MudTd DataLabel="Created">@context.CreatedAt.ToString("MMM dd, yyyy")</MudTd>
+                <MudTd DataLabel="Model">@GetModel(context)</MudTd>
+                <MudTd DataLabel="Tools">@GetTools(context)</MudTd>
+                <MudTd DataLabel="Description">@context.Description</MudTd>
+            </RowTemplate>
+            <PagerContent>
+                <MudTablePager />
+            </PagerContent>
+        </MudTable>
+    }
+</MudContainer>
+
+@code {
+    private AgentViewModel[]? _agents;
+    private string _searchString = string.Empty;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await LoadAgents();
+    }
+
+    private async Task LoadAgents()
+    {
+        _agents = await Http.GetFromJsonAsync<AgentViewModel[]>("api/agents");
+    }
+
+    private async Task RefreshAgents()
+    {
+        _agents = null; // Show loading indicator
+        await LoadAgents();
+        StateHasChanged();
+    }
+
+    private async Task OpenCreateAgentDialog()
+    {
+        var dialog = DialogService.Show<CreateAgentDialog>("Create New Agent");
+        var result = await dialog.Result;
+
+        if (!result.Canceled && result.Data is AgentViewModel newAgent)
+        {
+            var response = await Http.PostAsJsonAsync("api/agent", newAgent);
+            if (response.IsSuccessStatusCode)
+            {
+                await LoadAgents();
+                StateHasChanged();
+            }
+            else
+            {
+                // Handle error, e.g., show a notification
+            }
+        }
+    }
+
+    private IEnumerable<AgentViewModel> FilteredAgents
+    {
+        get
+        {
+            if (_agents == null) return Enumerable.Empty<AgentViewModel>();
+            if (string.IsNullOrWhiteSpace(_searchString))
+                return _agents;
+            return _agents.Where(a =>
+                (a.Name?.Contains(_searchString, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                (a.Id?.Contains(_searchString, StringComparison.OrdinalIgnoreCase) ?? false) ||
+                (a.Description?.Contains(_searchString, StringComparison.OrdinalIgnoreCase) ?? false)
+            );
+        }
+    }
+
+    private string GetModel(AgentViewModel agent)
+    {
+        if (agent.Name.Contains("4.1")) return "gpt-4.1";
+        return "gpt-4o";
+    }
+
+    private string GetTools(AgentViewModel agent)
+    {
+        if (agent.Name.Contains("demo")) return "code_interpreter";
+        return string.Empty;
+    }
+}
