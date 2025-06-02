@@ -125,7 +125,8 @@ public static class SKExtensions
             dataSources.Distinct().ToArray(), // Remove duplicates
             thoughts.Select(x => new ThoughtRecord(x.Name, x.Result)).ToArray(), 
             request.ChatTurnId, 
-            request.ChatId, 
+            request.ChatId,
+            null,
             diagnostics);
 
         return new ApproachResponse(
@@ -141,7 +142,7 @@ public static class SKExtensions
         var chatDiagnostics = new CompletionsDiagnostics(completionTokens, requestTokenCount, totalTokens, 0);
         var diagnostics = new Diagnostics(chatDiagnostics, modelDeploymentName, workflowDurationMilliseconds);
 
-        var contextData = new ResponseContext(profile.Name, null, Array.Empty<ThoughtRecord>(), request.ChatTurnId, request.ChatId, diagnostics);
+        var contextData = new ResponseContext(profile.Name, null, Array.Empty<ThoughtRecord>(), request.ChatTurnId, request.ChatId, null, diagnostics);
 
         return new ApproachResponse(
             Answer: NormalizeResponseText(answer),
