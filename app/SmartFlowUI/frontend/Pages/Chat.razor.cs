@@ -247,11 +247,20 @@ public sealed partial class Chat
         }
         catch (HttpRequestException ex)
         {
-            // this must be in the wrong spot...  it doesn't hit here if you have the wrong API definition...
-            var msg =
-                ex.StatusCode.Value == System.Net.HttpStatusCode.NotFound ? "Error: API Defined Incorrectly!" :
-                ex.StatusCode.Value == System.Net.HttpStatusCode.TooManyRequests ? "Error: Rate Limit exceeded!" :
-                "Error: Unable to get a response from the server.";
+            string msg;
+            if (ex.StatusCode.HasValue)
+            {
+                msg = ex.StatusCode.Value switch
+                {
+                    System.Net.HttpStatusCode.NotFound => "Error: API Defined Incorrectly!",
+                    System.Net.HttpStatusCode.TooManyRequests => "Error: Rate Limit exceeded!",
+                    _ => "Error: Unable to get a response from the server."
+                };
+            }
+            else
+            {
+                msg = "Error: Unable to get a response from the server. Status code not available.";
+            }
             _questionAndAnswerMap[_currentQuestion] = new ApproachResponse(string.Empty, null, null, msg);
         }
         catch (JsonException)

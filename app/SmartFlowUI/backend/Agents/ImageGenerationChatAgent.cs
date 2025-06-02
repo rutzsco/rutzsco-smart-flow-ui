@@ -109,29 +109,20 @@ internal sealed class ImageGenerationChatAgent : IChatService
 
     private async Task<string?> GenerateNewImageAsync(string prompt, CancellationToken cancellationToken)
     {
-        _logger.LogInformation("Generating new image for prompt: {Prompt}", prompt);
         try
         {
-            var kernel = _openAIClientFacade.BuildKernel("ImageGen");
-            var imageGenerationKernelService = kernel.GetRequiredService<ITextToImageService>();
-            
-            var generatedImages = await imageGenerationKernelService.GetImageContentsAsync(
-                new TextContent(prompt),
-                new OpenAITextToImageExecutionSettings { Size = (Width: 1024, Height: 1024) }, 
-                cancellationToken: cancellationToken);
-
-            var firstImageUrl = generatedImages.FirstOrDefault()?.Uri?.ToString();
-            if (!string.IsNullOrEmpty(firstImageUrl))
+            string? imageUrl = await _textToImageService.NewImageAsync(prompt);
+            if (!string.IsNullOrEmpty(imageUrl))
             {
-                _logger.LogInformation("Successfully generated new image. URL: {ImageUrl}", firstImageUrl);
-                return firstImageUrl;
+                return imageUrl;
             }
-            _logger.LogWarning("Image generation did not return a URL for prompt: {Prompt}", prompt);
-            return null;
+            else
+            {
+                return null;
+            }
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error generating new image for prompt: {Prompt}", prompt);
             return null;
         }
     }
