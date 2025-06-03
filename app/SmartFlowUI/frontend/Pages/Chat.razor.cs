@@ -31,6 +31,7 @@ public sealed partial class Chat
 
     private bool _gPT4ON = false;
     private Guid _chatId = Guid.NewGuid();
+    private string? _agentThreadId = null;
 
     private readonly CancellationTokenSource _cancellationTokenSource = new();
 
@@ -204,7 +205,7 @@ public sealed partial class Chat
                 _files,
                 options,
                 _userSelectionModel,
-                null);
+                _agentThreadId);
 
             using var httpRequest = new HttpRequestMessage(HttpMethod.Post, "api/chat/streaming")
             {
@@ -234,6 +235,9 @@ public sealed partial class Chat
                     _isReceivingResponse = false;
                     _userQuestion = "";
                     _currentQuestion = default;
+
+                    if(chunk.FinalResult.Context?.ThreadId != null)
+                        _agentThreadId = chunk.FinalResult.Context.ThreadId;
                 }
                 else
                 {

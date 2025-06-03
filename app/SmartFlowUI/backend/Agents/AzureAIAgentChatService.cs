@@ -79,7 +79,7 @@ public class AzureAIAgentChatService : IChatService
         }
         sw.Stop();
 
-        var contextData = new ResponseContext(profile.Name, null, Array.Empty<ThoughtRecord>(), request.ChatTurnId, request.ChatId, null, null);
+        var contextData = new ResponseContext(profile.Name, null, Array.Empty<ThoughtRecord>(), request.ChatTurnId, request.ChatId, agentThread.Value.Id, null);
         var result = new ApproachResponse(Answer: sb.ToString(), CitationBaseUrl: string.Empty, contextData);
 
         yield return new ChatChunkResponse(string.Empty, result);
