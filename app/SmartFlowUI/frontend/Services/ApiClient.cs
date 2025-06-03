@@ -263,4 +263,22 @@ public sealed class ApiClient(HttpClient httpClient)
         }
         return (profileInfo!, rawJson);
     }
+    public async IAsyncEnumerable<ChatChunkResponse> StreamChatAsync(ChatRequest request, [EnumeratorCancellation] CancellationToken cancellationToken = default)
+    {
+        using var httpRequest = new HttpRequestMessage(HttpMethod.Post, "api/chat/streaming")
+        {
+            Headers = { { "Accept", "application/json" } },
+            Content = new StringContent(System.Text.Json.JsonSerializer.Serialize(request), Encoding.UTF8, "application/json")
+        };
+        httpRequest.SetBrowserResponseStreamingEnabled(true);
+        using var response = await httpClient.SendAsync(httpRequest, HttpCompletionOption.ResponseHeadersRead, cancellationToken);
+        response.EnsureSuccessStatusCode();
+        using var responseStream = await response.Content.ReadAsStreamAsync(cancellationToken);
+        await foreach (var chunk in System.Text.Json.JsonSerializer.DeserializeAsyncEnumerable<ChatChunkResponse>(responseStream, new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true, DefaultBufferSize = 32 }, cancellationToken))
+        {
+            if (chunk == null)
+                continue;
+            yield return chunk;
+        }
+    }
 }

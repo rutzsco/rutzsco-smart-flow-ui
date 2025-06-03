@@ -207,19 +207,8 @@ public sealed partial class Chat
                 _userSelectionModel,
                 _agentThreadId);
 
-            using var httpRequest = new HttpRequestMessage(HttpMethod.Post, "api/chat/streaming")
-            {
-                Headers = { { "Accept", "application/json" } },
-                Content = new StringContent(JsonSerializer.Serialize(request), Encoding.UTF8, "application/json")
-            };
-            httpRequest.SetBrowserResponseStreamingEnabled(true);
-            using HttpResponseMessage response = await HttpClient.SendAsync(httpRequest, HttpCompletionOption.ResponseHeadersRead);
-            response.EnsureSuccessStatusCode();
-
-            using Stream responseStream = await response.Content.ReadAsStreamAsync();
             var responseBuffer = new StringBuilder();
-
-            await foreach (var chunk in System.Text.Json.JsonSerializer.DeserializeAsyncEnumerable<ChatChunkResponse>(responseStream, new JsonSerializerOptions { PropertyNameCaseInsensitive = true, DefaultBufferSize = 32 }))
+            await foreach (var chunk in ApiClient.StreamChatAsync(request))
             {
                 if (chunk == null)
                 {
