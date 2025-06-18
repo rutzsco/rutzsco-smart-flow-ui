@@ -32,7 +32,7 @@ public class AzureAIAgentChatService : IChatService
 
         var kernel = _openAIClientFacade.BuildKernel(string.Empty);
         var definition = await _agentsClient.Administration.GetAgentAsync(profile.AzureAIAgentID);
-        var agent = new AzureAIAgent(definition, _agentsClient, kernel.Plugins);
+        var agent = new AzureAIAgent(definition, _agentsClient);
 
         // Get or create a agent thread
         var agentThread = request.ThreadId != null
@@ -46,6 +46,8 @@ public class AzureAIAgentChatService : IChatService
             {
                 var file = request.FileUploads.First();
                 DataUriParser parser = new DataUriParser(file.DataUrl);
+
+                var files = _agentsClient.Files.GetFilesAsync();
                 var uploadFile = await _agentsClient.Files.UploadFileAsync(new MemoryStream(parser.Data), PersistentAgentFilePurpose.Agents, file.FileName);
                 fileList.Add(uploadFile);
             }
@@ -58,15 +60,34 @@ public class AzureAIAgentChatService : IChatService
                 var vectorStore = await _agentsClient.VectorStores.CreateVectorStoreAsync(fileList.Select(x => x.Id).ToList());
                 vectorStoreId = vectorStore.Value.Id;
 
+                // Poll for vector store completion
+                const int pollDelayMs = 1000;
+                while (true)
+                {
+                    cancellationToken.ThrowIfCancellationRequested();
+                    var statusResult = await _agentsClient.VectorStores.GetVectorStoreAsync(vectorStoreId);
+                    var status = statusResult.Value.Status;
+                    if (status == VectorStoreStatus.Completed)
+                        break;
+
+                    await Task.Delay(pollDelayMs, cancellationToken);
+                }
+
                 // Update the agent thread with the new vector store ID
                 var fileSearchToolResource = new FileSearchToolResource();
                 fileSearchToolResource.VectorStoreIds.Add(vectorStoreId);
-                await _agentsClient.Threads.UpdateThreadAsync(agentThread.Value.Id, toolResources: new ToolResources() { FileSearch = fileSearchToolResource });
+                var thread = await _agentsClient.Threads.UpdateThreadAsync(agentThread.Value.Id, toolResources: new ToolResources() { FileSearch = fileSearchToolResource });
+                while (true)
+                {
+                    var threadStatus = await _agentsClient.Threads.GetThreadAsync(agentThread.Value.Id);
+                    break;
+                }
             }
             else
             {
                 // Add the files to the existing vector store
-                await _agentsClient.VectorStores.CreateVectorStoreFileAsync(vectorStoreId, fileList.FirstOrDefault().Id);
+                //var files = await _agentsClient.VectorStores.GetVectorStoreFilesAsync(vectorStoreId).ToListAsync();
+                var fr = await _agentsClient.VectorStores.CreateVectorStoreFileAsync(vectorStoreId, fileList.FirstOrDefault().Id);
             }
         }
 

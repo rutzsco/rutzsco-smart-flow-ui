@@ -35,7 +35,6 @@ public sealed partial class Chat
 
     private readonly CancellationTokenSource _cancellationTokenSource = new();
 
-    [Inject] public required HttpClient HttpClient { get; set; }
     [Inject] public required ApiClient ApiClient { get; set; }
     [Inject] public required IJSRuntime JSRuntime { get; set; }
     [Inject] public required NavigationManager Navigation { get; set; }
@@ -267,16 +266,7 @@ public sealed partial class Chat
         }
     }
 
-    private async Task<string?> GetAuthMeFieldAsync(string field)
-    {
-        var httpResponse = await HttpClient.GetAsync(".auth/me");
-        httpResponse.EnsureSuccessStatusCode();
 
-        var httpResponseContent = await httpResponse.Content.ReadAsStringAsync();
-        var httpResponseContentJson = System.Text.Json.JsonSerializer.Deserialize<List<Dictionary<string, object>>>(httpResponseContent);
-        var httpResponseField = httpResponseContentJson?.FirstOrDefault()?[field]?.ToString();
-        return httpResponseField;
-    }
 
     private void OnSelectedDocumentsChanged()
     {
@@ -317,6 +307,7 @@ public sealed partial class Chat
         _currentQuestion = default;
         _questionAndAnswerMap.Clear();
         _chatId = Guid.NewGuid();
+        _agentThreadId = null;
         EvaluateOptions();
     }
 
@@ -328,6 +319,7 @@ public sealed partial class Chat
         _selectedDocument = "";
         SelectedDocuments.Clear();
         _chatId = Guid.NewGuid();
+        _agentThreadId = null;
         _files.Clear();
 
         EvaluateOptions();
