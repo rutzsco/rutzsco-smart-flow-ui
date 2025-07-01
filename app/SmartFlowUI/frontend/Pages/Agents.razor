@@ -4,6 +4,7 @@
 
 @inject HttpClient Http
 @inject IDialogService DialogService
+@inject ISnackbar Snackbar
 
 <PageTitle>Available Agents</PageTitle>
 
@@ -30,6 +31,7 @@
                 <MudTh>Model</MudTh>
                 <MudTh>Tools</MudTh>
                 <MudTh>Description</MudTh>
+                <MudTh>Actions</MudTh>
             </HeaderContent>
             <RowTemplate>
                 <MudTd DataLabel="Name">@context.Name</MudTd>
@@ -38,6 +40,13 @@
                 <MudTd DataLabel="Model">@GetModel(context)</MudTd>
                 <MudTd DataLabel="Tools">@GetTools(context)</MudTd>
                 <MudTd DataLabel="Description">@context.Description</MudTd>
+                <MudTd DataLabel="Actions">
+                    <MudIconButton Icon="@Icons.Material.Filled.Delete" 
+                                   Color="Color.Error" 
+                                   Size="Size.Small" 
+                                   OnClick="@(() => DeleteAgentsByName(context.Name))"
+                                   Title="Delete all agents with this name" />
+                </MudTd>
             </RowTemplate>
             <PagerContent>
                 <MudTablePager />
@@ -83,6 +92,52 @@
             else
             {
                 // Handle error, e.g., show a notification
+                Snackbar.Add("Failed to create agent", Severity.Error);
+            }
+        }
+    }
+
+    private async Task DeleteAgentsByName(string agentName)
+    {
+        var parameters = new DialogParameters<DeleteAgentConfirmationDialog>
+        {
+            { x => x.AgentName, agentName }
+        };
+
+        var dialog = DialogService.Show<DeleteAgentConfirmationDialog>("Confirm Deletion", parameters);
+        var result = await dialog.Result;
+
+        if (!result.Canceled)
+        {
+            try
+            {
+                var response = await Http.DeleteAsync($"api/agents/{Uri.EscapeDataString(agentName)}");
+                
+                if (response.IsSuccessStatusCode)
+                {
+                    var responseContent = await response.Content.ReadAsStringAsync();
+                    var deleteResult = System.Text.Json.JsonSerializer.Deserialize<DeleteAgentResponse>(responseContent, new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                    
+                    if (deleteResult?.DeletedCount > 0)
+                    {
+                        Snackbar.Add($"Successfully deleted {deleteResult.DeletedCount} agent(s) with name '{agentName}'", Severity.Success);
+                        await LoadAgents();
+                        StateHasChanged();
+                    }
+                    else
+                    {
+                        Snackbar.Add($"No agents found with name '{agentName}'", Severity.Info);
+                    }
+                }
+                else
+                {
+                    var errorContent = await response.Content.ReadAsStringAsync();
+                    Snackbar.Add($"Failed to delete agents: {errorContent}", Severity.Error);
+                }
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Error deleting agents: {ex.Message}", Severity.Error);
             }
         }
     }
@@ -112,5 +167,11 @@
     {
         if (agent.Name.Contains("demo")) return "code_interpreter";
         return string.Empty;
+    }
+
+    private class DeleteAgentResponse
+    {
+        public int DeletedCount { get; set; }
+        public string Message { get; set; } = string.Empty;
     }
 }

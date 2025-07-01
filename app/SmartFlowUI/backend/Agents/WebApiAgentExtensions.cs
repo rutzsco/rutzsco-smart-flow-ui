@@ -13,6 +13,7 @@ internal static class WebApiAgentExtensions
         // Process chat turn
         api.MapGet("agents", OnGetAgentsAsync);
         api.MapPost("agent", OnCreateAgentAsync);
+        api.MapDelete("agents/{agentName}", OnDeleteAgentsByNameAsync);
 
         return app;
     }
@@ -42,6 +43,23 @@ internal static class WebApiAgentExtensions
         {
             // Log the exception details (not shown here for brevity)
             return Results.Problem($"An error occurred while creating the agent: {ex.Message}");
+        }
+    }
+
+    private static async Task<IResult> OnDeleteAgentsByNameAsync(string agentName, AzureAIAgentManagementService service, HttpContext context)
+    {
+        try
+        {
+            var deletedCount = await service.DeleteAgentsByNameAsync(agentName);
+            return Results.Ok(new { DeletedCount = deletedCount, Message = $"Deleted {deletedCount} agent(s) with name '{agentName}'" });
+        }
+        catch (ArgumentException ex)
+        {
+            return Results.BadRequest(ex.Message);
+        }
+        catch (Exception ex)
+        {
+            return Results.Problem($"An error occurred while deleting agents: {ex.Message}");
         }
     }
 }

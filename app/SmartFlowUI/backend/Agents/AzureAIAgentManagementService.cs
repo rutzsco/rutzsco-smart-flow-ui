@@ -56,6 +56,45 @@ namespace MinimalApi.Agents
             return agents;
         }
 
+        public async Task<int> DeleteAgentsByNameAsync(string agentName)
+        {
+            if (string.IsNullOrWhiteSpace(agentName))
+            {
+                throw new ArgumentException("Agent name cannot be null or empty.", nameof(agentName));
+            }
+
+            var agentsClient = AzureAIAgent.CreateAgentsClient(_configuration["AzureAIFoundryProjectEndpoint"], new DefaultAzureCredential());
+            var deletedCount = 0;
+
+            // Get all agents and find those that match the name
+            var agentsToDelete = new List<PersistentAgent>();
+            await foreach (var agentDefinition in agentsClient.Administration.GetAgentsAsync())
+            {
+                if (string.Equals(agentDefinition.Name, agentName, StringComparison.OrdinalIgnoreCase))
+                {
+                    agentsToDelete.Add(agentDefinition);
+                }
+            }
+
+            // Delete each matching agent
+            foreach (var agent in agentsToDelete)
+            {
+                try
+                {
+                    await agentsClient.Administration.DeleteAgentAsync(agent.Id);
+                    deletedCount++;
+                }
+                catch (Exception ex)
+                {
+                    // Log the exception or handle it as needed
+                    // For now, we'll continue with other agents
+                    Console.WriteLine($"Failed to delete agent {agent.Id} ({agent.Name}): {ex.Message}");
+                }
+            }
+
+            return deletedCount;
+        }
+
         private string LoadEmbeddedResource(string resourceName)
         {
             var assembly = Assembly.GetExecutingAssembly();
