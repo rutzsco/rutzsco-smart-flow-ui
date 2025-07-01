@@ -1,6 +1,7 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 
 using Azure.AI.Agents.Persistent;
+using Microsoft.SemanticKernel.Agents;
 using Microsoft.SemanticKernel.Agents.AzureAI;
 using Microsoft.SemanticKernel.ChatCompletion;
 
@@ -91,12 +92,35 @@ public class AzureAIAgentChatService : IChatService
             }
         }
 
+        var filesReferences = new List<string>();
         var message = new ChatMessageContent(AuthorRole.User, userMessage);
         await foreach (StreamingChatMessageContent contentChunk in agent.InvokeStreamingAsync(message, new AzureAIAgentThread(_agentsClient,agentThread.Value.Id)))
         {
             sb.Append(contentChunk.Content);
             yield return new ChatChunkResponse(contentChunk.Content);
             await Task.Yield();
+
+            foreach (StreamingAnnotationContent? annotation in contentChunk.Items.OfType<StreamingAnnotationContent>())
+            {
+                Console.WriteLine($"\t            {annotation.ReferenceId} - {annotation.Title}");
+            }
+
+            if (contentChunk.Items.OfType<StreamingFileReferenceContent>().Any())
+            {
+                var file = contentChunk.Items.OfType<StreamingFileReferenceContent>().FirstOrDefault();
+                if (filesReferences.Contains(file.FileId))
+                    continue;
+
+                filesReferences.Add(file.FileId);
+                var fileContent = await agent.Client.Files.GetFileContentAsync(file.FileId);
+                var dataUrl = $"data:{"image/png"};base64,{Convert.ToBase64String(fileContent.Value.ToArray())}";
+                var content = $"![Image]({dataUrl})";
+                sb.Append(content);
+
+                yield return new ChatChunkResponse(content);
+              
+                await Task.Yield();
+            }
         }
         sw.Stop();
 

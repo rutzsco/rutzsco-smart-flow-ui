@@ -33,7 +33,8 @@
     "ChatSystemMessageFile": "ChatSimpleSystemPrompt",
     "SampleQuestions": [
       "Write a function in C# that will invoke a rest API",
-      "Explain why popcorn pops to a kid who loves watching it in the microwave."
+      "Explain why popcorn pops to a kid who loves watching it in the microwave.",
+      "What is the 10 day forecast for Mankato MN?"
     ]
   },
   {
