@@ -177,7 +177,7 @@ public static class SKExtensions
         var diagnosticsBuilder = GetRequestDiagnosticsBuilder(kernel);
         if (sources != null && sources.Any())
         {
-            var supportingContent = sources.Select(x => new SupportingContentRecord(x.FilePath, x.Content)).ToList();
+            var supportingContent = sources.Select(x => new SupportingContentRecord(x.FilePath, x.Content, "FUNCTION", string.Empty)).ToList();
             diagnosticsBuilder.AddFunctionCallResult(name, result, supportingContent);
         }
         else

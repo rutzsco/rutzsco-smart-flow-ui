@@ -92,6 +92,7 @@ public class AzureAIAgentChatService : IChatService
             }
         }
 
+        var sources = new List<SupportingContentRecord>();
         var filesReferences = new List<string>();
         var message = new ChatMessageContent(AuthorRole.User, userMessage);
         await foreach (StreamingChatMessageContent contentChunk in agent.InvokeStreamingAsync(message, new AzureAIAgentThread(_agentsClient,agentThread.Value.Id)))
@@ -102,7 +103,9 @@ public class AzureAIAgentChatService : IChatService
 
             foreach (StreamingAnnotationContent? annotation in contentChunk.Items.OfType<StreamingAnnotationContent>())
             {
-                Console.WriteLine($"\t            {annotation.ReferenceId} - {annotation.Title}");
+                var tempContent = sb.ToString();
+                var citationId = tempContent.Substring(annotation.StartIndex.Value, annotation.EndIndex.Value - annotation.StartIndex.Value);
+                sources.Add(new SupportingContentRecord(annotation.Title,annotation.ReferenceId, "BING", citationId));
             }
 
             if (contentChunk.Items.OfType<StreamingFileReferenceContent>().Any())
@@ -124,7 +127,7 @@ public class AzureAIAgentChatService : IChatService
         }
         sw.Stop();
 
-        var contextData = new ResponseContext(profile.Name, null, Array.Empty<ThoughtRecord>(), request.ChatTurnId, request.ChatId, agentThread.Value.Id, null);
+        var contextData = new ResponseContext(profile.Name, sources.ToArray(), Array.Empty<ThoughtRecord>(), request.ChatTurnId, request.ChatId, agentThread.Value.Id, null);
         var result = new ApproachResponse(Answer: sb.ToString(), CitationBaseUrl: string.Empty, contextData);
 
         yield return new ChatChunkResponse(string.Empty, result);
