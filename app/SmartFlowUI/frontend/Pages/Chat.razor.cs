@@ -262,6 +262,7 @@ public sealed partial class Chat
         finally
         {
             _isReceivingResponse = false;
+            _files.Clear();
             StateHasChanged();
         }
     }

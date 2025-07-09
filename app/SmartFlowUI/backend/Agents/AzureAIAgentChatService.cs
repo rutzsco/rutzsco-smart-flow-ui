@@ -48,7 +48,7 @@ public class AzureAIAgentChatService : IChatService
                 var file = request.FileUploads.First();
                 DataUriParser parser = new DataUriParser(file.DataUrl);
 
-                var files = _agentsClient.Files.GetFilesAsync();
+                //var files = _agentsClient.Files.GetFilesAsync();
                 var uploadFile = await _agentsClient.Files.UploadFileAsync(new MemoryStream(parser.Data), PersistentAgentFilePurpose.Agents, file.FileName);
                 fileList.Add(uploadFile);
             }
