@@ -9,14 +9,6 @@
 <PageTitle>Available Agents</PageTitle>
 
 <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
-    <MudToolBar>
-        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" OnClick="OpenCreateAgentDialog">New agent</MudButton>
-        <MudButton Variant="Variant.Text" StartIcon="@Icons.Material.Filled.Refresh" OnClick="RefreshAgents">Refresh</MudButton>
-        <MudSpacer />
-        <MudTextField @bind-Value="_searchString" Placeholder="Search" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search" IconSize="Size.Medium" Class="mt-0"></MudTextField>
-        <MudButton Variant="Variant.Text" StartIcon="@Icons.Material.Filled.FilterList">Filter</MudButton>
-    </MudToolBar>
-
     @if (_agents == null)
     {
         <MudProgressCircular Indeterminate="true" />
@@ -24,6 +16,33 @@
     else
     {
         <MudTable Items="@FilteredAgents" Hover="true" Dense="true" Striped="true" Class="mt-4">
+            <ToolBarContent>
+                <MudButton Variant="Variant.Filled" 
+                           Color="Color.Primary" 
+                           StartIcon="@Icons.Material.Filled.Add" 
+                           OnClick="OpenCreateAgentDialog" 
+                           Class="mr-2">
+                    New Agent
+                </MudButton>
+                <MudButton Variant="Variant.Text" 
+                           StartIcon="@Icons.Material.Filled.Refresh" 
+                           OnClick="RefreshAgents" 
+                           Class="mr-2">
+                    Refresh
+                </MudButton>
+                <MudSpacer />
+                <MudTextField @bind-Value="_searchString" 
+                              Placeholder="Search" 
+                              Adornment="Adornment.Start" 
+                              AdornmentIcon="@Icons.Material.Filled.Search" 
+                              IconSize="Size.Medium" 
+                              Class="mt-0 mr-2">
+                </MudTextField>
+                <MudButton Variant="Variant.Text" 
+                           StartIcon="@Icons.Material.Filled.FilterList">
+                    Filter
+                </MudButton>
+            </ToolBarContent>
             <HeaderContent>
                 <MudTh>Name</MudTh>
                 <MudTh>ID</MudTh>
@@ -41,6 +60,11 @@
                 <MudTd DataLabel="Tools">@GetTools(context)</MudTd>
                 <MudTd DataLabel="Description">@context.Description</MudTd>
                 <MudTd DataLabel="Actions">
+                    <MudIconButton Icon="@Icons.Material.Filled.Edit" 
+                                   Color="Color.Primary" 
+                                   Size="Size.Small" 
+                                   OnClick="@(() => OpenEditAgentDialog(context))"
+                                   Title="Edit agent" />
                     <MudIconButton Icon="@Icons.Material.Filled.Delete" 
                                    Color="Color.Error" 
                                    Size="Size.Small" 
@@ -138,6 +162,40 @@
             catch (Exception ex)
             {
                 Snackbar.Add($"Error deleting agents: {ex.Message}", Severity.Error);
+            }
+        }
+    }
+
+    private async Task OpenEditAgentDialog(AgentViewModel agent)
+    {
+        var parameters = new DialogParameters<EditAgentDialog>
+        {
+            { x => x.Agent, agent }
+        };
+
+        var dialog = DialogService.Show<EditAgentDialog>("Edit Agent", parameters);
+        var result = await dialog.Result;
+
+        if (!result.Canceled && result.Data is AgentViewModel updatedAgent)
+        {
+            try
+            {
+                var response = await Http.PutAsJsonAsync($"api/agent/{Uri.EscapeDataString(agent.Id)}", updatedAgent);
+                if (response.IsSuccessStatusCode)
+                {
+                    await LoadAgents();
+                    StateHasChanged();
+                    Snackbar.Add("Agent updated successfully", Severity.Success);
+                }
+                else
+                {
+                    var errorContent = await response.Content.ReadAsStringAsync();
+                    Snackbar.Add($"Failed to update agent: {errorContent}", Severity.Error);
+                }
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Error updating agent: {ex.Message}", Severity.Error);
             }
         }
     }
