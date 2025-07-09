@@ -22,7 +22,16 @@ internal static class WebApiAgentExtensions
     private static async Task<IResult> OnGetAgentsAsync(HttpContext context, AzureAIAgentManagementService service)
     {
         var agents = await service.ListAgentsAsync();
-        return Results.Ok(agents);
+        var agentViewModels = agents.Select(agent => new AgentViewModel
+        {
+            Id = agent.Id,
+            Name = agent.Name,
+            Instructions = agent.Instructions,
+            Description = agent.Description,
+            Model = agent.Model,
+            CreatedAt = agent.CreatedAt
+        });
+        return Results.Ok(agentViewModels);
     }
 
     #pragma warning disable SKEXP0110
@@ -41,7 +50,8 @@ internal static class WebApiAgentExtensions
 
         try
         {
-            var createdAgent = await service.CreateAgentAsync(agentViewModel.Name, agentViewModel.Instructions, agentViewModel.Id ?? "gpt-4o");
+            var model = !string.IsNullOrWhiteSpace(agentViewModel.Model) ? agentViewModel.Model : "gpt-4.1";
+            var createdAgent = await service.CreateAgentAsync(agentViewModel.Name, agentViewModel.Instructions, model);
             
             // Return the created agent information
             var response = new AgentViewModel
@@ -50,6 +60,7 @@ internal static class WebApiAgentExtensions
                 Name = createdAgent.Definition.Name,
                 Instructions = createdAgent.Definition.Instructions,
                 Description = createdAgent.Definition.Description,
+                Model = createdAgent.Definition.Model,
                 CreatedAt = createdAgent.Definition.CreatedAt
             };
 
@@ -88,7 +99,8 @@ internal static class WebApiAgentExtensions
 
         try
         {
-            var updatedAgent = await service.UpdateAgentAsync(agentId, agentViewModel.Name, agentViewModel.Instructions, agentViewModel.Description, agentViewModel.Id ?? "gpt-4o");
+            var model = !string.IsNullOrWhiteSpace(agentViewModel.Model) ? agentViewModel.Model : "gpt-4o";
+            var updatedAgent = await service.UpdateAgentAsync(agentId, agentViewModel.Name, agentViewModel.Instructions, agentViewModel.Description, model);
             
             // Return the updated agent information
             var response = new AgentViewModel
@@ -97,6 +109,7 @@ internal static class WebApiAgentExtensions
                 Name = updatedAgent.Definition.Name,
                 Instructions = updatedAgent.Definition.Instructions,
                 Description = updatedAgent.Definition.Description,
+                Model = updatedAgent.Definition.Model,
                 CreatedAt = updatedAgent.Definition.CreatedAt
             };
 

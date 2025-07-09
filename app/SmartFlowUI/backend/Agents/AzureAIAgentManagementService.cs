@@ -45,7 +45,7 @@ namespace MinimalApi.Agents
             return agent;
         }
 
-        public async Task<AzureAIAgent> CreateAgentAsync(string name, string instructions, string model = "gpt-4o")
+        public async Task<AzureAIAgent> CreateAgentAsync(string name, string instructions, string model = "gpt-4.1")
         {
             if (string.IsNullOrWhiteSpace(name))
             {

@@ -8,7 +8,7 @@
     <DialogContent>  
         <MudForm @ref="_form" @bind-IsValid="_isValid">  
             <MudTextField @bind-Value="_newAgent.Name" Label="Name" Required="true" RequiredError="Name is required!" />  
-            <MudTextField @bind-Value="_newAgent.Id" Label="Model ID" Required="true" RequiredError="Model ID is required!" />  
+            <MudTextField @bind-Value="_newAgent.Model" Label="Model" Required="true" RequiredError="Model is required!" />  
             <MudTextField @bind-Value="_newAgent.Instructions" Label="Instructions" Lines="5" />  
             <MudTextField @bind-Value="_newAgent.Description" Label="Description" Lines="3" />  
         </MudForm>  

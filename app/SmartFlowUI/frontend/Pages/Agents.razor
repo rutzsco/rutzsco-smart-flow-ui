@@ -56,7 +56,7 @@
                 <MudTd DataLabel="Name">@context.Name</MudTd>
                 <MudTd DataLabel="ID">@context.Id</MudTd>
                 <MudTd DataLabel="Created">@context.CreatedAt.ToString("MMM dd, yyyy")</MudTd>
-                <MudTd DataLabel="Model">@GetModel(context)</MudTd>
+                <MudTd DataLabel="Model">@context.Model</MudTd>
                 <MudTd DataLabel="Tools">@GetTools(context)</MudTd>
                 <MudTd DataLabel="Description">@context.Description</MudTd>
                 <MudTd DataLabel="Actions">
@@ -213,12 +213,6 @@
                 (a.Description?.Contains(_searchString, StringComparison.OrdinalIgnoreCase) ?? false)
             );
         }
-    }
-
-    private string GetModel(AgentViewModel agent)
-    {
-        if (agent.Name.Contains("4.1")) return "gpt-4.1";
-        return "gpt-4o";
     }
 
     private string GetTools(AgentViewModel agent)
