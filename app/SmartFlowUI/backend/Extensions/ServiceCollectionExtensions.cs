@@ -1,7 +1,8 @@
-﻿
-// Copyright (c) Microsoft. All rights reserved.
+﻿// Copyright (c) Microsoft. All rights reserved.
 
 using Azure;
+using Azure.Core;
+using Azure.Identity;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
 using Microsoft.Azure.Cosmos.Fluent;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
@@ -19,31 +20,61 @@ internal static class ServiceCollectionExtensions
         var sp = services.BuildServiceProvider();
         var httpContextAccessor = sp.GetRequiredService<IHttpContextAccessor>();
 
+        DefaultAzureCredential azureCredential;
         services.AddAzureClients(builder =>
         {
             if (!string.IsNullOrEmpty(configuration.VisualStudioTenantId))
             {
-                builder.UseCredential(new DefaultAzureCredential(new DefaultAzureCredentialOptions
+                azureCredential = new DefaultAzureCredential(new DefaultAzureCredentialOptions
                 {
                     VisualStudioTenantId = configuration.VisualStudioTenantId
-                }));
+                });
+                builder.UseCredential(azureCredential);
             }
             else
             {
                 if (!string.IsNullOrEmpty(configuration.UserAssignedManagedIdentityClientId))
                 {
-                    builder.UseCredential(new DefaultAzureCredential(new DefaultAzureCredentialOptions
+                    azureCredential = new DefaultAzureCredential(new DefaultAzureCredentialOptions
                     {
                         ManagedIdentityClientId = configuration.UserAssignedManagedIdentityClientId
-                    }));
+                    });
+                    builder.UseCredential(azureCredential);
                 }
                 else
                 {
-                    builder.UseCredential(new DefaultAzureCredential(new DefaultAzureCredentialOptions()));
+                    azureCredential = new DefaultAzureCredential(new DefaultAzureCredentialOptions());
+                    builder.UseCredential(azureCredential);
                 }
             }
 
             builder.AddBlobServiceClient(configuration.AzureStorageAccountEndpoint);
+        });
+
+        // Register TokenCredential for DI
+        services.AddSingleton<TokenCredential>(sp => 
+        {
+            if (!string.IsNullOrEmpty(configuration.VisualStudioTenantId))
+            {
+                return new DefaultAzureCredential(new DefaultAzureCredentialOptions
+                {
+                    VisualStudioTenantId = configuration.VisualStudioTenantId
+                });
+            }
+            else
+            {
+                if (!string.IsNullOrEmpty(configuration.UserAssignedManagedIdentityClientId))
+                {
+                    return new DefaultAzureCredential(new DefaultAzureCredentialOptions
+                    {
+                        ManagedIdentityClientId = configuration.UserAssignedManagedIdentityClientId
+                    });
+                }
+                else
+                {
+                    return new DefaultAzureCredential(new DefaultAzureCredentialOptions());
+                }
+            }
         });
 
         services.AddSingleton<BlobContainerClient>(sp =>
@@ -98,6 +129,10 @@ internal static class ServiceCollectionExtensions
                 azureCredential = new(new DefaultAzureCredentialOptions());
             }
         }
+
+        // Register TokenCredential for DI
+        services.AddSingleton<TokenCredential>(azureCredential);
+
         services.AddSingleton<BlobServiceClient>(sp =>
         {
             var azureStorageAccountEndpoint = configuration.AzureStorageAccountEndpoint;

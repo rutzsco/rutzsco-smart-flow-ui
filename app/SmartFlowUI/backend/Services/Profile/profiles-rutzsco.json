@@ -79,23 +79,22 @@
       "ChatSystemMessageFile": "RAGChatSystemPrompt",
       "StorageContianer": "manuals-boat"
     }
+  },
+  {
+    "Name": "Endpoint Agent",
+    "Id": "EndpointAgent",
+    "Approach": "ENDPOINTASSISTANT",
+    "SecurityModel": "None",
+    "SecurityModelGroupMembership": [ "LocalDevUser" ],
+    "SampleQuestions": [
+      "Test",
+      "What are the different maintenance intervals?",
+      "What is the air filter part number?"
+    ],
+    "AssistantEndpointSettings": {
+      "APIEndpointSetting": "EndpointAgentEndpoint",
+      "AllowFileUpload": false
+    }
   }
-  //{
-  //  "Name": "Auto Service Advisor",
-  //  "Id": "AutoServiceAdvisor",
-  //  "Approach": "ENDPOINTASSISTANT",
-  //  "SecurityModel": "None",
-  //  "SecurityModelGroupMembership": [ "LocalDevUser" ],
-  //  "SampleQuestions": [
-  //    "How do I change the oil?",
-  //    "What are the different maintenance intervals?",
-  //    "What is the air filter part number?"
-  //  ],
-  //  "AssistantEndpointSettings": {
-  //    "APIEndpointSetting": "AutoServiceAdvisorEndpoint",
-  //    "APIEndpointKeySetting": "AutoServiceAdvisorApiKey",
-  //    "AllowFileUpload": false
-  //  }
-  //}
 ]
 

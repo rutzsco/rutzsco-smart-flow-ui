@@ -1,7 +1,12 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 
+using Azure.Core;
+using Azure.Identity;
 using MinimalApi.Agents;
 using MinimalApi.Services.Profile;
+using System.Runtime.CompilerServices;
+using System.Text;
+using System.Text.Json;
 
 namespace MinimalApi.Services;
 
@@ -10,12 +15,14 @@ internal sealed class EndpointChatService : IChatService
     private readonly ILogger<EndpointChatService> _logger;
     private readonly HttpClient _httpClient;
     private readonly IConfiguration _configuration;
+    private readonly TokenCredential _tokenCredential;
 
-    public EndpointChatService(ILogger<EndpointChatService> logger, HttpClient httpClient, IConfiguration configuration)
+    public EndpointChatService(ILogger<EndpointChatService> logger, HttpClient httpClient, IConfiguration configuration, TokenCredential tokenCredential)
     {
         _logger = logger;
         _httpClient = httpClient;
         _configuration = configuration;
+        _tokenCredential = tokenCredential;
     }
 
 
@@ -24,7 +31,15 @@ internal sealed class EndpointChatService : IChatService
         var payload = System.Text.Json.JsonSerializer.Serialize(request.History);
 
         using var apiRequest = new HttpRequestMessage(HttpMethod.Post, _configuration[profile.AssistantEndpointSettings.APIEndpointSetting]);
-        apiRequest.Headers.Add("X-Api-Key", _configuration[profile.AssistantEndpointSettings.APIEndpointKeySetting]);
+        
+        // Get access token from managed identity
+        // Use configurable scope, defaulting to a common Azure scope if not specified
+        var scope = _configuration["EndpointTokenScope"] ?? "https://cognitiveservices.azure.com/.default";
+        var tokenRequestContext = new TokenRequestContext(new[] { scope });
+        var accessToken = await _tokenCredential.GetTokenAsync(tokenRequestContext, cancellationToken);
+        
+        // Use bearer token instead of API key
+        apiRequest.Headers.Authorization = new System.Net.Http.Headers.AuthenticationHeaderValue("Bearer", accessToken.Token);
         apiRequest.Content = new StringContent(payload, Encoding.UTF8, "application/json");
 
         var response = await _httpClient.SendAsync(apiRequest, HttpCompletionOption.ResponseHeadersRead);
