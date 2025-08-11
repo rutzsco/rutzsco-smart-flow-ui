@@ -98,6 +98,13 @@ public class AzureAIAgentChatService : IChatService
         var message = new ChatMessageContent(AuthorRole.User, userMessage);
         await foreach (StreamingChatMessageContent contentChunk in agent.InvokeStreamingAsync(message, new AzureAIAgentThread(_agentsClient,agentThread.Value.Id)))
         {
+            // Check if the contentChunk.Metadata contains code and ignore if that is the case
+            if (contentChunk.Metadata != null && contentChunk.Metadata.TryGetValue("code", out object? codeValue) && codeValue is bool isCode && isCode)
+            {
+                // Skip streaming this chunk as it contains code
+                continue;
+            }
+
             sb.Append(contentChunk.Content);
             yield return new ChatChunkResponse(contentChunk.Content);
             await Task.Yield();
