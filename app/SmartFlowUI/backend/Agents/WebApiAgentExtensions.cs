@@ -1,6 +1,9 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 using MinimalApi.Agents;
 using MinimalApi.Models;
+using Azure;
+using Azure.Identity;
+using Microsoft.SemanticKernel.Agents.AzureAI;
 
 namespace MinimalApi.Extensions;
 
@@ -15,6 +18,9 @@ internal static class WebApiAgentExtensions
         api.MapPost("agent", OnCreateAgentAsync);
         api.MapPut("agent/{agentId}", OnUpdateAgentAsync);
         api.MapDelete("agents/{agentName}", OnDeleteAgentsByNameAsync);
+
+        // On-demand image fetch endpoint
+        api.MapGet("images/{fileId}", OnGetAgentImageAsync);
 
         return app;
     }
@@ -124,6 +130,76 @@ internal static class WebApiAgentExtensions
             // Log the exception details (not shown here for brevity)
             return Results.Problem($"An error occurred while updating the agent: {ex.Message}");
         }
+    }
+    #pragma warning restore SKEXP0110
+
+    #pragma warning disable SKEXP0110
+    private static async Task<IResult> OnGetAgentImageAsync(string fileId, IConfiguration config, CancellationToken cancellationToken)
+    {
+        var endpoint = config["AzureAIFoundryProjectEndpoint"];
+        if (string.IsNullOrWhiteSpace(endpoint))
+        {
+            return Results.Problem("AzureAIFoundryProjectEndpoint is not configured.", statusCode: 500);
+        }
+
+        var client = AzureAIAgent.CreateAgentsClient(endpoint, new DefaultAzureCredential());
+
+        // Try to get file name to infer content type
+        string? fileName = null;
+        try
+        {
+            var fileInfo = await client.Files.GetFileAsync(fileId, cancellationToken);
+            fileName = fileInfo.Value?.Filename;
+        }
+        catch (RequestFailedException)
+        {
+            // ignore and fallback
+        }
+
+        // Retry fetch to avoid eventual consistency races
+        const int maxRetries = 3;
+        const int baseDelayMs = 500;
+        BinaryData? fileContent = null;
+
+        for (int attempt = 1; attempt <= maxRetries; attempt++)
+        {
+            try
+            {
+                var content = await client.Files.GetFileContentAsync(fileId, cancellationToken);
+                fileContent = content;
+                break;
+            }
+            catch (RequestFailedException ex) when (attempt < maxRetries && (ex.Status == 404 || ex.ErrorCode == "NotFound"))
+            {
+                var delay = baseDelayMs * attempt;
+                await Task.Delay(delay, cancellationToken);
+            }
+        }
+
+        if (fileContent is null)
+        {
+            return Results.NotFound();
+        }
+
+        var contentType = GuessContentType(fileName) ?? "image/png";
+        return Results.File(fileContent.ToArray(), contentType);
+    }
+
+    private static string? GuessContentType(string? fileName)
+    {
+        if (string.IsNullOrEmpty(fileName)) return null;
+        var ext = Path.GetExtension(fileName).ToLowerInvariant();
+        return ext switch
+        {
+            ".png" => "image/png",
+            ".jpg" => "image/jpeg",
+            ".jpeg" => "image/jpeg",
+            ".gif" => "image/gif",
+            ".webp" => "image/webp",
+            ".svg" => "image/svg+xml",
+            ".pdf" => "application/pdf",
+            _ => null
+        };
     }
     #pragma warning restore SKEXP0110
 

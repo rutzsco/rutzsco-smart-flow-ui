@@ -3,6 +3,12 @@
 using ClientApp.Models;
 using Microsoft.AspNetCore.DataProtection;
 using MinimalApi;
+using Azure;
+using Azure.Identity;
+using Azure.AI.Agents.Persistent;
+using Microsoft.SemanticKernel.Agents.AzureAI;
+
+#pragma warning disable SKEXP0110
 
 Console.WriteLine("Starting SmartFlowUI backend... {0}", BuildInfo.Instance);
 

@@ -123,46 +123,14 @@ public class AzureAIAgentChatService : IChatService
                     continue;
 
                 filesReferences.Add(file.FileId);
-                
-                // Implement retry mechanism for GetFileContentAsync to handle race condition
-                const int maxRetries = 3;
-                const int baseDelayMs = 500;
-                BinaryData? fileContent = null;
-                
-                for (int attempt = 1; attempt <= maxRetries; attempt++)
-                {
-                    try
-                    {
-                        fileContent = await agent.Client.Files.GetFileContentAsync(file.FileId);
-                        break; // Success, exit retry loop
-                    }
-                    catch (RequestFailedException ex) when (attempt < maxRetries && (ex.Status == 404 || ex.ErrorCode == "NotFound"))
-                    {
-                        _logger.LogWarning("Attempt {Attempt} failed to get file content for FileId {FileId}: {ErrorCode} - {Message}. Retrying...", attempt, file.FileId, ex.ErrorCode, ex.Message);
-                        
-                        // Exponential backoff: 500ms, 1000ms, 1500ms
-                        var delay = baseDelayMs * attempt;
-                        await Task.Delay(delay, cancellationToken);
-                    }
-                }
-                
-                if (fileContent != null)
-                {
-                    var dataUrl = $"data:{"image/png"};base64,{Convert.ToBase64String(fileContent.ToArray())}";
-                    //var content = $"![Image]({dataUrl})";
 
-                    var content = $"<br/><img src=\"{dataUrl}\" style=\"width:450px; padding: 10px 0px\"><br/>";
+                // Instead of embedding the image as a data URL, return a URL to the on-demand image endpoint
+                var imageUrl = $"/api/images/{file.FileId}";
+                var content = $"<br/><img src=\"{imageUrl}\" style=\"width:450px; padding: 10px 0px\"><br/>";
 
-                    
-                    sb.Append(content);
+                sb.Append(content);
+                yield return new ChatChunkResponse(content);
 
-                    yield return new ChatChunkResponse(content);
-                }
-                else
-                {
-                    _logger.LogError("Failed to get file content for FileId {FileId} after {MaxRetries} attempts", file.FileId, maxRetries);
-                }
-              
                 await Task.Yield();
             }
         }
