@@ -151,7 +151,7 @@ public class AzureAIAgentChatService : IChatService
                     var dataUrl = $"data:{"image/png"};base64,{Convert.ToBase64String(fileContent.ToArray())}";
                     //var content = $"![Image]({dataUrl})";
 
-                    var content = $"<br/><img src=\"{dataUrl}\" style=\"width:400px; padding: 10px 0px\"><br/>";
+                    var content = $"<br/><img src=\"{dataUrl}\" style=\"width:450px; padding: 10px 0px\"><br/>";
 
                     
                     sb.Append(content);
