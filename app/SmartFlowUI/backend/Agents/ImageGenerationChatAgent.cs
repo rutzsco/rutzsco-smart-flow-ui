@@ -6,6 +6,8 @@ using Microsoft.SemanticKernel.TextToImage;
 using MinimalApi.Services.Profile.Prompts;
 using System.Runtime.CompilerServices; // Required for EnumeratorCancellation
 using System.Text.RegularExpressions; // Required for Regex
+using System.Text;
+using Shared.Models;
 
 namespace MinimalApi.Agents;
 
@@ -30,6 +32,7 @@ internal sealed class ImageGenerationChatAgent : IChatService
 
     public async IAsyncEnumerable<ChatChunkResponse> ReplyAsync(UserInformation user, ProfileDefinition profile, ChatRequest request, [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
+        var sb = new StringBuilder();
         var userMessage = request.LastUserQuestion;
         string? finalImageUrl = null;
 
@@ -52,8 +55,16 @@ internal sealed class ImageGenerationChatAgent : IChatService
             yield break;
         }
 
-        var markdownString = $"![Generated Image]({finalImageUrl})";
-        var result = new ApproachResponse(markdownString, null, null);
+        // Generate enhanced image HTML with border and download button
+        var imageId = Guid.NewGuid().ToString("N")[..8];
+        var content = GenerateEnhancedImageHtml(finalImageUrl, imageId);
+
+        sb.Append(content);
+        yield return new ChatChunkResponse(content);
+
+        var contextData = new ResponseContext(profile.Name, Array.Empty<SupportingContentRecord>(), Array.Empty<ThoughtRecord>(), request.ChatTurnId, request.ChatId, null, null);
+        var result = new ApproachResponse(Answer: sb.ToString(), CitationBaseUrl: string.Empty, contextData);
+
         yield return new ChatChunkResponse(string.Empty, result);
     }
 
@@ -70,11 +81,21 @@ internal sealed class ImageGenerationChatAgent : IChatService
 
         if (lastTurnWithAssistantMessage != null)
         {
-            var match = Regex.Match(lastTurnWithAssistantMessage.Assistant!, @"!\[.*?\]\((.*?)\)");
-            if (match.Success && match.Groups.Count > 1)
+            // Look for enhanced HTML image first
+            var htmlMatch = Regex.Match(lastTurnWithAssistantMessage.Assistant!, @"<img src=""([^""]+)""");
+            if (htmlMatch.Success && htmlMatch.Groups.Count > 1)
             {
-                var imageUrl = match.Groups[1].Value;
-                _logger.LogInformation("Found previous image URL: {PreviousImageUrl}", imageUrl);
+                var imageUrl = htmlMatch.Groups[1].Value;
+                _logger.LogInformation("Found previous image URL from HTML: {PreviousImageUrl}", imageUrl);
+                return imageUrl;
+            }
+
+            // Fall back to markdown format
+            var markdownMatch = Regex.Match(lastTurnWithAssistantMessage.Assistant!, @"!\[.*?\]\((.*?)\)");
+            if (markdownMatch.Success && markdownMatch.Groups.Count > 1)
+            {
+                var imageUrl = markdownMatch.Groups[1].Value;
+                _logger.LogInformation("Found previous image URL from Markdown: {PreviousImageUrl}", imageUrl);
                 return imageUrl;
             }
         }
@@ -125,6 +146,26 @@ internal sealed class ImageGenerationChatAgent : IChatService
         {
             return null;
         }
+    }
+
+    private static string GenerateEnhancedImageHtml(string imageUrl, string imageId)
+    {
+        return $"""
+        <br/>
+        <div class="image-wrapper" style="position: relative; display: inline-block; margin: 10px 0;">
+            <div class="image-container" style="position: relative; display: inline-block;">
+                <img src="{imageUrl}" 
+                     style="border: 2px solid #e0e0e0; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); max-width: 750px; padding: 0;"
+                     id="img-{imageId}" />
+            </div>
+            <button onclick="downloadImage('{imageUrl}', 'image-{imageId}.png')" 
+                    style="position: absolute; top: -8px; right: -8px; background: #f5f5f5; border: 1px solid #ddd; border-radius: 50%; width: 28px; height: 28px; cursor: pointer; box-shadow: 0 1px 3px rgba(0,0,0,0.2); display: flex; align-items: center; justify-content: center; color: #666;"
+                    title="Download Image">
+                ↓
+            </button>
+        </div>
+        <br/>
+        """;
     }
 }
 
