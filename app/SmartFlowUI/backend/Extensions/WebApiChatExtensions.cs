@@ -69,7 +69,16 @@ internal static class WebApiChatExtensions
             yield return chunk;
             if (chunk.FinalResult != null)
             {
-                await chatHistoryService.RecordChatMessageAsync(userInfo, request, chunk.FinalResult);
+                try
+                {
+                    await chatHistoryService.RecordChatMessageAsync(userInfo, request, chunk.FinalResult);
+                }
+                catch (Exception ex)
+                {
+                    var logger = context.RequestServices.GetRequiredService<ILoggerFactory>().CreateLogger("WebApiChatExtensions");
+                    logger.LogError(ex, "Failed to record chat message for user {UserId}, chat {ChatId}, turn {ChatTurnId}", 
+                        userInfo.UserId, request.ChatId, request.ChatTurnId);
+                }
             }
         }
     }
