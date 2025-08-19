@@ -57,7 +57,7 @@ internal sealed class ImageGenerationChatAgent : IChatService
 
         // Generate enhanced image HTML with border and download button
         var imageId = Guid.NewGuid().ToString("N")[..8];
-        var content = GenerateEnhancedImageHtml(finalImageUrl, imageId);
+        var content = ImageHtmlGenerator.GenerateEnhancedImageHtml(finalImageUrl, imageId);
 
         sb.Append(content);
         yield return new ChatChunkResponse(content);
@@ -146,26 +146,6 @@ internal sealed class ImageGenerationChatAgent : IChatService
         {
             return null;
         }
-    }
-
-    private static string GenerateEnhancedImageHtml(string imageUrl, string imageId)
-    {
-        return $"""
-        <br/>
-        <div class="image-wrapper" style="position: relative; display: inline-block; margin: 10px 0;">
-            <div class="image-container" style="position: relative; display: inline-block;">
-                <img src="{imageUrl}" 
-                     style="border: 2px solid #e0e0e0; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.1); max-width: 750px; padding: 0;"
-                     id="img-{imageId}" />
-            </div>
-            <button onclick="downloadImage('{imageUrl}', 'image-{imageId}.png')" 
-                    style="position: absolute; top: -8px; right: -8px; background: #f5f5f5; border: 1px solid #ddd; border-radius: 50%; width: 28px; height: 28px; cursor: pointer; box-shadow: 0 1px 3px rgba(0,0,0,0.2); display: flex; align-items: center; justify-content: center; color: #666;"
-                    title="Download Image">
-                ↓
-            </button>
-        </div>
-        <br/>
-        """;
     }
 }
 
