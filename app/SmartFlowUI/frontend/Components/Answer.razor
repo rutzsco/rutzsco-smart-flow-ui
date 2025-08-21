@@ -9,9 +9,9 @@
                 <MudTabPanel Icon="@Icons.Material.Filled.Quickreply" Text="Answer" ToolTip="Answer text">
                     <ChildContent>
                         <MudPaper Class="pa-6" Elevation="3">
-                            <MudText Typo="Typo.body2">
+                            <div class="answer-content">
                                 @((MarkupString)html)
-                            </MudText>
+                            </div>
                             @if (answer is { Citations.Count: > 0 })
                             {
                                 <div class="pt-4">
