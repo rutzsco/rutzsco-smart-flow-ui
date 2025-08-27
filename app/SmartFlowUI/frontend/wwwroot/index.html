@@ -55,12 +55,31 @@
     <script id="MathJax-script" defer src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-chtml.js"></script>
     <script>
         window.hljsPlugInAdded = false;
-        window.highlight = () => {
-            if (!window.hljsPlugInAdded) {
-                hljs.addPlugin(new CopyButtonPlugin());
-                window.hljsPlugInAdded = true;
+        
+        // Try to add the copy button plugin when available
+        window.tryAddHljsCopyPlugin = () => {
+            try {
+                if (!window.hljsPlugInAdded && window.hljs && window.CopyButtonPlugin) {
+                    window.hljs.addPlugin(new window.CopyButtonPlugin());
+                    window.hljsPlugInAdded = true;
+                }
+            } catch (e) {
+                console.warn('Failed to add hljs CopyButtonPlugin', e);
             }
-            hljs.highlightAll();
+        };
+
+        // Ensure we attempt plugin registration after DOM is parsed as well
+        document.addEventListener('DOMContentLoaded', () => {
+            window.tryAddHljsCopyPlugin();
+        });
+
+        window.highlight = () => {
+            // Safely attempt to register plugin if/when it exists
+            window.tryAddHljsCopyPlugin();
+
+            if (window.hljs && typeof window.hljs.highlightAll === 'function') {
+                window.hljs.highlightAll();
+            }
         };
 
         function scrollToBottom(elementId) {
@@ -92,7 +111,7 @@
         };
 
         MathJax = {
-            tex: { inlineMath: [['$', '$'], ['\\(', '\\)'], ['\[', '\]']] }
+            tex: { inlineMath: [['$', '$'], ['\\(', '\\)'], ['\\[', '\\]']] }
         };
         window.renderMathJax = () => {
             if (window.MathJax) {
