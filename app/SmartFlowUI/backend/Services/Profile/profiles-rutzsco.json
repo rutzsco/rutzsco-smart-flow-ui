@@ -4,6 +4,7 @@
     "Id": "ImageGeneration",
     "Approach": "IMAGECHAT",
     "SecurityModel": "None",
+    "AllowFileUpload": true,
     "SecurityModelGroupMembership": [ "LocalDevUser" ],
     "SampleQuestions": [
       "Sunset over a mountain lake?",

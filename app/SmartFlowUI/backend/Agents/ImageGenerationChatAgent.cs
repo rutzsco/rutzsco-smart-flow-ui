@@ -36,7 +36,7 @@ internal sealed class ImageGenerationChatAgent : IChatService
         var userMessage = request.LastUserQuestion;
         string? finalImageUrl = null;
 
-        string? previousImageUrl = TryExtractPreviousImageUrl(request.History);
+        string? previousImageUrl = TryExtractPreviousImageUrl(request);
 
         if (previousImageUrl != null)
         {
@@ -68,8 +68,28 @@ internal sealed class ImageGenerationChatAgent : IChatService
         yield return new ChatChunkResponse(string.Empty, result);
     }
 
-    private string? TryExtractPreviousImageUrl(ChatTurn[]? history)
+    private string? TryExtractPreviousImageUrl(ChatRequest request)
     {
+        var history = request.History;
+        
+        // Check for uploaded images on the first chat turn (when history is empty or only contains the current turn)
+        bool isFirstChatTurn = history == null || history.Length == 0 || 
+                              (history.Length == 1 && string.IsNullOrEmpty(history[0].Assistant));
+        
+        if (isFirstChatTurn && request.FileUploads?.Any() == true)
+        {
+            // Look for the first image file upload
+            var imageUpload = request.FileUploads.FirstOrDefault(file => 
+                file.ContentType?.StartsWith("image/", StringComparison.OrdinalIgnoreCase) == true);
+            
+            if (imageUpload != null)
+            {
+                _logger.LogInformation("Found uploaded image for first chat turn: {FileName} with content type: {ContentType}", 
+                    imageUpload.FileName, imageUpload.ContentType);
+                return imageUpload.DataUrl;
+            }
+        }
+
         if (history == null || !history.Any())
         {
             return null;
