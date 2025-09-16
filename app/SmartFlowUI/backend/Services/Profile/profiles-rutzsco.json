@@ -1,5 +1,42 @@
 [
   {
+    "Name": "Image Generation",
+    "Id": "ImageGeneration",
+    "Approach": "IMAGECHAT",
+    "SecurityModel": "None",
+    "SecurityModelGroupMembership": [ "LocalDevUser" ],
+    "SampleQuestions": [
+      "Sunset over a mountain lake?",
+      "Robot playing guitar on stage",
+      "Cute cat in a wizard hat"
+    ]
+  },
+  {
+    "Name": "General",
+    "Id": "General",
+    "Approach": "Chat",
+    "SecurityModel": "None",
+    "AllowFileUpload": true,
+    "ChatSystemMessageFile": "ChatSimpleSystemPrompt",
+    "SampleQuestions": [
+      "Write a function in C# that will invoke a rest API",
+      "Explain why popcorn pops to a kid who loves watching it in the microwave."
+    ]
+  },
+  {
+    "Name": "General Agent Chat",
+    "Id": "GeneralAgentChat",
+    "Approach": "AzureAIAgentChatProfile",
+    "SecurityModel": "None",
+    "AllowFileUpload": true,
+    "AzureAIAgentID": "asst_mlfEFWZnbcghar2dIH4pTdNB",
+    "ChatSystemMessageFile": "ChatSimpleSystemPrompt",
+    "SampleQuestions": [
+      "Write a function in C# that will invoke a rest API",
+      "Explain why popcorn pops to a kid who loves watching it in the microwave."
+    ]
+  },
+  {
     "Name": "Auto Service Advisor",
     "Id": "AutoServiceAdvisor",
     "Approach": "RAG",
@@ -11,15 +48,13 @@
       "What is the air filter part number?"
     ],
     "RAGSettings": {
-      "GenerateSearchQueryPluginName": "GenerateSearchQuery",
-      "GenerateSearchQueryPluginQueryFunctionName": "GenerateSearchQuery",
-      "DocumentRetrievalPluginName": "DocumentRetrieval",
-      "DocumentRetrievalPluginQueryFunctionName": "KwiecienV2",
+      "DocumentRetrievalSchema": "KwiecienV2",
+      "DocumentRetrievalEmbeddingsDeployment": "text-embedding",
       "DocumentRetrievalIndexName": "manuals-auto-ci-20240528182950",
       "ChatSystemMessageFile": "RAGChatSystemPrompt",
       "StorageContianer": "manuals-auto-chunks",
       "CitationUseSourcePage": true,
-      "DocumentRetrievalDocumentCount": 50,
+      "DocumentRetrievalDocumentCount": 15,
       "UseSemanticRanker": true,
       "SemanticConfigurationName": "Default"
     }
@@ -36,79 +71,29 @@
       "How calibrate the gas gauge?"
     ],
     "RAGSettings": {
-      "GenerateSearchQueryPluginName": "GenerateSearchQuery",
-      "GenerateSearchQueryPluginQueryFunctionName": "GenerateSearchQuery",
-      "DocumentRetrievalPluginName": "DocumentRetrieval",
-      "DocumentRetrievalPluginQueryFunctionName": "KwiecienV2",
+      "DocumentRetrievalSchema": "KwiecienV2",
+      "DocumentRetrievalEmbeddingsDeployment": "text-embedding",
       "DocumentRetrievalIndexName": "manuals-boat-ci-20240708121734",
+      "DocumentRetrievalDocumentCount": 15,
       "ChatSystemMessageFile": "RAGChatSystemPrompt",
       "StorageContianer": "manuals-boat"
     }
-  },
-  {
-    "Name": "General",
-    "Id": "General",
-    "Approach": "Chat",
-    "SecurityModel": "None",
-    "ChatSystemMessageFile": "ChatSimpleSystemPrompt",
-    "SampleQuestions": [
-      "Write a function in C# that will invoke a rest API",
-      "Explain why popcorn pops to a kid who loves watching it in the microwave."
-    ]
-  },
-  {
-    "Name": "Auto Body Damage Advisor",
-    "Id": "AutoBodyDamageAdvisor",
-    "Approach": "Chat",
-    "SecurityModel": "None",
-    "ChatSystemMessageFile": "AutoBodyCopilotSystemPrompt",
-    "SampleQuestions": [
-      "What is the brand and model of this vehicle?",
-      "Classify this vehicle into 'Motorbike', 'SUV', 'Sedan', 'Truck', 'Convertible'"
-    ]
-  },
-  {
-    "Name": "Document Chat",
-    "Id": "DocumentChat",
-    "Approach": "UserDocumentChat",
-    "SecurityModel": "None",
-    "SampleQuestions": [
-    ],
-    "RAGSettings": {
-      "GenerateSearchQueryPluginName": "GenerateSearchQuery",
-      "GenerateSearchQueryPluginQueryFunctionName": "GenerateSearchQuery",
-      "DocumentRetrievalPluginName": "DocumentRetrieval",
-      "DocumentRetrievalPluginQueryFunctionName": "KwiecienV2",
-      "ChatSystemMessageFile": "RAGChatSystemPrompt",
-      "StorageContianer": "content"
-    }
-  },
-  {
-    "Name": "Weather Advisor",
-    "Id": "WeatherAdvisor",
-    "Approach": "EndpointAssistant",
-    "SecurityModel": "None",
-    "SecurityModelGroupMembership": [ "LocalDevUser" ],
-    "SampleQuestions": [
-      "What is the forcast for Mankato MN?"
-    ],
-    "AssistantEndpointSettings": {
-      "APIEndpointSetting": "WeatherAssistantAPIEndpoint",
-      "APIEndpointKeySetting": "WeatherAssistantAPIEndpointKey"
-    }
-  },
+  }
   //{
-  //  "Name": "Advanced Analytics (Assistants API)",
-  //  "Id": "AssistantApi",
-  //  "Approach": "ENDPOINTASSISTANTV2",
+  //  "Name": "Auto Service Advisor",
+  //  "Id": "AutoServiceAdvisor",
+  //  "Approach": "ENDPOINTASSISTANT",
   //  "SecurityModel": "None",
   //  "SecurityModelGroupMembership": [ "LocalDevUser" ],
   //  "SampleQuestions": [
-  //    "Generate a plot with a sine wave repeating 20 times"
+  //    "How do I change the oil?",
+  //    "What are the different maintenance intervals?",
+  //    "What is the air filter part number?"
   //  ],
   //  "AssistantEndpointSettings": {
-  //    "APIEndpointSetting": "AssistantApiEndpoint",
-  //    "APIEndpointKeySetting": "AssistantApiKey"
+  //    "APIEndpointSetting": "AutoServiceAdvisorEndpoint",
+  //    "APIEndpointKeySetting": "AutoServiceAdvisorApiKey",
+  //    "AllowFileUpload": false
   //  }
   //}
 ]

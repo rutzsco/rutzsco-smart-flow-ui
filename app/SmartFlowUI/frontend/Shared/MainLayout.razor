@@ -11,9 +11,7 @@
 <MudRTLProvider RightToLeft="_isRightToLeft">
     <MudLayout class="@(_isRightToLeft ? "rtl-lang" : "")">
         <MudAppBar Elevation="5">
-@*             <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" id="nav-toggle"
-                        Title="Toggle navigation sidebar"
-                        Size="Size.Large" Edge="Edge.Start" OnClick="@OnMenuClicked" /> *@
+            <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" id="nav-toggle" Title="Toggle navigation sidebar" Size="Size.Large" Edge="Edge.Start" OnClick="@OnMenuClicked" />
             <MudImage Fluid="true" Src="@LogoImagePath" Class="rounded filter-shadow" Alt="Logo" Style="height: 50px;" />
             @if (SortDisabled is false)
             {
@@ -39,7 +37,7 @@
             <NavMenu />
         </MudDrawer>
         <MudMainContent>
-            <MudContainer MaxWidth="MaxWidth.ExtraLarge" Style="display: flex; flex-direction: column; height: 85vh;" Class="my-6">
+            <MudContainer MaxWidth="MaxWidth.ExtraLarge" Style="display: flex; flex-direction: column; height: calc(100vh - 115px);" Class="my-6">
                 @Body
             </MudContainer> 
         </MudMainContent>

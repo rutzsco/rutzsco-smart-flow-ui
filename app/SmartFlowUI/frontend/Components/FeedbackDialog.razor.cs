@@ -22,7 +22,7 @@ public sealed partial class FeedbackDialog
     {
         if(!string.IsNullOrWhiteSpace(_feedback))
         {
-            var request = new ChatRatingRequest(Guid.Parse(ChatId), Guid.Parse(MessageId), Rating, _feedback, Approach.ReadRetrieveRead);
+            var request = new ChatRatingRequest(Guid.Parse(ChatId), Guid.Parse(MessageId), Rating, _feedback);
             await ApiClient.ChatRatingAsync(request);
         }
         Dialog.Close(DialogResult.Ok(true));

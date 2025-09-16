@@ -3,7 +3,6 @@
 using System.Collections.Concurrent;
 using Azure;
 using Azure.Core;
-using Azure.Search.Documents;
 using Azure.Search.Documents.Indexes;
 
 namespace MinimalApi.Services.Search;
@@ -12,13 +11,15 @@ public class SearchClientFactory
 {
     private readonly AppConfiguration _configuration;
     private readonly ConcurrentDictionary<string,SearchClient> _clients = new ConcurrentDictionary<string, SearchClient>();
-    private readonly TokenCredential? _credential;
+    private readonly TokenCredential _credential;
     private readonly AzureKeyCredential? _keyCredential;
     private readonly SearchIndexerClient _searchIndexerClient;
+    private readonly Uri _searchServiceEndpoint;
 
-    public SearchClientFactory(AppConfiguration configuration, TokenCredential? credential, AzureKeyCredential? keyCredential = null)
+    public SearchClientFactory(AppConfiguration configuration, TokenCredential credential, AzureKeyCredential? keyCredential = null)
     {
         _configuration = configuration;
+        _searchServiceEndpoint = new Uri(configuration.AzureSearchServiceEndpoint);
         _credential = credential;
         _keyCredential = keyCredential;
         _searchIndexerClient = CreateSearchIndexerClient();
@@ -42,9 +43,9 @@ public class SearchClientFactory
     {
         if (_keyCredential != null)
         {
-            return new SearchClient(new Uri(_configuration.AzureSearchServiceEndpoint), indexName, _keyCredential);
+            return new SearchClient(_searchServiceEndpoint, indexName, _keyCredential);
         }
-        return new SearchClient(new Uri(_configuration.AzureSearchServiceEndpoint), indexName, _credential);
+        return new SearchClient(_searchServiceEndpoint, indexName, _credential);
     }
 
     public SearchIndexerClient GetSearchIndexerClient()
@@ -56,8 +57,8 @@ public class SearchClientFactory
     {
         if (_keyCredential != null)
         {
-            return new SearchIndexerClient(new Uri(_configuration.AzureSearchServiceEndpoint), _keyCredential);
+            return new SearchIndexerClient(_searchServiceEndpoint, _keyCredential);
         }
-        return new SearchIndexerClient(new Uri(_configuration.AzureSearchServiceEndpoint), _credential);
+        return new SearchIndexerClient(_searchServiceEndpoint, _credential);
     }
 }

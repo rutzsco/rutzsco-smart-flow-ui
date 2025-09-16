@@ -12,14 +12,10 @@ public class KwiecienCustomIndexDefinitionV2 : IKnowledgeSource
 
     public required int pagenumber { get; set; }
 
-    public string FormatAsOpenAISourceText(bool useSourcepage = false)
-    {
-        return $"<source><name>{GetFilepath(useSourcepage)}</name><content> {content.Replace('\r', ' ').Replace('\n', ' ')}</content></source>";
-    }
 
-    public string GetContent()
+    public KnowledgeSource GetSource(bool useSourcepage = false)
     {
-        return content;
+        return new KnowledgeSource(GetFilepath(useSourcepage), content);
     }
 
     public string GetFilepath(bool useSourcepage = false)

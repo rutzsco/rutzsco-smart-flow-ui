@@ -2,22 +2,13 @@
 // Copyright (c) Microsoft. All rights reserved.
 
 using Azure;
-using Azure.Storage;
 using Microsoft.AspNetCore.Diagnostics.HealthChecks;
-using Microsoft.Azure.Cosmos;
 using Microsoft.Azure.Cosmos.Fluent;
 using Microsoft.Extensions.Diagnostics.HealthChecks;
-using MinimalApi.Services.ChatHistory;
 using MinimalApi.Services.HealthChecks;
-using MinimalApi.Services.Documents;
-using MinimalApi.Services.Search;
-using MinimalApi.Services.Skills;
-using Microsoft.SemanticKernel.ChatCompletion;
-using Microsoft.SemanticKernel.Connectors.AzureOpenAI;
-using Microsoft.SemanticKernel.TextGeneration;
 using System.ClientModel.Primitives;
-using Microsoft.AspNetCore.DataProtection;
 using Microsoft.Extensions.Azure;
+using MinimalApi.Agents;
 
 namespace MinimalApi.Extensions;
 
@@ -63,100 +54,8 @@ internal static class ServiceCollectionExtensions
 
         services.AddSingleton<OpenAIClientFacade>(sp =>
         {
-            var standardChatGptDeployment = configuration.AOAIStandardChatGptDeployment;
-            var standardServiceEndpoint = configuration.AOAIStandardServiceEndpoint;
-            var standardServiceKey = configuration.AOAIStandardServiceKey;
-
-            ArgumentNullException.ThrowIfNullOrEmpty(standardChatGptDeployment);
-            ArgumentNullException.ThrowIfNullOrEmpty(standardServiceEndpoint);
-
-            var premiumChatGptDeployment = configuration.AOAIPremiumChatGptDeployment;
-            var premiumServiceEndpoint = configuration.AOAIPremiumServiceEndpoint;
-            var premiumServiceKey = configuration.AOAIPremiumServiceKey;
-
-            // Build Plugins
-            var searchClientFactory = sp.GetRequiredService<SearchClientFactory>();
-
-            AzureOpenAIClient? openAIClient3 = null;
-            AzureOpenAIClient? openAIClient4 = null;
-
-            if (UseAPIMAIGatewayOBO(configuration))
-            {
-                SetupOpenAIClientsUsingOnBehalfOfOthersFlowAndSubscriptionKey(sp, httpContextAccessor, configuration, standardServiceEndpoint, out openAIClient3, out openAIClient4);
-            }
-            else
-            {
-                ArgumentNullException.ThrowIfNullOrEmpty(standardServiceKey);
-
-                openAIClient3 = new AzureOpenAIClient(new Uri(standardServiceEndpoint), new AzureKeyCredential(standardServiceKey));
-                if (!string.IsNullOrEmpty(premiumServiceEndpoint))
-                    openAIClient4 = new AzureOpenAIClient(new Uri(premiumServiceEndpoint), new AzureKeyCredential(premiumServiceKey));
-            }
-
-            var retrieveRelatedDocumentPlugin3 = new RetrieveRelatedDocumentSkill(configuration, searchClientFactory, openAIClient3);
-            var retrieveRelatedDocumentPluginKM = new RetrieveRelatedDocumentSkillKM(configuration, searchClientFactory, openAIClient3);
-            var retrieveRelatedDocumentPlugin4 = new RetrieveRelatedDocumentSkill(configuration, searchClientFactory, openAIClient4);
-
-            var generateSearchQueryPlugin = new GenerateSearchQuerySkill();
-            var chatPlugin = new ChatSkill();
-
-            Kernel? kernel3 = null;
-            Kernel? kernel4 = null;
-            IKernelBuilder? builder3 = null;
-            IKernelBuilder? builder4 = null;
-
-            if (openAIClient3 != null)
-            {
-#pragma warning disable IDE0039 // Use local function
-                Func<IServiceProvider, object?, AzureOpenAIChatCompletionService> factory3 = (serviceProvider, _) => new(standardChatGptDeployment, openAIClient3, null, serviceProvider.GetService<ILoggerFactory>());
-#pragma warning restore IDE0039 // Use local function
-
-                var kernel3Builder = Kernel.CreateBuilder();
-                kernel3Builder.Services.AddKeyedScoped<IChatCompletionService>(null, factory3);
-                kernel3Builder.Services.AddKeyedScoped<ITextGenerationService>(null, factory3);
-
-                kernel3 = kernel3Builder.Build();
-            }
-            else
-            {
-                // Build Kernels
-                kernel3 = Kernel.CreateBuilder()
-                .AddAzureOpenAIChatCompletion(standardChatGptDeployment, standardServiceEndpoint, standardServiceKey)
-                .Build();
-            }
-
-            if (openAIClient4 != null)
-            {
-#pragma warning disable IDE0039 // Use local function
-                Func<IServiceProvider, object?, AzureOpenAIChatCompletionService> factory4 = (serviceProvider, _) => new(standardChatGptDeployment, openAIClient4, null, serviceProvider.GetService<ILoggerFactory>());
-#pragma warning restore IDE0039 // Use local function
-
-                var kernel4Builder = Kernel.CreateBuilder();
-                kernel4Builder.Services.AddKeyedScoped<IChatCompletionService>(null, factory4);
-                kernel4Builder.Services.AddKeyedScoped<ITextGenerationService>(null, factory4);
-
-                kernel4 = kernel4Builder.Build();
-
-            }
-            //else
-            //{
-            //    kernel4 = Kernel.CreateBuilder()
-            //    .AddAzureOpenAIChatCompletion(premiumChatGptDeployment, premiumServiceEndpoint, premiumServiceKey)
-            //    .Build();
-            //}
-            kernel3.ImportPluginFromObject(retrieveRelatedDocumentPlugin3, DefaultSettings.DocumentRetrievalPluginName);
-            kernel3.ImportPluginFromObject(retrieveRelatedDocumentPluginKM, DefaultSettings.DocumentRetrievalPluginNameKM);
-            kernel3.ImportPluginFromObject(generateSearchQueryPlugin, DefaultSettings.GenerateSearchQueryPluginName);
-            kernel3.ImportPluginFromObject(chatPlugin, DefaultSettings.ChatPluginName);
-
-            if (kernel4 != null)
-            {
-                kernel4.ImportPluginFromObject(retrieveRelatedDocumentPlugin4, DefaultSettings.DocumentRetrievalPluginName);
-                kernel4.ImportPluginFromObject(generateSearchQueryPlugin, DefaultSettings.GenerateSearchQueryPluginName);
-                kernel4.ImportPluginFromObject(chatPlugin, DefaultSettings.ChatPluginName);
-            }
-
-            return new OpenAIClientFacade(standardChatGptDeployment, kernel3, premiumChatGptDeployment, kernel4);
+            var facade = new OpenAIClientFacade(configuration, new Azure.AzureKeyCredential(configuration.AOAIStandardServiceKey), null, sp.GetRequiredService<IHttpClientFactory>(), sp.GetRequiredService<SearchClientFactory>());
+            return facade;
         });
 
         services.AddSingleton<SearchClientFactory>(sp =>
@@ -215,93 +114,12 @@ internal static class ServiceCollectionExtensions
             return sp.GetRequiredService<BlobServiceClient>().GetBlobContainerClient(azureStorageContainer);
         });
 
-        services.AddSingleton(sp =>
+        services.AddSingleton<OpenAIClientFacade>(sp =>
         {
-            var standardChatGptDeployment = configuration.AOAIStandardChatGptDeployment;
-            var standardServiceEndpoint = configuration.AOAIStandardServiceEndpoint;
-
-            ArgumentNullException.ThrowIfNullOrEmpty(standardChatGptDeployment);
-            ArgumentNullException.ThrowIfNullOrEmpty(standardServiceEndpoint);
-
-            var premiumChatGptDeployment = configuration.AOAIPremiumChatGptDeployment;
-            var premiumServiceEndpoint = configuration.AOAIPremiumServiceEndpoint;
-
-            AzureOpenAIClient? standardChatGptClient = null;
-            AzureOpenAIClient? premiumChatGptClient = null;
-
-            if (UseAPIMAIGatewayOBO(configuration))
-            {
-                SetupOpenAIClientsUsingOnBehalfOfOthersFlowAndSubscriptionKey(sp, httpContextAccessor, configuration, standardServiceEndpoint, out standardChatGptClient, out premiumChatGptClient);
-            }
-            else
-            {
-                standardChatGptClient = new AzureOpenAIClient(new Uri(standardServiceEndpoint), azureCredential);
-                if (!string.IsNullOrEmpty(premiumChatGptDeployment))
-                    premiumChatGptClient = new AzureOpenAIClient(new Uri(premiumServiceEndpoint), azureCredential);
-            }
-
-            // Build Plugins
-            var searchClientFactory = sp.GetRequiredService<SearchClientFactory>();
-
-            var retrieveRelatedDocumentPlugin3 = new RetrieveRelatedDocumentSkill(configuration, searchClientFactory, standardChatGptClient);
-            var retrieveRelatedDocumentPlugin4 = new RetrieveRelatedDocumentSkill(configuration, searchClientFactory, premiumChatGptClient);
-
-            var generateSearchQueryPlugin = new GenerateSearchQuerySkill();
-            var chatPlugin = new ChatSkill();
-
-            Kernel? kernelStandard = null;
-            Kernel? kernelPremium = null;
-
-            // Build Kernels
-            if (UseAPIMAIGatewayOBO(configuration))
-            {
-#pragma warning disable IDE0039 // Use local function
-                Func<IServiceProvider, object?, AzureOpenAIChatCompletionService> factory3 = (serviceProvider, _) => new(standardChatGptDeployment, standardChatGptClient, null, serviceProvider.GetService<ILoggerFactory>());
-#pragma warning restore IDE0039 // Use local function
-
-                var kernel3Builder = Kernel.CreateBuilder();
-                kernel3Builder.Services.AddKeyedScoped<IChatCompletionService>(null, factory3);
-                kernel3Builder.Services.AddKeyedScoped<ITextGenerationService>(null, factory3);
-
-                kernelStandard = kernel3Builder.Build();
-
-                if (!string.IsNullOrEmpty(premiumChatGptDeployment))
-                {
-#pragma warning disable IDE0039 // Use local function
-                    Func<IServiceProvider, object?, AzureOpenAIChatCompletionService> factory4 = (serviceProvider, _) => new(premiumChatGptDeployment, premiumChatGptClient, null, serviceProvider.GetService<ILoggerFactory>());
-#pragma warning restore IDE0039 // Use local function
-
-                    var kernel4Builder = Kernel.CreateBuilder();
-                    kernel4Builder.Services.AddKeyedScoped<IChatCompletionService>(null, factory4);
-                    kernel4Builder.Services.AddKeyedScoped<ITextGenerationService>(null, factory4);
-                    kernelPremium = kernel4Builder.Build();
-                }
-            }
-            else
-            {
-                kernelStandard = Kernel.CreateBuilder()
-                   .AddAzureOpenAIChatCompletion(standardChatGptDeployment, standardServiceEndpoint, azureCredential)
-                   .Build();
-                if (!string.IsNullOrEmpty(premiumChatGptDeployment))
-                {
-                    kernelPremium = Kernel.CreateBuilder()
-                   .AddAzureOpenAIChatCompletion(premiumChatGptDeployment, premiumServiceEndpoint, azureCredential)
-                   .Build();
-                }
-            }
-
-            kernelStandard.ImportPluginFromObject(retrieveRelatedDocumentPlugin3, DefaultSettings.DocumentRetrievalPluginName);
-            kernelStandard.ImportPluginFromObject(generateSearchQueryPlugin, DefaultSettings.GenerateSearchQueryPluginName);
-            kernelStandard.ImportPluginFromObject(chatPlugin, DefaultSettings.ChatPluginName);
-
-            if (kernelPremium != null)
-            {
-                kernelPremium.ImportPluginFromObject(retrieveRelatedDocumentPlugin4, DefaultSettings.DocumentRetrievalPluginName);
-                kernelPremium.ImportPluginFromObject(generateSearchQueryPlugin, DefaultSettings.GenerateSearchQueryPluginName);
-                kernelPremium.ImportPluginFromObject(chatPlugin, DefaultSettings.ChatPluginName);
-            }
-            return new OpenAIClientFacade(standardChatGptDeployment, kernelStandard, premiumChatGptDeployment, kernelPremium);
+            var facade = new OpenAIClientFacade(configuration, null, azureCredential, sp.GetRequiredService<IHttpClientFactory>(), sp.GetRequiredService<SearchClientFactory>());
+            return facade;
         });
+
         services.AddSingleton((sp) =>
         {
             var cosmosDbEndpoint = configuration.CosmosDbEndpoint;
@@ -355,14 +173,14 @@ internal static class ServiceCollectionExtensions
             }
         }
 
+        services.AddSingleton<ImageGenerationChatAgent>();
         services.AddSingleton<ChatService>();
-        services.AddSingleton<ReadRetrieveReadChatService>();
-        services.AddSingleton<ReadRetrieveReadStreamingChatService>();
+        services.AddSingleton<RAGChatService>();
+        services.AddSingleton<AzureAIAgentChatService>();
         services.AddSingleton<EndpointChatService>();
         services.AddSingleton<EndpointChatServiceV2>();
         services.AddSingleton<EndpointTaskService>();
         services.AddSingleton<AzureBlobStorageService>();
-        services.AddHttpClient<IngestionService>();
         services.AddHttpClient<EndpointTaskService>(client =>
         {
             client.Timeout = TimeSpan.FromMinutes(5);

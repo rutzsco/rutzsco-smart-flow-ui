@@ -57,7 +57,7 @@ public sealed partial class TextInputV3
     {
         Console.WriteLine("UploadFilesAsync");
         var buffer = new byte[file.Size];
-        await file.OpenReadStream(8192000).ReadAsync(buffer);
+        await file.OpenReadStream(104857600).ReadAsync(buffer);
         var imageContent = Convert.ToBase64String(buffer);
 
         var fileSummary = new FileSummary($"data:{file.ContentType};base64,{imageContent}", file.Name, file.ContentType);

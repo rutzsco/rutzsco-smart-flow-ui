@@ -5,6 +5,7 @@ This project is a demonstration of how to create a simple UI that builds on top 
 ## Contents
 
 * [Architecture and Overview](#architecture-and-overview)
+* [Getting Started with IAC and Deployment](#getting-started-with-iac-and-deployment)
 * [Using this Docker Image in other projects](#using-this-docker-image-in-other-projects)
 * [Deploying this to your environment](#getting-started-with-iac-and-deployment)
 * [Local Development](#application-development-and-refinement)
@@ -19,28 +20,6 @@ The SmartFlow solution is deployed using Azure Container Apps to run the API app
 While developing this API, a Swagger interface and some simple REST Client API tests are provided to enable you to develop a working API that will use OpenAI tools to analyze documents and provide feedback. The prompts and processes are easily configurable and can be modified to suit your needs.
 
 ![Architecture Overview](./docs/images/architecture_overview.png)
-
----
-
-## Note: This is a companion app!
-
-Note: This is a companion app to the [SmartFlow API application](https://github.com/msft-mfg-ai/smart-flow-public). This project is designed to be installed after and on top of the SmartFlow app.  It will use all of the existing resources and simply add a new Container App containing the UI.
-
-For an easy and optimal deployment experience, copy all of the secrets and variables that you used in the the SmartFlow API deploy to this application's repository variables and secrets, then kick off the primary GitHub Workflow or Azure DevOps pipeline, and it should be good to go.
-
-If you want to use `azd up`, you will want to use the same variables to match the existing SmartFlow API application.  Copy the AZD setting values from the Smart-Flow-Public project (i.e. the entire `.azure` folder), then add in the variable `ENVIRONMENT_NAME="dev"` and then the azd up command should work right off first time as designed.
-
----
-
-## Using this Docker Image in other projects
-
-If you have an existing SmartFlow application and want to pull this standard image into the UI container app, we have published the image as a public package in this repository. You can pull that package into your application and then use the Storage Account or Key Based Profile settings ([see below](#creating-smartflow-api-profiles)) to configure the profiles how you want to use it.
-
-You can access this profile via the link on this page, or using a command like this:
-
-```bash
-docker pull ghcr.io/msft-mfg-ai/smart-flow-ui/smartflowui:latest
-```
 
 ---
 
@@ -72,7 +51,79 @@ To run the UI application, open the [app/SmartFlowUI/SmartFlowUI.sln](./app/Smar
 
 > You can set up these values in the user secrets by right-clicking on the Project and selecting `Manage User Secrets`, or you can add those values into the [appsettings.json](./app/SmartFlowUI/backend/Services/Profile/profiles.json) or appsettings.development.json file, ***(just be sure not to check those values into source control if you update the appsettings.json files!)***  Tip: If you want to use `Manage User Secrets` in VS Code you can use [this extension](https://marketplace.visualstudio.com/items?itemName=adrianwilczynski.user-secrets).
 
-## Creating SmartFlow API Profiles
+---
+
+## Local Agents
+
+### Agent Profiles
+
+Agents are defined through **profiles**, which specify the agent’s configuration, behavior, and underlying capabilities. Profiles can represent either:
+
+* **General chat agents** using LLMs (Large Language Models)
+* **RAG (Retrieval-Augmented Generation) agents** powered by Azure AI Search
+
+Each agent runs **inline within the UI application**, enabling a seamless user experience.
+
+#### RAG Agents
+
+RAG agents are configured via `RAGSettings`, which allow you to link an agent to a specific Azure AI Search index. This index serves as the **knowledge base** for that agent.
+
+An agent consists of:
+
+* A **system prompt**, which defines the agent’s domain, tone, and behavioral instructions
+* An optional **knowledge base**, specified via a RAG index, to enhance responses with domain-specific context
+
+**Sample Configuration**
+```json
+[
+  {
+    "Name": "General",
+    "Id": "General",
+    "Approach": "Chat",
+    "SecurityModel": "None",
+    "AllowFileUpload": true,
+    "ChatSystemMessageFile": "ChatSimpleSystemPrompt",
+    "SampleQuestions": [
+      "Write a function in C# that will invoke a rest API",
+      "Explain why popcorn pops to a kid who loves watching it in the microwave."
+    ]
+  },
+  {
+    "Name": "Auto Service Advisor",
+    "Id": "AutoServiceAdvisor",
+    "Approach": "RAG",
+    "SecurityModel": "None",
+    "SecurityModelGroupMembership": [ "LocalDevUser" ],
+    "SampleQuestions": [
+      "How do I change the oil?",
+      "What are the different maintenance intervals?",
+      "What is the air filter part number?"
+    ],
+    "RAGSettings": {
+      "DocumentRetrievalSchema": "KwiecienV2",
+      "DocumentRetrievalEmbeddingsDeployment": "text-embedding",
+      "DocumentRetrievalIndexName": "manuals-auto-ci-20240528182950",
+      "ChatSystemMessageFile": "RAGChatSystemPrompt",
+      "StorageContianer": "manuals-auto-chunks",
+      "CitationUseSourcePage": true,
+      "DocumentRetrievalDocumentCount": 15,
+      "UseSemanticRanker": true,
+      "SemanticConfigurationName": "Default"
+    }
+  }
+]
+```
+
+---
+## External Agents
+
+This can be a companion app to the [SmartFlow API application](https://github.com/msft-mfg-ai/smart-flow-public). This project is designed to be installed after and on top of the SmartFlow app.  It will use all of the existing resources and simply add a new Container App containing the UI.
+
+For an easy and optimal deployment experience, copy all of the secrets and variables that you used in the the SmartFlow API deploy to this application's repository variables and secrets, then kick off the primary GitHub Workflow or Azure DevOps pipeline, and it should be good to go.
+
+If you want to use `azd up`, you will want to use the same variables to match the existing SmartFlow API application.  Copy the AZD setting values from the Smart-Flow-Public project (i.e. the entire `.azure` folder), then add in the variable `ENVIRONMENT_NAME="dev"` and then the azd up command should work right off first time as designed.
+
+### Creating SmartFlow API Profiles
 
 The prompts that are defined in the SmartFlow API should be represented as profiles in the [app/SmartFlowUI/backend/Services/Profile/profiles.json](./app/SmartFlowUI/backend/Services/Profile/profiles.json) file. You can add new prompts or modify existing ones to suit your needs.
 
@@ -91,6 +142,19 @@ When the app is loaded and runs, it will process the `profiles.json` file and cr
 ![UI Example](./docs/images/UI-Example.png)
 
 ---
+
+### Using this Docker Image in other projects
+
+If you have an existing SmartFlow application and want to pull this standard image into the UI container app, we have published the image as a public package in this repository. You can pull that package into your application and then use the Storage Account or Key Based Profile settings ([see below](#creating-smartflow-api-profiles)) to configure the profiles how you want to use it.
+
+You can access this profile via the link on this page, or using a command like this:
+
+```bash
+docker pull ghcr.io/msft-mfg-ai/smart-flow-ui/smartflowui:latest
+```
+
+---
+
 
 ## Alternate Profile Sources
 

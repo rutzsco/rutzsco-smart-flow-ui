@@ -50,6 +50,8 @@ public sealed partial class Chat
     public bool _showDocumentUpload { get; set; }
     public bool _showPictureUpload { get; set; }
     [SupplyParameterFromQuery(Name = "cid")] public string? ArchivedChatId { get; set; }
+    [SupplyParameterFromQuery(Name = "profile")] public string? QueryProfileName { get; set; }
+    [SupplyParameterFromQuery(Name = "message")] public string? QueryInitialMessage { get; set; }
 
     private HashSet<DocumentSummary> _selectedDocuments = new HashSet<DocumentSummary>();
 
@@ -69,23 +71,43 @@ public sealed partial class Chat
         _profiles = user.Profiles.Where(x => x.Approach != ProfileApproach.UserDocumentChat).ToList();
         _userUploadProfileSummary = user.Profiles.FirstOrDefault(x => x.Approach == ProfileApproach.UserDocumentChat);
 
-        if (_profiles.Count > 0)
+        if (!string.IsNullOrEmpty(QueryProfileName) && !string.IsNullOrEmpty(QueryInitialMessage))
         {
-            await SetSelectedProfileAsync(_profiles.First());
+            var profileToSelect = _profiles.FirstOrDefault(p => p.Name.Equals(QueryProfileName, StringComparison.OrdinalIgnoreCase));
+            if (profileToSelect != null)
+            {
+                await SetSelectedProfileAsync(profileToSelect);
+                _userQuestion = QueryInitialMessage; 
+                _ = OnAskClickedAsync(); 
+            }
+            else
+            {
+                showWarning($"Profile '{QueryProfileName}' not found. Defaulting to standard behavior.");
+                await LoadDefaultProfileOrArchivedChatAsync();
+            }
         }
+        else
+        {
+            await LoadDefaultProfileOrArchivedChatAsync();
+        }
+        
         _errorLoadingMessage = _profiles.Count > 0 ? string.Empty : $" Error loading profiles...! {user.SessionId}";
+        EvaluateOptions();
+        StateHasChanged();
+    }
 
-
+    private async Task LoadDefaultProfileOrArchivedChatAsync()
+    {
         if (!string.IsNullOrEmpty(ArchivedChatId))
         {
             showInfo("Loading chat history...");
             await LoadArchivedChatAsync(_cancellationTokenSource.Token, ArchivedChatId);
         }
-        EvaluateOptions();
-        StateHasChanged();
+        else if (_profiles.Count > 0 && _selectedProfileSummary == null) // Only set default if no profile is selected yet
+        {
+            await SetSelectedProfileAsync(_profiles.First());
+        }
     }
-
-
 
     private async Task OnProfileClickAsync(string selection)
     {
@@ -96,8 +118,8 @@ public sealed partial class Chat
     {
         _selectedProfile = profile.Name;
         _selectedProfileSummary = profile;
-        _supportsFileUpload = _selectedProfileSummary.Approach == ProfileApproach.Chat || _selectedProfileSummary.Approach == ProfileApproach.EndpointAssistantV2 || _selectedProfileSummary.SupportsFileUpload;
-        if (_supportsFileUpload)
+        _supportsFileUpload = _selectedProfileSummary.SupportsFileUpload;
+        if (_userUploadProfileSummary != null)
         {
             var userDocuments = await ApiClient.GetUserDocumentsAsync();
             _userDocuments = userDocuments.ToList();
@@ -181,40 +203,9 @@ public sealed partial class Chat
                 SelectedDocuments.Select(x => x.Name),
                 _files,
                 options,
-                Approach.ReadRetrieveRead,
                 _userSelectionModel,
                 null);
 
-            //check access token expiration to see if access token refresh is needed
-            //string? accessTokenExpiration = await GetAuthMeFieldAsync("expires_on");
-
-            //var expiresOnDateTime = DateTimeOffset.Parse(accessTokenExpiration);
-            //if (expiresOnDateTime < DateTimeOffset.UtcNow.AddMinutes(5))
-            //{
-            //    await HttpClient.GetAsync(".auth/refresh");
-            //}
-
-            // get access token
-            //var accessToken = await GetAuthMeFieldAsync("access_token");
-
-            //using var httpRequest = new HttpRequestMessage(HttpMethod.Post, "api/chat/streaming")
-            //{
-            //    Headers = {
-            //        {
-            //            "Accept", "application/json"
-            //        },
-            //        {
-            //            "X-MS-TOKEN-AAD-ACCESS-TOKEN", accessToken
-            //        }
-            //    },
-            //    Content = new StringContent(JsonSerializer.Serialize(request), Encoding.UTF8, "application/json")
-            //};
-            //httpRequest.SetBrowserResponseStreamingEnabled(true);
-
-            //using HttpResponseMessage response = await HttpClient.SendAsync(httpRequest, HttpCompletionOption.ResponseHeadersRead);
-            //response.EnsureSuccessStatusCode();
-
-            //using Stream responseStream = await response.Content.ReadAsStreamAsync();
             using var httpRequest = new HttpRequestMessage(HttpMethod.Post, "api/chat/streaming")
             {
                 Headers = { { "Accept", "application/json" } },
@@ -356,8 +347,9 @@ public sealed partial class Chat
 
         // show profiles if there are multiple profiles or if there's a document selected
         _showProfiles = _profiles.Count > 1 || !string.IsNullOrEmpty(_selectedDocument);
-        // hide document upload if there are no profiles that support it
-        _showDocumentUpload = !_profiles.Any(p => p.Approach == ProfileApproach.UserDocumentChat);
+
+        // show document upload if there are no profiles that support it
+        _showDocumentUpload = _profiles.Any(p => p.Approach == ProfileApproach.UserDocumentChat);
 
         // show picture upload when approach is chat and document is not already selected
         _showPictureUpload = _selectedProfileSummary?.Approach == ProfileApproach.Chat && string.IsNullOrEmpty(_selectedDocument);

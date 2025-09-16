@@ -2,7 +2,7 @@
 
 using MinimalApi.Services.Profile;
 
-namespace MinimalApi.Services;
+namespace MinimalApi.Agents;
 
 public interface IChatService
 {

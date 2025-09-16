@@ -1,42 +1,98 @@
-﻿// Copyright (c) Microsoft. All rights reserved.
+﻿
+using Azure.Core;
+using Azure;
+using Assistants.Hub.API.Assistants.RAG;
 
-using Azure.AI.OpenAI;
 namespace MinimalApi.Extensions;
 
 public class OpenAIClientFacade
 {
-    public OpenAIClientFacade(string kernel3DeploymentName, Kernel kernel3, string kernel4DeploymentName, Kernel kernel4)
-    {
-        Kernel3 = kernel3;
-        Kernel4 = kernel4;
+    private readonly AppConfiguration _config;
+    private readonly string _standardChatGptDeployment;
+    private readonly string _standardServiceEndpoint;
+    private readonly TokenCredential _tokenCredential;
+    private readonly IHttpClientFactory _httpClientFactory;
+    private readonly SearchClientFactory _searchClientFactory;
+    private readonly AzureKeyCredential _azureKeyCredential;
 
-        Kernel3DeploymentName = kernel3DeploymentName;
-        Kernel4DeploymentName = kernel4DeploymentName;
+    private readonly AzureOpenAIClient _standardChatGptClient;
+
+    public OpenAIClientFacade(AppConfiguration configuration, AzureKeyCredential azureKeyCredential, TokenCredential tokenCredential, IHttpClientFactory httpClientFactory, SearchClientFactory searchClientFactory)
+    {
+        ArgumentNullException.ThrowIfNull(configuration, "AppConfiguration");
+        ArgumentNullException.ThrowIfNull(configuration.AOAIStandardChatGptDeployment, "AOAIStandardChatGptDeployment");
+        ArgumentNullException.ThrowIfNull(configuration.AOAIStandardServiceEndpoint, "AOAIStandardServiceEndpoint");
+
+        _config = configuration;
+        _standardChatGptDeployment = _config.AOAIStandardChatGptDeployment;
+        _standardServiceEndpoint = _config.AOAIStandardServiceEndpoint;
+
+        _azureKeyCredential = azureKeyCredential;
+        _tokenCredential = tokenCredential;
+        _httpClientFactory = httpClientFactory;
+        _searchClientFactory = searchClientFactory;
+
+        if (azureKeyCredential != null)
+            _standardChatGptClient = new AzureOpenAIClient(new Uri(_standardServiceEndpoint), _azureKeyCredential);
+        else
+            _standardChatGptClient = new AzureOpenAIClient(new Uri(_standardServiceEndpoint), _tokenCredential);
     }
 
-    public string Kernel3DeploymentName { get; set; }
-    public Kernel Kernel3 { get; set; }
-
-    public string Kernel4DeploymentName { get; set; }
-    public Kernel Kernel4 { get; set; }
-
-
-    public Kernel GetKernel(bool chatGPT4)
+    public string GetKernelDeploymentName()
     {
-        if (chatGPT4)
+        return _standardChatGptDeployment;
+    }
+
+    public Kernel BuildKernel(string toolPackage)
+    {
+        var kernel = BuildKernelBasedOnIdentity();
+        if (toolPackage == "RAG")
         {
-            return Kernel4;
+            kernel.ImportPluginFromObject(new RAGRetrivalPlugins(_searchClientFactory, _standardChatGptClient), "RAGChat");
         }
 
-        return Kernel3;
-    }
-    public string GetKernelDeploymentName(bool chatGPT4)
-    {
-        if (chatGPT4)
+        if(toolPackage == "ImageGen")
         {
-            return Kernel4DeploymentName;
+            kernel = BuildImageGenerationKernelBasedOnIdentity();
+        }
+        return kernel;
+    }
+
+    private Kernel BuildKernelBasedOnIdentity()
+    {
+        if (_azureKeyCredential != null)
+        {
+            var keyKernel = Kernel.CreateBuilder()
+                .AddAzureOpenAIChatCompletion(_standardChatGptDeployment, _standardServiceEndpoint, _config.AOAIStandardServiceKey)
+                .Build();
+            return keyKernel;
         }
 
-        return Kernel3DeploymentName;
+        var kernel = Kernel.CreateBuilder()
+       .AddAzureOpenAIChatCompletion(_standardChatGptDeployment, _standardServiceEndpoint, _tokenCredential)
+       .Build();
+
+        return kernel;
     }
+
+    #pragma warning disable SKEXP0010
+    private Kernel BuildImageGenerationKernelBasedOnIdentity()
+    {
+        if (_azureKeyCredential != null)
+        {
+
+            var keyKernel = Kernel.CreateBuilder()
+                .AddAzureOpenAITextToImage(_standardChatGptDeployment, _standardServiceEndpoint,_config.AOAIStandardServiceKey)
+                .Build();
+
+            return keyKernel;
+        }
+
+        var kernel = Kernel.CreateBuilder()
+            .AddAzureOpenAITextToImage("dall-e-3", _standardServiceEndpoint, _tokenCredential)
+            .Build();
+
+        return kernel;
+    }
+    #pragma warning restore SKEXP0010
 }

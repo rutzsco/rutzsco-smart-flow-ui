@@ -1,9 +1,6 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 
-using static System.Runtime.InteropServices.JavaScript.JSType;
-
 namespace Shared.Models;
-
 
 public class ChatSessionModel
 {
