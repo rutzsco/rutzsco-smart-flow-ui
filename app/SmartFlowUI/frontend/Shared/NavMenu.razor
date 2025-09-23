@@ -27,8 +27,11 @@
     {
         _user = await ApiClient.GetUserAsync();
 
-        //TODO: Only Admin users should see settings
-        showSettings = _user.UserName.Contains("localdevuser", StringComparison.InvariantCultureIgnoreCase) || _user.UserName.Contains("rutz", StringComparison.InvariantCultureIgnoreCase) || _user.UserName.Contains("luppes", StringComparison.InvariantCultureIgnoreCase);
+        var isAdmin = _user.Groups.Contains("Admin");
+        showSettings = isAdmin ||
+            _user.UserName.Contains("localdevuser", StringComparison.InvariantCultureIgnoreCase) ||
+            _user.UserName.Contains("rutz", StringComparison.InvariantCultureIgnoreCase) ||
+            _user.UserName.Contains("luppes", StringComparison.InvariantCultureIgnoreCase);
     }
 
     [Inject] public required ApiClient ApiClient { get; set; }
