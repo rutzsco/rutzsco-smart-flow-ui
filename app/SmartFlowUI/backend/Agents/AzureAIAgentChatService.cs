@@ -1,5 +1,6 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 
+using System.Configuration;
 using Azure;
 using Azure.AI.Agents.Persistent;
 using Microsoft.SemanticKernel.Agents;
@@ -23,9 +24,8 @@ public class AzureAIAgentChatService : IChatService
 
         var azureAIFoundryProjectEndpoint = _configuration["AzureAIFoundryProjectEndpoint"];
         ArgumentNullException.ThrowIfNullOrEmpty(azureAIFoundryProjectEndpoint, "AzureAIFoundryProjectEndpoint");
-        _agentsClient = AzureAIAgent.CreateAgentsClient(azureAIFoundryProjectEndpoint, new DefaultAzureCredential());
+        _agentsClient = AzureAIAgent.CreateAgentsClient(azureAIFoundryProjectEndpoint, CredentialsHelper.GetCredentials(configuration));
     }
-
     public async IAsyncEnumerable<ChatChunkResponse> ReplyAsync(UserInformation user, ProfileDefinition profile, ChatRequest request, [EnumeratorCancellation] CancellationToken cancellationToken = default)
     {
         var sw = Stopwatch.StartNew();

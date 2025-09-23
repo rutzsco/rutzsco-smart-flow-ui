@@ -1,17 +1,17 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 
+using System;
+using System.Collections.Generic;
+using System.IO;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Text;
+using System.Text.RegularExpressions;
+using System.Threading;
+using System.Threading.Tasks;
 using Microsoft.Extensions.Configuration;
 using Newtonsoft.Json;
 using Newtonsoft.Json.Linq;
-using System;
-using System.IO;
-using System.Threading;
-using System.Collections.Generic;
-using System.Text.RegularExpressions;
-using System.Threading.Tasks;
 
 namespace MinimalApi.Services;
 
@@ -22,23 +22,27 @@ public class TextToImageService
 {
     private readonly HttpClient _httpClient;
     private readonly IConfiguration _configuration;
+    private readonly ILogger<TextToImageService> _logger;
     
     // API configuration properties
     private string ApiEndpoint => _configuration["TextToImageAPIEndpoint"];
     private string ApiDeployment => _configuration["TextToImageAPIDeployment"];
     private string ApiKey => _configuration["TextToImageAPIKey"];
-    private string ApiVersion => "2025-04-01-preview";
+    private string ApiVersion => _configuration["TextToImageAPIVersion"] ?? "2025-04-01-preview";
+    private string ApiImageQuality => _configuration["TextToImageImageQuality"] ?? "medium";
+    private string ApiImageStyle => _configuration["TextToImageImageStyle"] ?? string.Empty;
     private string BaseApiPath => $"/openai/deployments/{ApiDeployment}/images";
 
     /// <summary>
     /// Initializes a new instance of the TextToImageService
     /// </summary>
     /// <param name="configuration">Application configuration</param>
-    public TextToImageService(IConfiguration configuration)
+    public TextToImageService(IConfiguration configuration, ILogger<TextToImageService> logger)
     {
         _httpClient = new HttpClient();
         _httpClient.Timeout = TimeSpan.FromMinutes(2); 
         _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
+        _logger = logger;
     }
 
     /// <summary>
@@ -68,13 +72,28 @@ public class TextToImageService
             OutputFormat = outputFormat
         };
         
-        var jsonResponse = await SendApiRequestAsync(
-            HttpMethod.Post, 
-            requestUrl, 
-            JsonConvert.SerializeObject(requestBody),
-            "application/json");
-        
-        return ExtractImageDataUrl(jsonResponse, "image generation");
+        if (!string.IsNullOrEmpty(ApiImageQuality))
+        {
+            requestBody.Quality = ApiImageQuality;
+        }
+        if (!string.IsNullOrEmpty(ApiImageStyle))
+        {
+            requestBody.Style = ApiImageStyle;
+        }
+        try {
+            var jsonResponse = await SendApiRequestAsync(
+                HttpMethod.Post,
+                requestUrl,
+                JsonConvert.SerializeObject(requestBody),
+                "application/json");
+
+            return ExtractImageDataUrl(jsonResponse, "image generation");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, $"Error generating new image with prompt {prompt}. Error {ex.Message}");
+            return null;
+        }
     }
 
     /// <summary>
@@ -291,6 +310,16 @@ public class TextToImageService
 
         if (string.IsNullOrEmpty(b64Json))
         {
+            // Fallback to checking for URL if b64_json is not available -- older versions of the API may return a URL only
+            var imageUrl = responseObject?["data"]?[0]?["url"].ToString();
+            if (string.IsNullOrEmpty(b64Json) && !string.IsNullOrEmpty(imageUrl))
+            {
+                var imageBytes = DownloadImageFromUrlAsync(imageUrl);
+                b64Json = Convert.ToBase64String(imageBytes.Result.Data);
+            }
+        }
+        if (string.IsNullOrEmpty(b64Json))
+        {
             throw new HttpRequestException($"Failed to retrieve base64 image data from API response for {operationName}. The response might not contain the expected data.");
         }
 
@@ -315,6 +344,9 @@ public class TextToImageService
         [JsonProperty("size")]
         public string Size { get; set; }
         
+        [JsonProperty("style")]
+        public string Style { get; set; }
+
         [JsonProperty("quality")]
         public string Quality { get; set; }
         

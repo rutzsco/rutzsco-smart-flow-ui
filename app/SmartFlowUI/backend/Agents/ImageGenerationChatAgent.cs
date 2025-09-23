@@ -50,7 +50,7 @@ internal sealed class ImageGenerationChatAgent : IChatService
 
         if (string.IsNullOrEmpty(finalImageUrl))
         {
-            _logger.LogWarning("No images could be generated or edited for the user message: {UserMessage}", userMessage);
+            _logger.LogWarning($"No images could be generated or edited for the user message: {userMessage}");
             yield return new ChatChunkResponse("No images could be generated or edited.", null);
             yield break;
         }
@@ -84,8 +84,7 @@ internal sealed class ImageGenerationChatAgent : IChatService
             
             if (imageUpload != null)
             {
-                _logger.LogInformation("Found uploaded image for first chat turn: {FileName} with content type: {ContentType}", 
-                    imageUpload.FileName, imageUpload.ContentType);
+                _logger.LogInformation($"Found uploaded image for first chat turn: {imageUpload.FileName} with content type: {imageUpload.ContentType}");
                 return imageUpload.DataUrl;
             }
         }
@@ -106,7 +105,7 @@ internal sealed class ImageGenerationChatAgent : IChatService
             if (htmlMatch.Success && htmlMatch.Groups.Count > 1)
             {
                 var imageUrl = htmlMatch.Groups[1].Value;
-                _logger.LogInformation("Found previous image URL from HTML: {PreviousImageUrl}", imageUrl);
+                _logger.LogInformation($"Found previous image URL from HTML: {imageUrl}");
                 return imageUrl;
             }
 
@@ -115,7 +114,7 @@ internal sealed class ImageGenerationChatAgent : IChatService
             if (markdownMatch.Success && markdownMatch.Groups.Count > 1)
             {
                 var imageUrl = markdownMatch.Groups[1].Value;
-                _logger.LogInformation("Found previous image URL from Markdown: {PreviousImageUrl}", imageUrl);
+                _logger.LogInformation($"Found previous image URL from Markdown: {imageUrl}");
                 return imageUrl;
             }
         }
@@ -124,7 +123,7 @@ internal sealed class ImageGenerationChatAgent : IChatService
 
     private async Task<string?> AttemptEditImageAsync(string imageUrl, string prompt, CancellationToken cancellationToken)
     {
-        _logger.LogInformation("Attempting to edit previous image using URL: {ImageUrl} with prompt: {Prompt}", imageUrl, prompt);
+        _logger.LogInformation($"Attempting to edit previous image using URL: {imageUrl} with prompt: {prompt}");
         try
         {
             // Pass cancellationToken if EditImageFromDataUrlAsync supports it, otherwise remove.
@@ -132,18 +131,18 @@ internal sealed class ImageGenerationChatAgent : IChatService
             string? editedImageUrl = await _textToImageService.EditImageFromDataUrlAsync(imageUrl, prompt); // Default size, n, quality
             if (!string.IsNullOrEmpty(editedImageUrl))
             {
-                _logger.LogInformation("Successfully edited image. New URL: {EditedImageUrl}", editedImageUrl);
+                _logger.LogInformation($"Successfully edited image. New URL: {editedImageUrl}");
                 return editedImageUrl;
             }
             else
             {
-                _logger.LogWarning("Editing image with URL {ImageUrl} did not return a new URL. Falling back to new image generation.", imageUrl);
+                _logger.LogWarning($"Editing image with URL {editedImageUrl} did not return a new URL. Falling back to new image generation.");
                 return null;
             }
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error editing image with URL {ImageUrl}. Falling back to new image generation.", imageUrl);
+            _logger.LogError(ex, $"Error editing image with URL {imageUrl}. Falling back to new image generation.");
             return null;
         }
     }
@@ -164,6 +163,7 @@ internal sealed class ImageGenerationChatAgent : IChatService
         }
         catch (Exception ex)
         {
+            _logger.LogError(ex, $"Error creating new image with prompt {prompt}. Error {ex.Message}");
             return null;
         }
     }

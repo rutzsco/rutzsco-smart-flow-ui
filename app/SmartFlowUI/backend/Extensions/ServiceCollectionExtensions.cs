@@ -23,58 +23,14 @@ internal static class ServiceCollectionExtensions
         DefaultAzureCredential azureCredential;
         services.AddAzureClients(builder =>
         {
-            if (!string.IsNullOrEmpty(configuration.VisualStudioTenantId))
-            {
-                azureCredential = new DefaultAzureCredential(new DefaultAzureCredentialOptions
-                {
-                    VisualStudioTenantId = configuration.VisualStudioTenantId
-                });
-                builder.UseCredential(azureCredential);
-            }
-            else
-            {
-                if (!string.IsNullOrEmpty(configuration.UserAssignedManagedIdentityClientId))
-                {
-                    azureCredential = new DefaultAzureCredential(new DefaultAzureCredentialOptions
-                    {
-                        ManagedIdentityClientId = configuration.UserAssignedManagedIdentityClientId
-                    });
-                    builder.UseCredential(azureCredential);
-                }
-                else
-                {
-                    azureCredential = new DefaultAzureCredential(new DefaultAzureCredentialOptions());
-                    builder.UseCredential(azureCredential);
-                }
-            }
-
+            builder.UseCredential(CredentialsHelper.GetCredentials(configuration));
             builder.AddBlobServiceClient(configuration.AzureStorageAccountEndpoint);
         });
 
         // Register TokenCredential for DI
         services.AddSingleton<TokenCredential>(sp => 
         {
-            if (!string.IsNullOrEmpty(configuration.VisualStudioTenantId))
-            {
-                return new DefaultAzureCredential(new DefaultAzureCredentialOptions
-                {
-                    VisualStudioTenantId = configuration.VisualStudioTenantId
-                });
-            }
-            else
-            {
-                if (!string.IsNullOrEmpty(configuration.UserAssignedManagedIdentityClientId))
-                {
-                    return new DefaultAzureCredential(new DefaultAzureCredentialOptions
-                    {
-                        ManagedIdentityClientId = configuration.UserAssignedManagedIdentityClientId
-                    });
-                }
-                else
-                {
-                    return new DefaultAzureCredential(new DefaultAzureCredentialOptions());
-                }
-            }
+            return CredentialsHelper.GetCredentials(configuration);
         });
 
         services.AddSingleton<BlobContainerClient>(sp =>
@@ -113,22 +69,8 @@ internal static class ServiceCollectionExtensions
     {
         var sp = services.BuildServiceProvider();
         var httpContextAccessor = sp.GetRequiredService<IHttpContextAccessor>();
-        DefaultAzureCredential azureCredential;
-        if (!string.IsNullOrEmpty(configuration.VisualStudioTenantId))
-        {
-            azureCredential = new(new DefaultAzureCredentialOptions { VisualStudioTenantId = configuration.VisualStudioTenantId });
-        }
-        else
-        {
-            if (!string.IsNullOrEmpty(configuration.UserAssignedManagedIdentityClientId))
-            {
-                azureCredential = new(new DefaultAzureCredentialOptions { ManagedIdentityClientId = configuration.UserAssignedManagedIdentityClientId });
-            }
-            else
-            {
-                azureCredential = new(new DefaultAzureCredentialOptions());
-            }
-        }
+
+        var azureCredential = CredentialsHelper.GetCredentials(configuration);
 
         // Register TokenCredential for DI
         services.AddSingleton<TokenCredential>(azureCredential);
