@@ -142,7 +142,7 @@ internal static class WebApiAgentExtensions
             return Results.Problem("AzureAIFoundryProjectEndpoint is not configured.", statusCode: 500);
         }
 
-        var client = AzureAIAgent.CreateAgentsClient(endpoint, new DefaultAzureCredential());
+        var client = AzureAIAgent.CreateAgentsClient(endpoint, CredentialsHelper.GetCredentials(config));
 
         // Try to get file name to infer content type
         string? fileName = null;
@@ -184,7 +184,6 @@ internal static class WebApiAgentExtensions
         var contentType = GuessContentType(fileName) ?? "image/png";
         return Results.File(fileContent.ToArray(), contentType);
     }
-
     private static string? GuessContentType(string? fileName)
     {
         if (string.IsNullOrEmpty(fileName)) return null;

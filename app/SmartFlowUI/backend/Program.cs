@@ -10,7 +10,7 @@ using Microsoft.SemanticKernel.Agents.AzureAI;
 
 #pragma warning disable SKEXP0110
 
-Console.WriteLine("Starting SmartFlowUI backend... {0}", BuildInfo.Instance);
+Console.WriteLine("Starting SmartFlowUI MinimalAPI backend... {0}", BuildInfo.Instance);
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Configuration.AddJsonFile("appsettings.local.json", optional: true, reloadOnChange: true);

@@ -13,17 +13,17 @@ namespace MinimalApi.Agents
 
         private readonly OpenAIClientFacade _openAIClientFacade;
         private readonly IConfiguration _configuration;
-
+        private DefaultAzureCredential _credentials;
 
         public AzureAIAgentManagementService(OpenAIClientFacade openAIClientFacade, IConfiguration configuration)
         {    
             _configuration = configuration;
             _openAIClientFacade = openAIClientFacade;
+            _credentials = CredentialsHelper.GetCredentials(configuration);
         }
-
         public async Task<AzureAIAgent> CreateAgentIfNotExistsAsync()
         {
-            var agentsClient = AzureAIAgent.CreateAgentsClient(_configuration["AzureAIFoundryProjectEndpoint"], new DefaultAzureCredential());
+            var agentsClient = AzureAIAgent.CreateAgentsClient(_configuration["AzureAIFoundryProjectEndpoint"], _credentials);
             var kernel = _openAIClientFacade.BuildKernel("RAG");
 
             var tools = new List<FunctionToolDefinition>();
@@ -57,7 +57,7 @@ namespace MinimalApi.Agents
                 throw new ArgumentException("Agent instructions cannot be null or empty.", nameof(instructions));
             }
 
-            var agentsClient = AzureAIAgent.CreateAgentsClient(_configuration["AzureAIFoundryProjectEndpoint"], new DefaultAzureCredential());
+            var agentsClient = AzureAIAgent.CreateAgentsClient(_configuration["AzureAIFoundryProjectEndpoint"], _credentials);
             var kernel = _openAIClientFacade.BuildKernel("RAG");
 
             var tools = new List<FunctionToolDefinition>();
@@ -95,7 +95,7 @@ namespace MinimalApi.Agents
                 throw new ArgumentException("Agent instructions cannot be null or empty.", nameof(instructions));
             }
 
-            var agentsClient = AzureAIAgent.CreateAgentsClient(_configuration["AzureAIFoundryProjectEndpoint"], new DefaultAzureCredential());
+            var agentsClient = AzureAIAgent.CreateAgentsClient(_configuration["AzureAIFoundryProjectEndpoint"], _credentials);
             var kernel = _openAIClientFacade.BuildKernel("RAG");
 
             var tools = new List<FunctionToolDefinition>();
@@ -120,7 +120,7 @@ namespace MinimalApi.Agents
 
         public async Task<IEnumerable<PersistentAgent>> ListAgentsAsync()
         {
-            var agentsClient = AzureAIAgent.CreateAgentsClient(_configuration["AzureAIFoundryProjectEndpoint"], new DefaultAzureCredential());
+            var agentsClient = AzureAIAgent.CreateAgentsClient(_configuration["AzureAIFoundryProjectEndpoint"], _credentials);
             var agents = new List<PersistentAgent>();
             await foreach (var agentDefinition in agentsClient.Administration.GetAgentsAsync())
             {
@@ -136,7 +136,7 @@ namespace MinimalApi.Agents
                 throw new ArgumentException("Agent name cannot be null or empty.", nameof(agentName));
             }
 
-            var agentsClient = AzureAIAgent.CreateAgentsClient(_configuration["AzureAIFoundryProjectEndpoint"], new DefaultAzureCredential());
+            var agentsClient = AzureAIAgent.CreateAgentsClient(_configuration["AzureAIFoundryProjectEndpoint"], _credentials);
             var deletedCount = 0;
 
             // Get all agents and find those that match the name
