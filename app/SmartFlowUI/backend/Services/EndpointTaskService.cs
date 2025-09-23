@@ -44,8 +44,9 @@ internal sealed class EndpointTaskService : IChatService
         catch (HttpRequestException ex)
         {
             var msg =
-                ex.StatusCode.Value == System.Net.HttpStatusCode.NotFound ? $"System Error: API for {profile.Name} not found!" :
-                ex.StatusCode.Value == System.Net.HttpStatusCode.TooManyRequests ? "System Error: Rate Limit exceeded!" :
+                ex.StatusCode != null && ex.StatusCode.Value == System.Net.HttpStatusCode.NotFound ? $"System Error: API for {profile.Name} not found!" :
+                ex.StatusCode != null && ex.StatusCode.Value == System.Net.HttpStatusCode.MethodNotAllowed ? $"System Error: API for {profile.Name} not allowed!" :
+                ex.StatusCode != null && ex.StatusCode.Value == System.Net.HttpStatusCode.TooManyRequests ? "System Error: Rate Limit exceeded!" :
                 "System Error: Unable to get a response from the server.";
             payload = BuildErrorTaskResponsePayload(msg, url, profile.Name, "SendAsync");
         }
