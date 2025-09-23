@@ -1,5 +1,6 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 
+using Microsoft.Extensions.Logging;
 using MinimalApi.Agents;
 
 namespace MinimalApi.Services;
@@ -87,21 +88,18 @@ internal sealed class EndpointTaskService : IChatService
             {
                 task = request.ChatTurnId,
                 requestMessage = "",
-                files = new[]
+                files = file == null ? [] : new[]
                 {
-                new
-                {
-                    name = "Label",
-                    dataUrl = file.DataUrl
-                }
+                    new { name = "Image", dataUrl = file.DataUrl }
             }
             };
             var payload = System.Text.Json.JsonSerializer.Serialize(requestModel);
             var content = new StringContent(payload, Encoding.UTF8, "application/json");
             return content;
         }
-        catch
+        catch (Exception ex)
         {
+            _logger.LogError(ex, $"Error building task request ChatId {request.ChatId}: {ex.Message}");
             return null;
         }
     }

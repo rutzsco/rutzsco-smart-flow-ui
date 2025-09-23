@@ -95,6 +95,7 @@
     "Name": "Color Blind Image Analysis",
     "Id": "ColorBlindTester",
     "Approach": "ENDPOINTASSISTANTTASK",
+    "AllowFileUpload": true,
     "SecurityModel": "None",
     "SecurityModelGroupMembership": [ "LocalDevUser" ],
     "SampleQuestions": [
