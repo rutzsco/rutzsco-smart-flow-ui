@@ -1,0 +1,101 @@
+[
+  {
+    "Name": "Image Generation",
+    "Id": "ImageGeneration",
+    "Approach": "IMAGECHAT",
+    "SecurityModel": "None",
+    "AllowFileUpload": true,
+    "SecurityModelGroupMembership": [ "LocalDevUser" ],
+    "SampleQuestions": [
+      "Sunset over a mountain lake?",
+      "Robot playing guitar on stage",
+      "Cute cat in a wizard hat"
+    ]
+  },
+  {
+    "Name": "General",
+    "Id": "General",
+    "Approach": "Chat",
+    "SecurityModel": "None",
+    "AllowFileUpload": true,
+    "ChatSystemMessageFile": "ChatSimpleSystemPrompt",
+    "SampleQuestions": [
+      "Write a function in C# that will invoke a rest API",
+      "Explain why popcorn pops to a kid who loves watching it in the microwave."
+    ]
+  },
+  {
+    "Name": "General Agent Chat",
+    "Id": "GeneralAgentChat",
+    "Approach": "AzureAIAgentChatProfile",
+    "SecurityModel": "None",
+    "AllowFileUpload": true,
+    "AzureAIAgentID": "asst_00epUjlDeCIG1J7pK2umPDA0",
+    "ChatSystemMessageFile": "ChatSimpleSystemPrompt",
+    "SampleQuestions": [
+      "Write a function in C# that will invoke a rest API",
+      "Explain why popcorn pops to a kid who loves watching it in the microwave.",
+      "What is the 10 day forecast for Mankato MN?"
+    ]
+  },
+  {
+    "Name": "Auto Service Advisor",
+    "Id": "AutoServiceAdvisor",
+    "Approach": "RAG",
+    "SecurityModel": "None",
+    "SecurityModelGroupMembership": [ "LocalDevUser" ],
+    "SampleQuestions": [
+      "How do I change the oil?",
+      "What are the different maintenance intervals?",
+      "What is the air filter part number?"
+    ],
+    "RAGSettings": {
+      "DocumentRetrievalSchema": "KwiecienV2",
+      "DocumentRetrievalEmbeddingsDeployment": "text-embedding",
+      "DocumentRetrievalIndexName": "manuals-auto-ci-20240528182950",
+      "ChatSystemMessageFile": "RAGChatSystemPrompt",
+      "StorageContianer": "manuals-auto-chunks",
+      "CitationUseSourcePage": true,
+      "DocumentRetrievalDocumentCount": 15,
+      "UseSemanticRanker": true,
+      "SemanticConfigurationName": "Default"
+    }
+  },
+  {
+    "Name": "Boat Service Advisor",
+    "Id": "BoatServiceAdvisor",
+    "Approach": "RAG",
+    "SecurityModel": "None",
+    "SecurityModelGroupMembership": [ "LocalDevUser" ],
+    "SampleQuestions": [
+      "How do I change the oil?",
+      "How do I winterize?",
+      "How calibrate the gas gauge?"
+    ],
+    "RAGSettings": {
+      "DocumentRetrievalSchema": "KwiecienV2",
+      "DocumentRetrievalEmbeddingsDeployment": "text-embedding",
+      "DocumentRetrievalIndexName": "manuals-boat-ci-20240708121734",
+      "DocumentRetrievalDocumentCount": 15,
+      "ChatSystemMessageFile": "RAGChatSystemPrompt",
+      "StorageContianer": "manuals-boat"
+    }
+  },
+  {
+    "Name": "Endpoint Agent",
+    "Id": "EndpointAgent",
+    "Approach": "ENDPOINTASSISTANT",
+    "SecurityModel": "None",
+    "SecurityModelGroupMembership": [ "LocalDevUser" ],
+    "SampleQuestions": [
+      "Test",
+      "What are the different maintenance intervals?",
+      "What is the air filter part number?"
+    ],
+    "AssistantEndpointSettings": {
+      "APIEndpointSetting": "EndpointAgentEndpoint",
+      "AllowFileUpload": false
+    }
+  }
+]
+

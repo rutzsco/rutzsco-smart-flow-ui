@@ -1,0 +1,79 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>preview</LangVersion>
+    <UserSecretsId>6c0daa7e-5118-4a21-8aeb-f7b977fe2f01</UserSecretsId>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
+    <PublishRelease>true</PublishRelease>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+    <NoWarn>1701;1702;CS8604</NoWarn>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
+    <NoWarn>1701;1702;CS8604;CS8607 </NoWarn>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\SmartFlow.WebApp.Client\SmartFlow.WebApp.Client.csproj" />
+    <ProjectReference Include="..\..\shared\Shared\Shared.csproj" />
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Server" />
+    <PackageReference Include="Azure.Extensions.AspNetCore.DataProtection.Blobs" />
+    <PackageReference Include="Azure.Identity" />
+    <PackageReference Include="Azure.Search.Documents" />
+    <PackageReference Include="Microsoft.ApplicationInsights.AspNetCore" />
+    <PackageReference Include="Microsoft.Azure.Cosmos" />
+    <PackageReference Include="Microsoft.Extensions.Azure" />
+    <PackageReference Include="Microsoft.SemanticKernel" />
+    <PackageReference Include="Microsoft.SemanticKernel.Agents.AzureAI" />
+    <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" />
+    <PackageReference Include="PdfPig" />
+    <PackageReference Include="Swashbuckle.AspNetCore" />
+    <PackageReference Include="TiktokenSharp" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Remove="Services\Profile\Profiles-rutzsco.json" />
+    <Content Remove="Services\Profile\profiles.json" />
+    <Content Remove="Services\Profile\profiles.local.json" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Remove="Services\Profile\Prompts\AutoBodyCopilotSystemPrompt.txt" />
+    <None Remove="Services\Profile\Prompts\AutoBodyCopilotSystemPromptV2.txt" />
+    <None Remove="Services\Profile\Prompts\ChatSimpleSystemPrompt.txt" />
+    <None Remove="Services\Profile\Prompts\ChatSimpleUserPrompt.txt" />
+    <None Remove="Services\Profile\Prompts\CSVCopilotSystemPrompt.txt" />
+    <None Remove="Services\Profile\Prompts\RAGChatSystemPrompt.txt" />
+    <None Remove="Services\Profile\Prompts\RAGChatUserPrompt.txt" />
+    <None Remove="Services\Profile\Prompts\RAGSearchQuerySystemPrompt.txt" />
+    <None Remove="Services\Profile\Prompts\RAGSearchUserPrompt.txt" />
+    <None Remove="userSecrets.Template.txt" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Include="userSecrets.Template.txt">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+      <ExcludeFromSingleFile>true</ExcludeFromSingleFile>
+      <CopyToPublishDirectory>PreserveNewest</CopyToPublishDirectory>
+    </Content>
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Services\Profile\profiles-rutzsco.json" />
+    <EmbeddedResource Include="Services\Profile\profiles.json" />
+    <EmbeddedResource Include="Services\Profile\Prompts\CSVCopilotSystemPrompt.txt" />
+    <EmbeddedResource Include="Services\Profile\Prompts\ChatSimpleSystemPrompt.txt" />
+    <EmbeddedResource Include="Services\Profile\Prompts\RAGChatSystemPrompt.txt" />
+    <EmbeddedResource Include="Services\Profile\Prompts\ChatSimpleUserPrompt.txt" />
+    <EmbeddedResource Include="Services\Profile\Prompts\RAGChatUserPrompt.txt" />
+    <EmbeddedResource Include="Services\Profile\Prompts\RAGSearchQuerySystemPrompt.txt" />
+    <EmbeddedResource Include="Services\Profile\Prompts\RAGSearchUserPrompt.txt" />
+  </ItemGroup>
+
+</Project>
