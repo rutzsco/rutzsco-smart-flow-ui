@@ -15,7 +15,7 @@ public static class PromptService
 
     public static string GetPromptByName(string prompt)
     {
-        var resourceName = $"MinimalApi.Services.Profile.Prompts.{prompt}.txt";
+        var resourceName = $"SmartFlow.WebApp.Services.Profile.Prompts.{prompt}.txt";
         var assembly = Assembly.GetExecutingAssembly();
         using (Stream stream = assembly.GetManifestResourceStream(resourceName))
         {
