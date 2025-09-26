@@ -1,6 +1,6 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 using MinimalApi.Agents;
-using MinimalApi.Models;
+using Shared.Models;
 using Azure;
 using Azure.Identity;
 using Microsoft.SemanticKernel.Agents.AzureAI;
@@ -35,7 +35,7 @@ internal static class WebApiAgentExtensions
             Instructions = agent.Instructions,
             Description = agent.Description,
             Model = agent.Model,
-            CreatedAt = agent.CreatedAt
+            CreatedAt = agent.CreatedAt.DateTime
         });
         return Results.Ok(agentViewModels);
     }
@@ -67,7 +67,7 @@ internal static class WebApiAgentExtensions
                 Instructions = createdAgent.Definition.Instructions,
                 Description = createdAgent.Definition.Description,
                 Model = createdAgent.Definition.Model,
-                CreatedAt = createdAgent.Definition.CreatedAt
+                CreatedAt = createdAgent.Definition.CreatedAt.DateTime
             };
 
             return Results.Created($"/api/agents/{response.Id}", response);
@@ -116,7 +116,7 @@ internal static class WebApiAgentExtensions
                 Instructions = updatedAgent.Definition.Instructions,
                 Description = updatedAgent.Definition.Description,
                 Model = updatedAgent.Definition.Model,
-                CreatedAt = updatedAgent.Definition.CreatedAt
+                CreatedAt = updatedAgent.Definition.CreatedAt.DateTime
             };
 
             return Results.Ok(response);

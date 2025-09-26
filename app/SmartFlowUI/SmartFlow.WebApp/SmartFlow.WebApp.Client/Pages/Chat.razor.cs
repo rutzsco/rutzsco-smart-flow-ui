@@ -1,4 +1,6 @@
-// Copyright (c) Microsoft. All rights reserved.
+﻿// Copyright (c) Microsoft. All rights reserved.
+
+using System.Net;
 
 namespace SmartFlow.WebApp.Client.Pages;
 
@@ -35,6 +37,7 @@ public sealed partial class Chat
 
     private readonly CancellationTokenSource _cancellationTokenSource = new();
 
+    [Inject] public required HttpClient HttpClient { get; set; }
     [Inject] public required ApiClient ApiClient { get; set; }
     [Inject] public required IJSRuntime JSRuntime { get; set; }
     [Inject] public required NavigationManager Navigation { get; set; }
@@ -225,7 +228,7 @@ public sealed partial class Chat
                     _currentQuestion = default;
 
                     if(chunk.FinalResult.Context?.ThreadId != null)
-                        _agentThreadId = chunk.FinalResult.Context.ThreadId;
+                        _agentThreadId = chunk.FinalResult.Context.ThreadId.ToString();
                 }
                 else
                 {
@@ -244,8 +247,8 @@ public sealed partial class Chat
             {
                 msg = ex.StatusCode.Value switch
                 {
-                    System.Net.HttpStatusCode.NotFound => "Error: API Defined Incorrectly!",
-                    System.Net.HttpStatusCode.TooManyRequests => "Error: Rate Limit exceeded!",
+                    HttpStatusCode.NotFound => "Error: API Defined Incorrectly!",
+                    HttpStatusCode.TooManyRequests => "Error: Rate Limit exceeded!",
                     _ => "Error: Unable to get a response from the server."
                 };
             }
@@ -360,7 +363,7 @@ public sealed partial class Chat
 
         foreach (var chatMessage in chatMessages.OrderBy(x => x.Timestamp))
         {
-            var ar = new ApproachResponse(chatMessage.Answer, chatMessage.ProfileId, new ResponseContext(chatMessage.Profile, chatMessage.DataPoints, Array.Empty<ThoughtRecord>(), Guid.Empty, Guid.Empty, null, null));
+            var ar = new ApproachResponse(chatMessage.Answer, chatMessage.ProfileId, new ResponseContext(chatMessage.Profile, chatMessage.DataPoints, Array.Empty<ThoughtRecord>(), Guid.Empty, Guid.Empty, Guid.Empty, null));
             _questionAndAnswerMap[new UserQuestion(chatMessage.Prompt, chatMessage.Timestamp.UtcDateTime)] = ar;
         }
         Navigation.NavigateTo(string.Empty, forceLoad: false);

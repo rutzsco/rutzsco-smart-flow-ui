@@ -1,4 +1,4 @@
-// Copyright (c) Microsoft. All rights reserved.
+﻿// Copyright (c) Microsoft. All rights reserved.
 
 using System.Reflection;
 using System.Xml.Linq;
@@ -16,7 +16,7 @@ public sealed partial class Settings : IDisposable
     private string _profileRawData = string.Empty;
     private string _b64DecodedText = string.Empty;
     private string _b64EncodedText = string.Empty;
-    private Shared.Models.BuildInfo _buildInfo = Shared.Models.BuildInfo.Instance;
+    private BuildInfo _buildInfo = BuildInfo.Instance;
 
     // Store a cancelation token that will be used to cancel if the user disposes of this component.
     private readonly CancellationTokenSource _cancellationTokenSource = new();

@@ -1,8 +1,10 @@
-// Copyright (c) Microsoft. All rights reserved.
+﻿// Copyright (c) Microsoft. All rights reserved.
 
 var builder = WebAssemblyHostBuilder.CreateDefault(args);
 
-// Remove root components registration - this is now handled by the server
+// Register the root component
+builder.RootComponents.Add<App>("#app");
+builder.RootComponents.Add<HeadOutlet>("head::after");
 
 builder.Configuration.AddJsonFile($"appsettings.json", optional: true, reloadOnChange: true);
 

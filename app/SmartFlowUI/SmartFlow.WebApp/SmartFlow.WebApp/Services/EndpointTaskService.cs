@@ -60,7 +60,7 @@ internal sealed class EndpointTaskService : IChatService
         {
             thoughts.Add(new ThoughtRecord(FormatLogStep(thought), thought.content));
         }
-        yield return new ChatChunkResponse("", new ApproachResponse(taskResponse.answer, null, new ResponseContext(profile.Name, null, thoughts.ToArray(), request.ChatTurnId, request.ChatId, null, null)));
+        yield return new ChatChunkResponse("", new ApproachResponse(taskResponse.answer, null, new ResponseContext(profile.Name, null, thoughts.ToArray(), request.ChatTurnId, request.ChatId, Guid.Empty, null)));
     }
     private string BuildErrorTaskResponsePayload(string msg, string url, string profileName, string actionName)
     {

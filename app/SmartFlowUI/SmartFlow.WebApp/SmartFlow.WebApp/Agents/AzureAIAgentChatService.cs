@@ -113,7 +113,7 @@ public class AzureAIAgentChatService : IChatService
             {
                 var tempContent = sb.ToString();
                 var citationId = tempContent.Substring(annotation.StartIndex.Value, annotation.EndIndex.Value - annotation.StartIndex.Value);
-                sources.Add(new SupportingContentRecord(annotation.Title,annotation.ReferenceId, "BING", citationId));
+                sources.Add(new SupportingContentRecord(annotation.Title, annotation.ReferenceId));
             }
 
             if (contentChunk.Items.OfType<StreamingFileReferenceContent>().Any())
@@ -137,7 +137,7 @@ public class AzureAIAgentChatService : IChatService
         }
         sw.Stop();
 
-        var contextData = new ResponseContext(profile.Name, sources.ToArray(), Array.Empty<ThoughtRecord>(), request.ChatTurnId, request.ChatId, agentThread.Value.Id, null);
+        var contextData = new ResponseContext(profile.Name, sources.ToArray(), Array.Empty<ThoughtRecord>(), request.ChatTurnId, request.ChatId, Guid.Parse(agentThread.Value.Id), null);
         var result = new ApproachResponse(Answer: sb.ToString(), CitationBaseUrl: string.Empty, contextData);
 
         yield return new ChatChunkResponse(string.Empty, result);

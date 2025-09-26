@@ -140,7 +140,7 @@ public class ProfileService
 
     private static List<ProfileDefinition> LoadEmbeddedProflies(string name)
     {
-        var resourceName = $"MinimalApi.Services.Profile.{name}.json";
+        var resourceName = $"SmartFlow.WebApp.Services.Profile.{name}.json";
         var assembly = Assembly.GetExecutingAssembly();
         using Stream stream = assembly.GetManifestResourceStream(resourceName) ?? throw new ArgumentException($"The resource {resourceName} was not found.");
         using StreamReader reader = new(stream);

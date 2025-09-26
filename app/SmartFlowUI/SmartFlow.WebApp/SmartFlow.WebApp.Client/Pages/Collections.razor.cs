@@ -1,6 +1,5 @@
-// Copyright (c) Microsoft. All rights reserved.
+﻿// Copyright (c) Microsoft. All rights reserved.
 
-using SmartFlow.WebApp.Services.Documents;
 using Shared.Models;
 using static System.Runtime.InteropServices.JavaScript.JSType;
 

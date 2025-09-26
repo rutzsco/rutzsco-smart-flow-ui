@@ -119,14 +119,14 @@ public static class SKExtensions
         var chatDiagnostics = new CompletionsDiagnostics(completionTokens, requestTokenCount, totalTokens, 0);
         var diagnostics = new Diagnostics(chatDiagnostics, modelDeploymentName, workflowDurationMilliseconds);
 
-        var thoughts = kernel.GetThoughtProcess(chatHistory.FirstOrDefault(x => x.Role == AuthorRole.System).Content, answer);
+        var thoughts = kernel.GetThoughtProcess(chatHistory.FirstOrDefault(x => x.Role == AuthorRole.System)?.Content ?? "", answer);
         var contextData = new ResponseContext(
             profile.Name, 
             dataSources.Distinct().ToArray(), // Remove duplicates
             thoughts.Select(x => new ThoughtRecord(x.Name, x.Result)).ToArray(), 
             request.ChatTurnId, 
-            request.ChatId,
-            null,
+            request.ChatId, 
+            Guid.Empty, // ThreadId - using empty Guid as placeholder
             diagnostics);
 
         return new ApproachResponse(
@@ -142,7 +142,7 @@ public static class SKExtensions
         var chatDiagnostics = new CompletionsDiagnostics(completionTokens, requestTokenCount, totalTokens, 0);
         var diagnostics = new Diagnostics(chatDiagnostics, modelDeploymentName, workflowDurationMilliseconds);
 
-        var contextData = new ResponseContext(profile.Name, null, Array.Empty<ThoughtRecord>(), request.ChatTurnId, request.ChatId, null, diagnostics);
+        var contextData = new ResponseContext(profile.Name, null, Array.Empty<ThoughtRecord>(), request.ChatTurnId, request.ChatId, Guid.Empty, diagnostics);
 
         return new ApproachResponse(
             Answer: NormalizeResponseText(answer),
@@ -177,7 +177,7 @@ public static class SKExtensions
         var diagnosticsBuilder = GetRequestDiagnosticsBuilder(kernel);
         if (sources != null && sources.Any())
         {
-            var supportingContent = sources.Select(x => new SupportingContentRecord(x.FilePath, x.Content, "FUNCTION", string.Empty)).ToList();
+            var supportingContent = sources.Select(x => new SupportingContentRecord(x.FilePath, x.Content)).ToList();
             diagnosticsBuilder.AddFunctionCallResult(name, result, supportingContent);
         }
         else

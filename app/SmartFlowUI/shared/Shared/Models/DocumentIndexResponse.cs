@@ -2,7 +2,7 @@
 
 using Newtonsoft.Json;
 
-namespace MinimalApi.Services.Documents;
+namespace Shared.Models;
 
 public class DocumentIndexResponse
 {

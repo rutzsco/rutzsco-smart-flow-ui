@@ -2,7 +2,7 @@
 
 using Newtonsoft.Json;
 
-namespace ClientApp.Models;
+namespace Shared.Models;
 
 /// <summary>
 /// Build Info

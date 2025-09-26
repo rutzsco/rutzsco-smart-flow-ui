@@ -1,6 +1,6 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 
-using ClientApp.Models;
+using Shared.Models;
 using Microsoft.AspNetCore.DataProtection;
 using MinimalApi;
 using Azure;
