@@ -1,4 +1,4 @@
-// Copyright (c) Microsoft. All rights reserved.
+﻿// Copyright (c) Microsoft. All rights reserved.
 
 namespace SmartFlow.WebApp.Client.Components;
 
@@ -16,7 +16,7 @@ public sealed partial class Answer
     private async Task OnPositiveFeedbackClickedAsync()
     {
         _newRating = 5;
-        Dialog.Show<FeedbackDialog>($"Provide additional feedback",
+        await Dialog.ShowAsync<FeedbackDialog>($"Provide additional feedback",
             new DialogParameters
             {
                 [nameof(FeedbackDialog.Rating)] = _newRating,
@@ -34,7 +34,7 @@ public sealed partial class Answer
     private async Task OnNegativeFeedbackClickedAsync()
     {
         _newRating = 0;
-        Dialog.Show<FeedbackDialog>($"Provide additional feedback",
+        await Dialog.ShowAsync<FeedbackDialog>($"Provide additional feedback",
             new DialogParameters
             {
                 [nameof(FeedbackDialog.Rating)] = _newRating,
@@ -52,7 +52,7 @@ public sealed partial class Answer
     private async Task OnRatingClickedAsync(int val)
     {
         _newRating = val;
-        Dialog.Show<FeedbackDialog>($"Provide additional feedback",
+        await Dialog.ShowAsync<FeedbackDialog>($"Provide additional feedback",
             new DialogParameters
             {
                 [nameof(FeedbackDialog.Rating)] = _newRating,
@@ -82,9 +82,9 @@ public sealed partial class Answer
         }
     }
 
-    private void OnShowCitation(CitationDetails citation)
+    private async Task OnShowCitation(CitationDetails citation)
     {
-        Dialog.Show<PdfViewerDialog>($"📄 {citation.Name}",
+        await Dialog.ShowAsync<PdfViewerDialog>($"📄 {citation.Name}",
             new DialogParameters
             {
                 [nameof(PdfViewerDialog.FileName)] = citation.Name,
