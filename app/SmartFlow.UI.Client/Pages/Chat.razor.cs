@@ -363,7 +363,7 @@ public sealed partial class Chat
 
         foreach (var chatMessage in chatMessages.OrderBy(x => x.Timestamp))
         {
-            var ar = new ApproachResponse(chatMessage.Answer, chatMessage.ProfileId, new ResponseContext(chatMessage.Profile, chatMessage.DataPoints, Array.Empty<ThoughtRecord>(), Guid.Empty, Guid.Empty, Guid.Empty, null));
+            var ar = new ApproachResponse(chatMessage.Answer, chatMessage.ProfileId, new ResponseContext(chatMessage.Profile, chatMessage.DataPoints, Array.Empty<ThoughtRecord>(), Guid.Empty, Guid.Empty, string.Empty, null));
             _questionAndAnswerMap[new UserQuestion(chatMessage.Prompt, chatMessage.Timestamp.UtcDateTime)] = ar;
         }
         Navigation.NavigateTo(string.Empty, forceLoad: false);

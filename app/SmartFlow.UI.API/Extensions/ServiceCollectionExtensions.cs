@@ -10,8 +10,12 @@ using MinimalApi.Services.HealthChecks;
 using System.ClientModel.Primitives;
 using Microsoft.Extensions.Azure;
 using MinimalApi.Agents;
+using Azure.AI.Agents.Persistent;
+using Microsoft.SemanticKernel.Agents.AzureAI;
 
 namespace MinimalApi.Extensions;
+
+#pragma warning disable SKEXP0110
 
 internal static class ServiceCollectionExtensions
 {
@@ -94,6 +98,16 @@ internal static class ServiceCollectionExtensions
             return new SearchClientFactory(configuration, null, new AzureKeyCredential(configuration.AzureSearchServiceKey));
         });
 
+        // Register PersistentAgentsClient using AzureAIAgent.CreateAgentsClient
+        if (!string.IsNullOrEmpty(configuration.AzureAIFoundryProjectEndpoint))
+        {
+            services.AddSingleton<PersistentAgentsClient>(sp =>
+            {
+                var credential = sp.GetRequiredService<TokenCredential>();
+                return AzureAIAgent.CreateAgentsClient(configuration.AzureAIFoundryProjectEndpoint, credential);
+            });
+        }
+
         if (!string.IsNullOrEmpty(configuration.CosmosDBConnectionString))
         {
             services.AddSingleton((sp) =>
@@ -167,14 +181,12 @@ internal static class ServiceCollectionExtensions
             return new SearchClientFactory(configuration, azureCredential);
         });
 
-        if (!string.IsNullOrEmpty(configuration.CosmosDbEndpoint))
+        // Register PersistentAgentsClient using AzureAIAgent.CreateAgentsClient with Managed Identity
+        if (!string.IsNullOrEmpty(configuration.AzureAIFoundryProjectEndpoint))
         {
-            services.AddSingleton((sp) =>
+            services.AddTransient<PersistentAgentsClient>(sp =>
             {
-                var endpoint = configuration.CosmosDbEndpoint;
-                CosmosClientBuilder configurationBuilder = new CosmosClientBuilder(endpoint, azureCredential);
-                return configurationBuilder
-                        .Build();
+                return AzureAIAgent.CreateAgentsClient(configuration.AzureAIFoundryProjectEndpoint, azureCredential);
             });
         }
 

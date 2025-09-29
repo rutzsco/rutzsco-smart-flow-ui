@@ -15,7 +15,7 @@ public class AzureAIAgentChatService : IChatService
     private readonly IConfiguration _configuration;
     private readonly OpenAIClientFacade _openAIClientFacade;
     private readonly PersistentAgentsClient _agentsClient;
-    public AzureAIAgentChatService(OpenAIClientFacade openAIClientFacade, AzureBlobStorageService blobStorageService, ILogger<AzureAIAgentChatService> logger, IConfiguration configuration)
+    public AzureAIAgentChatService(OpenAIClientFacade openAIClientFacade, AzureBlobStorageService blobStorageService, PersistentAgentsClient persistentAgentsClient, ILogger<AzureAIAgentChatService> logger, IConfiguration configuration)
     {
         _openAIClientFacade = openAIClientFacade;
         _logger = logger;
@@ -23,7 +23,7 @@ public class AzureAIAgentChatService : IChatService
 
         var azureAIFoundryProjectEndpoint = _configuration["AzureAIFoundryProjectEndpoint"];
         ArgumentNullException.ThrowIfNullOrEmpty(azureAIFoundryProjectEndpoint, "AzureAIFoundryProjectEndpoint");
-        _agentsClient = AzureAIAgent.CreateAgentsClient(azureAIFoundryProjectEndpoint, new DefaultAzureCredential());
+        _agentsClient = persistentAgentsClient;
     }
 
     public async IAsyncEnumerable<ChatChunkResponse> ReplyAsync(UserInformation user, ProfileDefinition profile, ChatRequest request, [EnumeratorCancellation] CancellationToken cancellationToken = default)
@@ -137,7 +137,7 @@ public class AzureAIAgentChatService : IChatService
         }
         sw.Stop();
 
-        var contextData = new ResponseContext(profile.Name, sources.ToArray(), Array.Empty<ThoughtRecord>(), request.ChatTurnId, request.ChatId, Guid.Parse(agentThread.Value.Id), null);
+        var contextData = new ResponseContext(profile.Name, sources.ToArray(), Array.Empty<ThoughtRecord>(), request.ChatTurnId, request.ChatId, agentThread.Value.Id, null);
         var result = new ApproachResponse(Answer: sb.ToString(), CitationBaseUrl: string.Empty, contextData);
 
         yield return new ChatChunkResponse(string.Empty, result);

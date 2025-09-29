@@ -126,7 +126,7 @@ public static class SKExtensions
             thoughts.Select(x => new ThoughtRecord(x.Name, x.Result)).ToArray(), 
             request.ChatTurnId, 
             request.ChatId, 
-            Guid.Empty, // ThreadId - using empty Guid as placeholder
+            string.Empty, // ThreadId - using empty Guid as placeholder
             diagnostics);
 
         return new ApproachResponse(
@@ -142,7 +142,7 @@ public static class SKExtensions
         var chatDiagnostics = new CompletionsDiagnostics(completionTokens, requestTokenCount, totalTokens, 0);
         var diagnostics = new Diagnostics(chatDiagnostics, modelDeploymentName, workflowDurationMilliseconds);
 
-        var contextData = new ResponseContext(profile.Name, null, Array.Empty<ThoughtRecord>(), request.ChatTurnId, request.ChatId, Guid.Empty, diagnostics);
+        var contextData = new ResponseContext(profile.Name, null, Array.Empty<ThoughtRecord>(), request.ChatTurnId, request.ChatId, string.Empty, diagnostics);
 
         return new ApproachResponse(
             Answer: NormalizeResponseText(answer),

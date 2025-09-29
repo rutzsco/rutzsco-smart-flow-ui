@@ -62,7 +62,7 @@ internal sealed class ImageGenerationChatAgent : IChatService
         sb.Append(content);
         yield return new ChatChunkResponse(content);
 
-        var contextData = new ResponseContext(profile.Name, Array.Empty<SupportingContentRecord>(), Array.Empty<ThoughtRecord>(), request.ChatTurnId, request.ChatId, Guid.Empty, null);
+        var contextData = new ResponseContext(profile.Name, Array.Empty<SupportingContentRecord>(), Array.Empty<ThoughtRecord>(), request.ChatTurnId, request.ChatId, string.Empty, null);
         var result = new ApproachResponse(Answer: sb.ToString(), CitationBaseUrl: string.Empty, contextData);
 
         yield return new ChatChunkResponse(string.Empty, result);

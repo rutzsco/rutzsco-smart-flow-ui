@@ -53,7 +53,7 @@ internal sealed class EndpointChatServiceV2 : IChatService
         var thoughts = new List<ThoughtRecord>();
         thoughts.Add(new ThoughtRecord("Assistant Response", sb.ToString()));
 
-        yield return new ChatChunkResponse("", new ApproachResponse(sb.ToString(), null, new ResponseContext(profile.Name, null, thoughts.ToArray(), request.ChatTurnId, request.ChatId, Guid.Empty, null)));
+        yield return new ChatChunkResponse("", new ApproachResponse(sb.ToString(), null, new ResponseContext(profile.Name, null, thoughts.ToArray(), request.ChatTurnId, request.ChatId, string.Empty, null)));
     }
     private async Task<string> ResolveThreadIdAsync(ProfileDefinition profile, ChatRequest request)
     {

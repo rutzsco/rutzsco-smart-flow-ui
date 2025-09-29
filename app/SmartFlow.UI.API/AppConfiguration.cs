@@ -75,6 +75,9 @@ public class AppConfiguration
     public string? AOAIStandardServiceKey { get; init; }
 
 
+    // Azure AI Projects
+    public string? AzureAIFoundryProjectEndpoint { get; init; }
+
     // Profile configuration
     public string? ProfileConfigurationBlobStorageContainer { get; init; }
     public string? ProfileConfiguration { get; init; }
