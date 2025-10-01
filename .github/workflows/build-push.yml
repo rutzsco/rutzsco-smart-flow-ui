@@ -14,11 +14,14 @@ concurrency:
 
 jobs:
   docker:
-    name: Build and Push (GHCR)
+    name: Build and Push (GHCR + ACR)
     runs-on: ubuntu-latest
     permissions:
       contents: read
       packages: write
+    env:
+      CONTAINER_REGISTRY_URL: ${{ vars.CONTAINER_REGISTRY_URL }}
+      CONTAINER_REGISTRY_REPOSITORY_NAME: ${{ vars.CONTAINER_REGISTRY_REPOSITORY_NAME }}
 
     steps:
       - name: Checkout
@@ -29,8 +32,15 @@ jobs:
         shell: bash
         run: |
           echo "owner_lc=${GITHUB_REPOSITORY_OWNER,,}" >> $GITHUB_OUTPUT
-          echo "image_name=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/smart-flow-ui" >> $GITHUB_OUTPUT
+          echo "ghcr_image=ghcr.io/${GITHUB_REPOSITORY_OWNER,,}/smart-flow-ui" >> $GITHUB_OUTPUT
           echo "datetime=$(date -u +'%Y%m%d-%H%M%S')" >> $GITHUB_OUTPUT
+          echo "acr_image=${CONTAINER_REGISTRY_URL}/${CONTAINER_REGISTRY_REPOSITORY_NAME}" >> $GITHUB_OUTPUT
+
+      - name: Echo variables
+        run: |
+          echo "GHCR Image = ${{ steps.vars.outputs.ghcr_image }}"
+          echo "ACR Image = ${{ steps.vars.outputs.acr_image }}"
+          echo "Datetime tag = ${{ steps.vars.outputs.datetime }}"
 
       - name: Set up QEMU
         uses: docker/setup-qemu-action@v3
@@ -45,11 +55,18 @@ jobs:
           username: ${{ github.actor }}
           password: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Extract Docker metadata
-        id: meta
+      - name: Log in to ACR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.CONTAINER_REGISTRY_URL }}
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Extract Docker metadata (GHCR)
+        id: meta-ghcr
         uses: docker/metadata-action@v5
         with:
-          images: ${{ steps.vars.outputs.image_name }}
+          images: ${{ steps.vars.outputs.ghcr_image }}
           tags: |
             type=ref,event=branch
             type=ref,event=tag
@@ -57,14 +74,28 @@ jobs:
             type=raw,value=latest,enable={{is_default_branch}}
             type=raw,value=${{ steps.vars.outputs.datetime }}
 
-      - name: Build and push
+      - name: Extract Docker metadata (ACR)
+        id: meta-acr
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ steps.vars.outputs.acr_image }}
+          tags: |
+            type=ref,event=branch
+            type=ref,event=tag
+            type=sha
+            type=raw,value=latest,enable={{is_default_branch}}
+            type=raw,value=${{ steps.vars.outputs.datetime }}
+
+      - name: Build and push to GHCR and ACR
         uses: docker/build-push-action@v6
         with:
           context: ./app
           file: ./app/Dockerfile
           push: ${{ github.event_name != 'pull_request' }}
-          tags: ${{ steps.meta.outputs.tags }}
-          labels: ${{ steps.meta.outputs.labels }}
+          tags: |
+            ${{ steps.meta-ghcr.outputs.tags }}
+            ${{ steps.meta-acr.outputs.tags }}
+          labels: ${{ steps.meta-ghcr.outputs.labels }}
           platforms: linux/amd64,linux/arm64
           cache-from: type=gha
           cache-to: type=gha,mode=max
