@@ -2,23 +2,18 @@
 FROM mcr.microsoft.com/dotnet/sdk:8.0 AS build
 WORKDIR /src
 
-# Copy solution and project files
-COPY ["SmartFlow.UI.sln", "."]
-COPY ["SmartFlow.UI.API/SmartFlow.UI.API.csproj", "SmartFlow.UI.API/"]
-COPY ["SmartFlow.UI.Client/SmartFlow.UI.Client.csproj", "SmartFlow.UI.Client/"]
-COPY ["Shared/Shared/Shared.csproj", "shared/Shared/"]
-COPY ["Directory.Build.props", "."]
-COPY ["Directory.Packages.props", "."]
+# Copy everything (simpler and avoids case-sensitivity issues)
+COPY . .
+
+# Fix case-sensitivity issue: rename Shared to shared to match solution file expectation
+RUN if [ -d "Shared" ] && [ ! -d "shared" ]; then mv Shared shared; fi
 
 # Restore dependencies
 RUN dotnet restore "SmartFlow.UI.sln"
 
-# Copy the rest of the source code
-COPY . .
-
 # Build the solution
 WORKDIR "/src"
-RUN dotnet build "SmartFlow.UI.sln" -c Release -o /app/build
+RUN dotnet build "SmartFlow.UI.sln" -c Release
 
 # Publish stage
 FROM build AS publish
