@@ -6,7 +6,7 @@ WORKDIR /src
 COPY ["SmartFlow.UI.sln", "."]
 COPY ["SmartFlow.UI.API/SmartFlow.UI.API.csproj", "SmartFlow.UI.API/"]
 COPY ["SmartFlow.UI.Client/SmartFlow.UI.Client.csproj", "SmartFlow.UI.Client/"]
-COPY ["shared/Shared/Shared.csproj", "shared/Shared/"]
+COPY ["Shared/Shared/Shared.csproj", "shared/Shared/"]
 COPY ["Directory.Build.props", "."]
 COPY ["Directory.Packages.props", "."]
 
