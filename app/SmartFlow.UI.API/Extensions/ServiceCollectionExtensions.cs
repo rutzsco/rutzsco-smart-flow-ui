@@ -226,83 +226,27 @@ internal static class ServiceCollectionExtensions
 
     internal static IServiceCollection AddCustomHealthChecks(this IServiceCollection services)
     {
-        services.AddHealthChecks().AddCheck<CosmosDbReadinessHealthCheck>("CosmosDB Readiness Health Check", failureStatus: HealthStatus.Degraded, tags: ["readiness"]);
-        services.AddHealthChecks().AddCheck<AzureStorageReadinessHealthCheck>("Azure Storage Readiness Health Check", failureStatus: HealthStatus.Degraded, tags: ["readiness"]);
-        //TODO: this is commented out until a refactor of the profiles is done. The Search Index must exist in order to check its readiness.
-        //services.AddHealthChecks().AddCheck<AzureSearchReadinessHealthCheck>("Azure Search Readiness Health Check", failureStatus: HealthStatus.Degraded, tags: ["readiness"]);
+        services.AddHealthChecks()
+            .AddCheck<CosmosDbReadinessHealthCheck>("CosmosDB Readiness Health Check", failureStatus: HealthStatus.Degraded, tags: ["readiness"])
+            .AddCheck<AzureStorageReadinessHealthCheck>("Azure Storage Readiness Health Check", failureStatus: HealthStatus.Degraded, tags: ["readiness"]);
+            //TODO: this is commented out until a refactor of the profiles is done. The Search Index must exist in order to check its readiness.
+            //.AddCheck<AzureSearchReadinessHealthCheck>("Azure Search Readiness Health Check", failureStatus: HealthStatus.Degraded, tags: ["readiness"]);
 
         return services;
     }
 
     internal static WebApplication MapCustomHealthChecks(this WebApplication app)
     {
+        // Readiness endpoint - runs health checks tagged with "readiness"
         app.MapHealthChecks("/healthz/ready", new HealthCheckOptions
         {
-            Predicate = healthCheck => healthCheck.Tags.Contains("readiness"),
-            ResponseWriter = WriteResponse
+            Predicate = healthCheck => healthCheck.Tags.Contains("readiness")
         });
 
-        app.MapHealthChecks("/healthz/live", new HealthCheckOptions
-        {
-            Predicate = _ => false
-        });
-
-        app.MapHealthChecks("/healthz/startup", new HealthCheckOptions
-        {
-            Predicate = _ => false
-        });
+        // Liveness and startup endpoints - simple endpoints that always return healthy
+        app.MapHealthChecks("/healthz/live");
+        app.MapHealthChecks("/healthz/startup");
 
         return app;
-    }
-
-    internal static Task WriteResponse(HttpContext context, HealthReport healthReport)
-    {
-        context.Response.ContentType = "application/json; charset=utf-8";
-
-        var options = new JsonWriterOptions { Indented = true };
-
-        using var memoryStream = new MemoryStream();
-        using (var jsonWriter = new Utf8JsonWriter(memoryStream, options))
-        {
-            jsonWriter.WriteStartObject();
-            jsonWriter.WriteString("status", healthReport.Status.ToString());
-            jsonWriter.WriteStartObject("results");
-
-            foreach (var healthReportEntry in healthReport.Entries)
-            {
-                jsonWriter.WriteStartObject(healthReportEntry.Key);
-                jsonWriter.WriteString("status",
-                    healthReportEntry.Value.Status.ToString());
-                jsonWriter.WriteString("description",
-                    healthReportEntry.Value.Description);
-                jsonWriter.WriteStartObject("data");
-
-                foreach (var item in healthReportEntry.Value.Data)
-                {
-                    jsonWriter.WritePropertyName(item.Key);
-
-                    System.Text.Json.JsonSerializer.Serialize(jsonWriter, item.Value,
-                        item.Value?.GetType() ?? typeof(object));
-                }
-
-                jsonWriter.WriteEndObject();
-                jsonWriter.WriteEndObject();
-            }
-
-            jsonWriter.WriteEndObject();
-            jsonWriter.WriteEndObject();
-        }
-
-        return context.Response.WriteAsync(
-            Encoding.UTF8.GetString(memoryStream.ToArray()));
-    }
-
-    private static bool UseAPIMAIGatewayOBO(AppConfiguration config)
-    {
-        return config.AzureServicePrincipalClientID != null
-                && config.AzureServicePrincipalClientSecret != null
-                && config.AzureTenantID != null
-                && config.AzureAuthorityHost != null
-                && config.AzureServicePrincipalOpenAIAudience != null;
     }
 }
