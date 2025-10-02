@@ -23,9 +23,9 @@ internal sealed class EndpointTaskService : IChatService
         var url = _configuration[profile.AssistantEndpointSettings.APIEndpointSetting];
         var payload = string.Empty;
 
-        var apiRequest = new HttpRequestMessage(HttpMethod.Post, url);
-        apiRequest.Headers.Add("X-Api-Key", _configuration[profile.AssistantEndpointSettings.APIEndpointKeySetting]);
-        apiRequest.Content = BuildTaskRequest(request);
+    using var apiRequest = new HttpRequestMessage(HttpMethod.Post, url);
+    apiRequest.Headers.Add("X-Api-Key", _configuration[profile.AssistantEndpointSettings.APIEndpointKeySetting]);
+    apiRequest.Content = BuildTaskRequest(request);
         if (apiRequest.Content == null)
         {
             var msg = $"System Error: Unable to create request for {profile.Name}";

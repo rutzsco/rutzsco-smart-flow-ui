@@ -28,9 +28,9 @@ internal sealed class EndpointChatServiceV2 : IChatService
 
         var payload = System.Text.Json.JsonSerializer.Serialize(new { thread_id = stateThread, message = request.LastUserQuestion});
         var url = $"{_configuration[profile.AssistantEndpointSettings.APIEndpointSetting]}/run_assistant";
-        var apiRequest = new HttpRequestMessage(HttpMethod.Post, url);
-        //apiRequest.Headers.Add("X-Api-Key", _configuration[profile.AssistantEndpointSettings.APIEndpointKeySetting]);
-        apiRequest.Content = new StringContent(payload, Encoding.UTF8, "application/json");
+    using var apiRequest = new HttpRequestMessage(HttpMethod.Post, url);
+    //apiRequest.Headers.Add("X-Api-Key", _configuration[profile.AssistantEndpointSettings.APIEndpointKeySetting]);
+    apiRequest.Content = new StringContent(payload, Encoding.UTF8, "application/json");
         var sb = new StringBuilder();
 
 
@@ -68,7 +68,7 @@ internal sealed class EndpointChatServiceV2 : IChatService
             var file = request.FileUploads.First();
             var payload = new { file_name = file.FileName, file_data = file.DataUrl.Replace("data:text/csv;base64,","").Replace("data:application/vnd.openxmlformats-officedocument.spreadsheetml.sheet;base64,", "") };
             var url = $"{_configuration[profile.AssistantEndpointSettings.APIEndpointSetting]}/upload_file_and_create_thread";
-            var apiRequest = new HttpRequestMessage(HttpMethod.Post, url);
+            using var apiRequest = new HttpRequestMessage(HttpMethod.Post, url);
             apiRequest.Content = new StringContent(System.Text.Json.JsonSerializer.Serialize(payload), Encoding.UTF8, "application/json");
             var response = await _httpClient.SendAsync(apiRequest);
             response.EnsureSuccessStatusCode();
@@ -81,7 +81,7 @@ internal sealed class EndpointChatServiceV2 : IChatService
         {
             var payload = new { };
             var url = $"{_configuration[profile.AssistantEndpointSettings.APIEndpointSetting]}/create_thread";
-            var apiRequest = new HttpRequestMessage(HttpMethod.Post, url);
+            using var apiRequest = new HttpRequestMessage(HttpMethod.Post, url);
             //apiRequest.Headers.Add("X-Api-Key", _configuration[profile.AssistantEndpointSettings.APIEndpointKeySetting]);
             apiRequest.Content = new StringContent(string.Empty, Encoding.UTF8, "application/json");
             var response = await _httpClient.SendAsync(apiRequest);

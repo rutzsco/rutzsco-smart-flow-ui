@@ -190,7 +190,7 @@ internal static class ServiceCollectionExtensions
                                 AuthorityHost = new Uri(config.AzureAuthorityHost)
                             });
 
-        var httpClient = sp.GetService<IHttpClientFactory>().CreateClient();
+        using var httpClient = sp.GetService<IHttpClientFactory>().CreateClient();
 
         //if the configuration specifies a subscription key, add it to the request headers
         if (config.OcpApimSubscriptionKey != null)

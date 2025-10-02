@@ -213,7 +213,8 @@ public class TextToImageService
 
         foreach (var kvp in editFields)
         {
-            form.Add(new StringContent(kvp.Value), kvp.Key);
+            using var content = new StringContent(kvp.Value);
+            form.Add(content, kvp.Key);
         }
     }
     
@@ -222,10 +223,10 @@ public class TextToImageService
     /// </summary>
     private void AddImageContent(MultipartFormDataContent form, byte[] imageData, string imageMediaType)
     {
-        var imageContent = new ByteArrayContent(imageData);
-        imageContent.Headers.ContentType = new MediaTypeHeaderValue(imageMediaType);
-        string fileName = $"image.{imageMediaType.Split('/')[1]}";
-        form.Add(imageContent, "image", fileName);
+    using var imageContent = new ByteArrayContent(imageData);
+    imageContent.Headers.ContentType = new MediaTypeHeaderValue(imageMediaType);
+    string fileName = $"image.{imageMediaType.Split('/')[1]}";
+    form.Add(imageContent, "image", fileName);
     }
     
     /// <summary>
