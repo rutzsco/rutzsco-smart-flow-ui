@@ -42,11 +42,8 @@ builder.Services.AddOptions<AppConfiguration>()
 var appConfiguration = new AppConfiguration();
 builder.Configuration.Bind(appConfiguration);
 
-// Add Azure services to the container.
-if (appConfiguration.UseManagedIdentityResourceAccess)
-    builder.Services.AddAzureWithMICredentialsServices(appConfiguration);
-else
-    builder.Services.AddAzureServices(appConfiguration);
+// Add Azure services to the container - unified method handles both key-based and MI credentials
+builder.Services.AddAzureServices(appConfiguration);
 
 builder.Services.AddAntiforgery(options => { options.HeaderName = "X-CSRF-TOKEN-HEADER"; options.FormFieldName = "X-CSRF-TOKEN-FORM"; });
 

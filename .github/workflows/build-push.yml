@@ -68,10 +68,6 @@ jobs:
         with:
           images: ${{ steps.vars.outputs.ghcr_image }}
           tags: |
-            type=ref,event=branch
-            type=ref,event=tag
-            type=sha
-            type=raw,value=latest,enable={{is_default_branch}}
             type=raw,value=${{ steps.vars.outputs.datetime }}
 
       - name: Extract Docker metadata (ACR)
@@ -80,10 +76,6 @@ jobs:
         with:
           images: ${{ steps.vars.outputs.acr_image }}
           tags: |
-            type=ref,event=branch
-            type=ref,event=tag
-            type=sha
-            type=raw,value=latest,enable={{is_default_branch}}
             type=raw,value=${{ steps.vars.outputs.datetime }}
 
       - name: Build and push to GHCR and ACR

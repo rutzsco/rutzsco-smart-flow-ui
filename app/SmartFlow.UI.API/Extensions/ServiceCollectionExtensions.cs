@@ -21,101 +21,27 @@ internal static class ServiceCollectionExtensions
 {
     internal static IServiceCollection AddAzureServices(this IServiceCollection services, AppConfiguration configuration)
     {
-        var sp = services.BuildServiceProvider();
-        var httpContextAccessor = sp.GetRequiredService<IHttpContextAccessor>();
-
-        DefaultAzureCredential azureCredential;
-        services.AddAzureClients(builder =>
-        {
-            if (!string.IsNullOrEmpty(configuration.VisualStudioTenantId))
-            {
-                azureCredential = new DefaultAzureCredential(new DefaultAzureCredentialOptions
-                {
-                    VisualStudioTenantId = configuration.VisualStudioTenantId
-                });
-                builder.UseCredential(azureCredential);
-            }
-            else
-            {
-                if (!string.IsNullOrEmpty(configuration.UserAssignedManagedIdentityClientId))
-                {
-                    azureCredential = new DefaultAzureCredential(new DefaultAzureCredentialOptions
-                    {
-                        ManagedIdentityClientId = configuration.UserAssignedManagedIdentityClientId
-                    });
-                    builder.UseCredential(azureCredential);
-                }
-                else
-                {
-                    azureCredential = new DefaultAzureCredential(new DefaultAzureCredentialOptions());
-                    builder.UseCredential(azureCredential);
-                }
-            }
-
-            builder.AddBlobServiceClient(configuration.AzureStorageAccountEndpoint);
-        });
+        // Create DefaultAzureCredential with appropriate options
+        var azureCredential = CreateDefaultAzureCredential(configuration);
 
         // Register TokenCredential for DI
-        services.AddSingleton<TokenCredential>(sp => 
-        {
-            if (!string.IsNullOrEmpty(configuration.VisualStudioTenantId))
-            {
-                return new DefaultAzureCredential(new DefaultAzureCredentialOptions
-                {
-                    VisualStudioTenantId = configuration.VisualStudioTenantId
-                });
-            }
-            else
-            {
-                if (!string.IsNullOrEmpty(configuration.UserAssignedManagedIdentityClientId))
-                {
-                    return new DefaultAzureCredential(new DefaultAzureCredentialOptions
-                    {
-                        ManagedIdentityClientId = configuration.UserAssignedManagedIdentityClientId
-                    });
-                }
-                else
-                {
-                    return new DefaultAzureCredential(new DefaultAzureCredentialOptions());
-                }
-            }
-        });
+        services.AddSingleton<TokenCredential>(azureCredential);
 
-        services.AddSingleton<BlobContainerClient>(sp =>
-        {
-            var azureStorageContainer = configuration.AzureStorageContainer;
-            return sp.GetRequiredService<BlobServiceClient>().GetBlobContainerClient(azureStorageContainer);
-        });
+        // Register BlobServiceClient and BlobContainerClient
+        RegisterBlobServices(services, configuration, azureCredential);
 
-        services.AddSingleton<OpenAIClientFacade>(sp =>
-        {
-            var facade = new OpenAIClientFacade(configuration, new Azure.AzureKeyCredential(configuration.AOAIStandardServiceKey), null, sp.GetRequiredService<IHttpClientFactory>(), sp.GetRequiredService<SearchClientFactory>());
-            return facade;
-        });
+        // Register CosmosClient - prefer connection string if provided, otherwise use credential
+        RegisterCosmosClient(services, configuration, azureCredential);
 
-        services.AddSingleton<SearchClientFactory>(sp =>
-        {
-            return new SearchClientFactory(configuration, null, new AzureKeyCredential(configuration.AzureSearchServiceKey));
-        });
+        // Register OpenAI and Search clients - use keys if provided, otherwise use credential
+        RegisterOpenAIServices(services, configuration, azureCredential);
+        RegisterSearchServices(services, configuration, azureCredential);
 
-        // Register PersistentAgentsClient using AzureAIAgent.CreateAgentsClient
+        // Register PersistentAgentsClient if endpoint is configured
         if (!string.IsNullOrEmpty(configuration.AzureAIFoundryProjectEndpoint))
         {
             services.AddSingleton<PersistentAgentsClient>(sp =>
-            {
-                var credential = sp.GetRequiredService<TokenCredential>();
-                return AzureAIAgent.CreateAgentsClient(configuration.AzureAIFoundryProjectEndpoint, credential);
-            });
-        }
-
-        if (!string.IsNullOrEmpty(configuration.CosmosDBConnectionString))
-        {
-            services.AddSingleton((sp) =>
-            {
-                CosmosClientBuilder configurationBuilder = new CosmosClientBuilder(configuration.CosmosDBConnectionString);
-                return configurationBuilder
-                        .Build();
-            });
+                AzureAIAgent.CreateAgentsClient(configuration.AzureAIFoundryProjectEndpoint, azureCredential));
         }
 
         RegisterDomainServices(services, configuration);
@@ -123,76 +49,91 @@ internal static class ServiceCollectionExtensions
         return services;
     }
 
-    internal static IServiceCollection AddAzureWithMICredentialsServices(this IServiceCollection services, AppConfiguration configuration)
+    private static DefaultAzureCredential CreateDefaultAzureCredential(AppConfiguration configuration)
     {
-        var sp = services.BuildServiceProvider();
-        var httpContextAccessor = sp.GetRequiredService<IHttpContextAccessor>();
-        DefaultAzureCredential azureCredential;
+        var options = new DefaultAzureCredentialOptions();
+
         if (!string.IsNullOrEmpty(configuration.VisualStudioTenantId))
         {
-            azureCredential = new(new DefaultAzureCredentialOptions { VisualStudioTenantId = configuration.VisualStudioTenantId });
+            options.VisualStudioTenantId = configuration.VisualStudioTenantId;
         }
-        else
+        else if (!string.IsNullOrEmpty(configuration.UserAssignedManagedIdentityClientId))
         {
-            if (!string.IsNullOrEmpty(configuration.UserAssignedManagedIdentityClientId))
-            {
-                azureCredential = new(new DefaultAzureCredentialOptions { ManagedIdentityClientId = configuration.UserAssignedManagedIdentityClientId });
-            }
-            else
-            {
-                azureCredential = new(new DefaultAzureCredentialOptions());
-            }
+            options.ManagedIdentityClientId = configuration.UserAssignedManagedIdentityClientId;
         }
 
-        // Register TokenCredential for DI
-        services.AddSingleton<TokenCredential>(azureCredential);
+        return new DefaultAzureCredential(options);
+    }
 
+    private static void RegisterBlobServices(IServiceCollection services, AppConfiguration configuration, TokenCredential azureCredential)
+    {
         services.AddSingleton<BlobServiceClient>(sp =>
         {
-            var azureStorageAccountEndpoint = configuration.AzureStorageAccountEndpoint;
-            ArgumentNullException.ThrowIfNullOrEmpty(azureStorageAccountEndpoint);
-
-            var blobServiceClient = new BlobServiceClient(new Uri(azureStorageAccountEndpoint), azureCredential);
-
-            return blobServiceClient;
+            var endpoint = configuration.AzureStorageAccountEndpoint;
+            ArgumentNullException.ThrowIfNullOrEmpty(endpoint);
+            return new BlobServiceClient(new Uri(endpoint), azureCredential);
         });
 
         services.AddSingleton<BlobContainerClient>(sp =>
         {
-            var azureStorageContainer = configuration.AzureStorageContainer;
-            return sp.GetRequiredService<BlobServiceClient>().GetBlobContainerClient(azureStorageContainer);
+            var container = configuration.AzureStorageContainer;
+            return sp.GetRequiredService<BlobServiceClient>().GetBlobContainerClient(container);
         });
+    }
 
-        services.AddSingleton<OpenAIClientFacade>(sp =>
+    private static void RegisterCosmosClient(IServiceCollection services, AppConfiguration configuration, TokenCredential azureCredential)
+    {
+        // Prefer connection string if provided, otherwise use endpoint with credential
+        if (!string.IsNullOrEmpty(configuration.CosmosDBConnectionString))
         {
-            var facade = new OpenAIClientFacade(configuration, null, azureCredential, sp.GetRequiredService<IHttpClientFactory>(), sp.GetRequiredService<SearchClientFactory>());
-            return facade;
-        });
-
-        services.AddSingleton((sp) =>
-        {
-            var cosmosDbEndpoint = configuration.CosmosDbEndpoint;
-            var client = new CosmosClient(cosmosDbEndpoint, azureCredential);
-            return client;
-        });
-
-        services.AddSingleton<SearchClientFactory>(sp =>
-        {
-            return new SearchClientFactory(configuration, azureCredential);
-        });
-
-        // Register PersistentAgentsClient using AzureAIAgent.CreateAgentsClient with Managed Identity
-        if (!string.IsNullOrEmpty(configuration.AzureAIFoundryProjectEndpoint))
-        {
-            services.AddTransient<PersistentAgentsClient>(sp =>
+            services.AddSingleton<CosmosClient>(sp =>
             {
-                return AzureAIAgent.CreateAgentsClient(configuration.AzureAIFoundryProjectEndpoint, azureCredential);
+                var builder = new CosmosClientBuilder(configuration.CosmosDBConnectionString);
+                return builder.Build();
             });
         }
+        else if (!string.IsNullOrEmpty(configuration.CosmosDbEndpoint))
+        {
+            services.AddSingleton<CosmosClient>(sp =>
+            {
+                return new CosmosClient(configuration.CosmosDbEndpoint, azureCredential);
+            });
+        }
+    }
 
-        RegisterDomainServices(services, configuration);
+    private static void RegisterOpenAIServices(IServiceCollection services, AppConfiguration configuration, TokenCredential azureCredential)
+    {
+        services.AddSingleton<OpenAIClientFacade>(sp =>
+        {
+            // Use key if provided, otherwise use credential
+            var keyCredential = !string.IsNullOrEmpty(configuration.AOAIStandardServiceKey)
+                ? new AzureKeyCredential(configuration.AOAIStandardServiceKey)
+                : null;
 
-        return services;
+            var tokenCredential = keyCredential == null ? azureCredential : null;
+
+            return new OpenAIClientFacade(
+                configuration,
+                keyCredential,
+                tokenCredential,
+                sp.GetRequiredService<IHttpClientFactory>(),
+                sp.GetRequiredService<SearchClientFactory>());
+        });
+    }
+
+    private static void RegisterSearchServices(IServiceCollection services, AppConfiguration configuration, TokenCredential azureCredential)
+    {
+        services.AddSingleton<SearchClientFactory>(sp =>
+        {
+            // Use key if provided, otherwise use credential
+            var keyCredential = !string.IsNullOrEmpty(configuration.AzureSearchServiceKey)
+                ? new AzureKeyCredential(configuration.AzureSearchServiceKey)
+                : null;
+
+            var tokenCredential = keyCredential == null ? azureCredential : null;
+
+            return new SearchClientFactory(configuration, tokenCredential, keyCredential);
+        });
     }
 
     private static void RegisterDomainServices(IServiceCollection services, AppConfiguration configuration)
