@@ -7,6 +7,7 @@ using Azure;
 using Azure.Identity;
 using Azure.AI.Agents.Persistent;
 using Microsoft.SemanticKernel.Agents.AzureAI;
+using MinimalApi.M365;
 
 #pragma warning disable SKEXP0110
 
@@ -49,6 +50,9 @@ builder.Services.AddAntiforgery(options => { options.HeaderName = "X-CSRF-TOKEN-
 
 builder.Services.AddSingleton<AppConfiguration>();
 builder.Services.AddSingleton<ProfileService>();
+
+// Add M365 Agent services
+builder.Services.AddM365AgentServices();
 
 if (builder.Environment.IsDevelopment())
 {
@@ -114,7 +118,11 @@ app.MapAgentManagementApi();
 app.MapChatApi();
 app.MapApi();
 
+// Map M365 Agent endpoints
+app.MapM365AgentEndpoints();
+
 app.MapCustomHealthChecks();
 
 app.Run();
+
 

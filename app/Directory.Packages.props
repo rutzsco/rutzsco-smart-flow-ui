@@ -21,6 +21,8 @@
     <PackageVersion Include="coverlet.collector" Version="6.0.0" />
     <PackageVersion Include="iTextSharp" Version="5.5.13.3" />
     <PackageVersion Include="Markdig" Version="0.41.1" />
+    <PackageVersion Include="Microsoft.Agents.Authentication.Msal" Version="1.2.41" />
+    <PackageVersion Include="Microsoft.Agents.Hosting.AspNetCore" Version="1.2.41" />
     <PackageVersion Include="Microsoft.ApplicationInsights.AspNetCore" Version="2.23.0" />
     <PackageVersion Include="Microsoft.AspNet.WebApi.Client" Version="6.0.0" />
     <PackageVersion Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" Version="8.0.14" />

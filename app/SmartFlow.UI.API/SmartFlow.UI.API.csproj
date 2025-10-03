@@ -22,6 +22,8 @@
   <ItemGroup>
     <ProjectReference Include="..\shared\Shared\Shared.csproj" />
     <ProjectReference Include="..\SmartFlow.UI.Client\SmartFlow.UI.Client.csproj" />
+    <PackageReference Include="Microsoft.Agents.Authentication.Msal" />
+    <PackageReference Include="Microsoft.Agents.Hosting.AspNetCore" />
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Server" />
     <PackageReference Include="Azure.Extensions.AspNetCore.DataProtection.Blobs" />
     <PackageReference Include="Azure.Identity" />
