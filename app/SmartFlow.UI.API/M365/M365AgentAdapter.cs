@@ -1,8 +1,6 @@
 // Copyright (c) Microsoft. All rights reserved.
 
-using Microsoft.Agents.Builder;
-using Microsoft.Agents.Builder.App;
-using Microsoft.Agents.Builder.State;
+using AgentActivity = Microsoft.Agents.Core.Models.Activity;
 using Microsoft.Agents.Core.Models;
 using MinimalApi.Agents;
 using MinimalApi.Services.Profile;
@@ -10,116 +8,85 @@ using System.Text;
 
 namespace MinimalApi.M365;
 
-/// <summary>
-/// Adapter class to integrate SmartFlow UI agents with Microsoft 365 Copilot chat.
-/// This adapter bridges the existing chat services with the M365 Agent framework.
-/// </summary>
-public class M365AgentAdapter : AgentApplication
+public class M365AgentAdapter
 {
     private readonly IChatService _chatService;
     private readonly ProfileService _profileService;
     private readonly ILogger<M365AgentAdapter> _logger;
 
     public M365AgentAdapter(
-        AgentApplicationOptions options, 
         IChatService chatService,
         ProfileService profileService,
-        ILogger<M365AgentAdapter> logger) : base(options)
+        ILogger<M365AgentAdapter> logger)
     {
         _chatService = chatService ?? throw new ArgumentNullException(nameof(chatService));
         _profileService = profileService ?? throw new ArgumentNullException(nameof(profileService));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
-
-        // Register event handlers
-        OnConversationUpdate(ConversationUpdateEvents.MembersAdded, WelcomeMessageAsync);
-        OnActivity(ActivityTypes.Message, OnMessageAsync, rank: RouteRank.Last);
     }
 
-    /// <summary>
-    /// Handles welcome messages when new members are added to the conversation.
-    /// </summary>
-    private async Task WelcomeMessageAsync(
-        ITurnContext turnContext, 
-        ITurnState turnState, 
-        CancellationToken cancellationToken)
+    public async Task<AgentActivity> ProcessActivityAsync(AgentActivity activity, CancellationToken cancellationToken = default)
     {
         try
         {
-            foreach (ChannelAccount member in turnContext.Activity.MembersAdded)
+            if (activity.Type == ActivityTypes.ConversationUpdate && activity.MembersAdded?.Any() == true)
             {
-                if (member.Id != turnContext.Activity.Recipient.Id)
-                {
-                    var welcomeMessage = "Hello and Welcome! I'm your SmartFlow AI assistant. How can I help you today?";
-                    await turnContext.SendActivityAsync(
-                        MessageFactory.Text(welcomeMessage), 
-                        cancellationToken);
-                    
-                    _logger.LogInformation("Sent welcome message to user: {UserId}", member.Id);
-                }
+                return HandleWelcome(activity);
             }
+            else if (activity.Type == ActivityTypes.Message && !string.IsNullOrEmpty(activity.Text))
+            {
+                return await HandleMessageAsync(activity, cancellationToken);
+            }
+
+            return CreateResponse(activity, "Activity type not supported.");
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error sending welcome message");
-            throw;
+            _logger.LogError(ex, "Error processing activity");
+            return CreateResponse(activity, "I apologize, but I encountered an error processing your request.");
         }
     }
 
-    /// <summary>
-    /// Handles incoming messages and routes them through the SmartFlow chat service.
-    /// </summary>
-    private async Task OnMessageAsync(
-        ITurnContext turnContext, 
-        ITurnState turnState, 
-        CancellationToken cancellationToken)
+    private AgentActivity HandleWelcome(AgentActivity activity)
+    {
+        var welcomeMessage = "Hello and Welcome! I'm your SmartFlow AI assistant. How can I help you today?";
+        _logger.LogInformation("Sending welcome message");
+        return CreateResponse(activity, welcomeMessage);
+    }
+
+    private async Task<AgentActivity> HandleMessageAsync(AgentActivity activity, CancellationToken cancellationToken)
     {
         try
         {
-            var userMessage = turnContext.Activity.Text;
-            _logger.LogInformation("Received message from user: {Message}", userMessage);
+            var userMessage = activity.Text;
+            _logger.LogInformation("Received message: {Message}", userMessage);
 
-            var response = await ProcessMessageAsync(userMessage, turnContext, turnState, cancellationToken);
-            
-            await turnContext.SendActivityAsync(
-                response, 
-                cancellationToken: cancellationToken);
+            var response = await ProcessMessageAsync(userMessage, activity, cancellationToken);
+            return CreateResponse(activity, response);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error processing message");
-            await turnContext.SendActivityAsync(
-                "I apologize, but I encountered an error processing your request. Please try again.",
-                cancellationToken: cancellationToken);
+            _logger.LogError(ex, "Error handling message");
+            return CreateResponse(activity, "I apologize, but I couldn't process your message.");
         }
     }
 
-    /// <summary>
-    /// Processes the user's message through the SmartFlow chat service.
-    /// </summary>
-    private async Task<string> ProcessMessageAsync(
-        string userMessage, 
-        ITurnContext turnContext,
-        ITurnState turnState,
-        CancellationToken cancellationToken)
+    private async Task<string> ProcessMessageAsync(string userMessage, AgentActivity activity, CancellationToken cancellationToken)
     {
         try
         {
-            // Get profile data and user information
             var profileInfo = await _profileService.GetProfileDataAsync();
-            var userId = GetUserId(turnContext);
-            var conversationId = GetConversationId(turnContext);
+            var userId = GetUserId(activity);
+            var conversationId = GetConversationId(activity);
             
-            // Get the first available profile (you may want to make this configurable)
             var profile = profileInfo.Profiles.FirstOrDefault();
             if (profile == null)
             {
                 return "No profiles configured. Please configure a profile in the system.";
             }
 
-            // Create user information
             var userInfo = new UserInformation(
                 IsIdentityEnabled: false,
-                UserName: turnContext.Activity.From?.Name ?? "M365User",
+                UserName: activity.From?.Name ?? "M365User",
                 UserId: userId,
                 SessionId: conversationId,
                 Profiles: new[] { new ProfileSummary(
@@ -135,7 +102,6 @@ public class M365AgentAdapter : AgentApplication
                 Groups: new[] { "M365Users" }
             );
 
-            // Create chat request
             var chatRequest = new ChatRequest(
                 ChatId: Guid.TryParse(conversationId, out var chatGuid) ? chatGuid : Guid.NewGuid(),
                 ChatTurnId: Guid.NewGuid(),
@@ -147,7 +113,6 @@ public class M365AgentAdapter : AgentApplication
                 ThreadId: conversationId
             );
 
-            // Call chat service and collect response
             var responseBuilder = new StringBuilder();
             await foreach (var chunk in _chatService.ReplyAsync(userInfo, profile, chatRequest, cancellationToken))
             {
@@ -172,19 +137,26 @@ public class M365AgentAdapter : AgentApplication
         }
     }
 
-    /// <summary>
-    /// Retrieves or creates conversation state for the current turn.
-    /// </summary>
-    private string GetConversationId(ITurnContext turnContext)
+    private AgentActivity CreateResponse(AgentActivity incomingActivity, string text)
     {
-        return turnContext.Activity.Conversation?.Id ?? Guid.NewGuid().ToString();
+        return new AgentActivity
+        {
+            Type = ActivityTypes.Message,
+            Text = text,
+            From = incomingActivity.Recipient,
+            Recipient = incomingActivity.From,
+            Conversation = incomingActivity.Conversation,
+            ReplyToId = incomingActivity.Id
+        };
     }
 
-    /// <summary>
-    /// Retrieves the user identifier from the current turn context.
-    /// </summary>
-    private string GetUserId(ITurnContext turnContext)
+    private string GetConversationId(AgentActivity activity)
     {
-        return turnContext.Activity.From?.Id ?? "anonymous";
+        return activity.Conversation?.Id ?? Guid.NewGuid().ToString();
+    }
+
+    private string GetUserId(AgentActivity activity)
+    {
+        return activity.From?.Id ?? "anonymous";
     }
 }

@@ -166,6 +166,8 @@ internal static class ServiceCollectionExtensions
         services.AddSingleton<ImageGenerationChatAgent>();
         services.AddSingleton<TextToImageService>();
         services.AddSingleton<ChatService>();
+        // Register ChatService as the default IChatService implementation for M365 integration
+        services.AddSingleton<IChatService>(sp => sp.GetRequiredService<ChatService>());
         services.AddSingleton<RAGChatService>();
         services.AddSingleton<AzureAIAgentChatService>();
         services.AddSingleton<EndpointChatService>();

@@ -1,6 +1,6 @@
 // Copyright (c) Microsoft. All rights reserved.
 
-using Microsoft.Agents.Hosting.AspNetCore;
+using AgentActivity = Microsoft.Agents.Core.Models.Activity;
 using MinimalApi.Agents;
 
 namespace MinimalApi.M365;
@@ -31,13 +31,12 @@ public static class M365AgentExtensions
         // Map the agent adapter to handle incoming requests
         // The /api/m365/messages endpoint will receive messages from M365 Copilot/Teams
         app.MapPost("/api/m365/messages", async (
-            HttpRequest request,
-            HttpResponse response,
-            IAgentHttpAdapter adapter,
-            M365AgentAdapter agent,
+            AgentActivity activity,
+            M365AgentAdapter adapter,
             CancellationToken cancellationToken) =>
         {
-            await adapter.ProcessAsync(request, response, agent, cancellationToken);
+            var response = await adapter.ProcessActivityAsync(activity, cancellationToken);
+            return Results.Ok(response);
         });
 
         return app;
