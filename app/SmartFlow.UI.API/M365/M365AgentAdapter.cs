@@ -1,76 +1,83 @@
 // Copyright (c) Microsoft. All rights reserved.
 
-using AgentActivity = Microsoft.Agents.Core.Models.Activity;
 using Microsoft.Agents.Core.Models;
+using Microsoft.Agents.Builder;
+using Microsoft.Agents.Builder.App;
+using Microsoft.Agents.Builder.State;
 using MinimalApi.Agents;
 using MinimalApi.Services.Profile;
 using System.Text;
 
 namespace MinimalApi.M365;
 
-public class M365AgentAdapter
+/// <summary>
+/// M365 Agent that integrates with SmartFlow chat services.
+/// Follows the Microsoft Agents SDK pattern using AgentApplication base class.
+/// </summary>
+public class M365AgentAdapter : AgentApplication
 {
     private readonly IChatService _chatService;
     private readonly ProfileService _profileService;
     private readonly ILogger<M365AgentAdapter> _logger;
 
     public M365AgentAdapter(
+        AgentApplicationOptions options,
         IChatService chatService,
         ProfileService profileService,
-        ILogger<M365AgentAdapter> logger)
+        ILogger<M365AgentAdapter> logger) : base(options)
     {
         _chatService = chatService ?? throw new ArgumentNullException(nameof(chatService));
         _profileService = profileService ?? throw new ArgumentNullException(nameof(profileService));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
+
+        // Register event handlers following the SDK pattern
+        OnConversationUpdate(ConversationUpdateEvents.MembersAdded, WelcomeMessageAsync);
+        OnActivity(ActivityTypes.Message, OnMessageAsync, rank: RouteRank.Last);
     }
 
-    public async Task<AgentActivity> ProcessActivityAsync(AgentActivity activity, CancellationToken cancellationToken = default)
+    /// <summary>
+    /// Handles the welcome message when new members are added to the conversation.
+    /// </summary>
+    private async Task WelcomeMessageAsync(ITurnContext turnContext, ITurnState turnState, CancellationToken cancellationToken)
+    {
+        foreach (ChannelAccount member in turnContext.Activity.MembersAdded)
+        {
+            if (member.Id != turnContext.Activity.Recipient.Id)
+            {
+                await turnContext.SendActivityAsync(
+                    MessageFactory.Text("Hello and Welcome! I'm your SmartFlow AI assistant. How can I help you today?"),
+                    cancellationToken);
+                _logger.LogInformation("Sent welcome message to user: {UserId}", member.Id);
+            }
+        }
+    }
+
+    /// <summary>
+    /// Handles incoming message activities.
+    /// </summary>
+    private async Task OnMessageAsync(ITurnContext turnContext, ITurnState turnState, CancellationToken cancellationToken)
     {
         try
         {
-            if (activity.Type == ActivityTypes.ConversationUpdate && activity.MembersAdded?.Any() == true)
-            {
-                return HandleWelcome(activity);
-            }
-            else if (activity.Type == ActivityTypes.Message && !string.IsNullOrEmpty(activity.Text))
-            {
-                return await HandleMessageAsync(activity, cancellationToken);
-            }
-
-            return CreateResponse(activity, "Activity type not supported.");
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error processing activity");
-            return CreateResponse(activity, "I apologize, but I encountered an error processing your request.");
-        }
-    }
-
-    private AgentActivity HandleWelcome(AgentActivity activity)
-    {
-        var welcomeMessage = "Hello and Welcome! I'm your SmartFlow AI assistant. How can I help you today?";
-        _logger.LogInformation("Sending welcome message");
-        return CreateResponse(activity, welcomeMessage);
-    }
-
-    private async Task<AgentActivity> HandleMessageAsync(AgentActivity activity, CancellationToken cancellationToken)
-    {
-        try
-        {
-            var userMessage = activity.Text;
+            var userMessage = turnContext.Activity.Text;
             _logger.LogInformation("Received message: {Message}", userMessage);
 
-            var response = await ProcessMessageAsync(userMessage, activity, cancellationToken);
-            return CreateResponse(activity, response);
+            var response = await ProcessMessageAsync(userMessage, turnContext.Activity, cancellationToken);
+            await turnContext.SendActivityAsync(response, cancellationToken: cancellationToken);
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error handling message");
-            return CreateResponse(activity, "I apologize, but I couldn't process your message.");
+            await turnContext.SendActivityAsync(
+                "I apologize, but I encountered an error processing your request.",
+                cancellationToken: cancellationToken);
         }
     }
 
-    private async Task<string> ProcessMessageAsync(string userMessage, AgentActivity activity, CancellationToken cancellationToken)
+    /// <summary>
+    /// Processes the user's message through the SmartFlow chat service.
+    /// </summary>
+    private async Task<string> ProcessMessageAsync(string userMessage, IActivity activity, CancellationToken cancellationToken)
     {
         try
         {
@@ -137,25 +144,12 @@ public class M365AgentAdapter
         }
     }
 
-    private AgentActivity CreateResponse(AgentActivity incomingActivity, string text)
-    {
-        return new AgentActivity
-        {
-            Type = ActivityTypes.Message,
-            Text = text,
-            From = incomingActivity.Recipient,
-            Recipient = incomingActivity.From,
-            Conversation = incomingActivity.Conversation,
-            ReplyToId = incomingActivity.Id
-        };
-    }
-
-    private string GetConversationId(AgentActivity activity)
+    private string GetConversationId(IActivity activity)
     {
         return activity.Conversation?.Id ?? Guid.NewGuid().ToString();
     }
 
-    private string GetUserId(AgentActivity activity)
+    private string GetUserId(IActivity activity)
     {
         return activity.From?.Id ?? "anonymous";
     }
