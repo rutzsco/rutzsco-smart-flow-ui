@@ -39,6 +39,19 @@
     ]
   },
   {
+    "Name": "Auto Advisor Agent",
+    "Id": "AutoAdvisorAgentChat",
+    "Approach": "AzureAIAgentChatProfile",
+    "SecurityModel": "None",
+    "AllowFileUpload": false,
+    "AzureAIAgentID": "asst_zIjdt3r2WGmRtvWHo8pzL5YX",
+    "SampleQuestions": [
+      "How do I change the oil?",
+      "What are the different maintenance intervals?",
+      "What is the air filter part number?"
+    ]
+  },
+  {
     "Name": "Auto Service Advisor",
     "Id": "AutoServiceAdvisor",
     "Approach": "RAG",
