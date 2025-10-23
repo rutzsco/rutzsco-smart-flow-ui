@@ -4,94 +4,125 @@ using Shared.Json;
 
 namespace MinimalApi.Services.ChatHistory;
 
-public class DocumentService : IDocumentService
+public class DocumentService
 {
-    private readonly CosmosClient _cosmosClient;
-    private readonly Container _cosmosContainer;
     private readonly AzureBlobStorageService _blobStorageService;
-    private readonly HttpClient _httpClient;
     private readonly AppConfiguration _configuration;
+    private readonly BlobServiceClient _blobServiceClient;
 
-    public DocumentService(CosmosClient cosmosClient, AzureBlobStorageService blobStorageService, HttpClient httpClient, AppConfiguration configuration)
+    public DocumentService(AzureBlobStorageService blobStorageService, AppConfiguration configuration, BlobServiceClient blobServiceClient)
     {
-        _cosmosClient = cosmosClient;
         _blobStorageService = blobStorageService;
-
-        if (configuration.IngestionPipelineAPI != null)
-        {
-            _httpClient = httpClient;
-
-            _httpClient.BaseAddress = new Uri(configuration.IngestionPipelineAPI);
-            _httpClient.DefaultRequestHeaders.Add("x-functions-key", configuration.IngestionPipelineAPIKey);
-            _httpClient.DefaultRequestHeaders.Add("Accept", "application/json");
-            _configuration = configuration;
-        }
-
-        // Create database if it doesn't exist
-        var db = _cosmosClient.CreateDatabaseIfNotExistsAsync(DefaultSettings.CosmosDbDatabaseName).GetAwaiter().GetResult();
-
-        // Create get container if it doesn't exist
-        _cosmosContainer = db.Database.CreateContainerIfNotExistsAsync(DefaultSettings.CosmosDBUserDocumentsCollectionName, "/userId").GetAwaiter().GetResult();
+        _configuration = configuration;
+        _blobServiceClient = blobServiceClient;
     }
 
     public async Task<UploadDocumentsResponse> CreateDocumentUploadAsync(UserInformation userInfo, IFormFileCollection files, string selectedProfile, Dictionary<string, string>? fileMetadata, CancellationToken cancellationToken)
     {
         var response = await _blobStorageService.UploadFilesAsync(userInfo, files, selectedProfile, new Dictionary<string, string>(), cancellationToken);
-        foreach (var file in response.UploadedFiles)
-        {
-            await CreateDocumentUploadAsync(userInfo, file);
-        }
         return response;
     }
 
-
-    private async Task CreateDocumentUploadAsync(UserInformation user, UploadDocumentFileSummary fileSummary, string contentType = "application/pdf")
+    /// <summary>
+    /// Gets all blob storage containers that have the metadata tag "managed-collection" set to "true"
+    /// </summary>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>List of container names that are managed collections</returns>
+    public async Task<List<string>> GetCollectionsAsync(CancellationToken cancellationToken = default)
     {
-        // Get Ingestion Index Name
-        var indexRequest = new GetIndexRequest() { index_stem_name = "rag-index" };
-        var indexRequestJson = System.Text.Json.JsonSerializer.Serialize(indexRequest, SerializerOptions.Default);
-        using var indexRequestPayload = new StringContent(indexRequestJson, Encoding.UTF8, "application/json");
-        var response = await _httpClient.PostAsync("api/get_active_index", indexRequestPayload);
-        response.EnsureSuccessStatusCode();
-
-        var indexName = await response.Content.ReadAsStringAsync();
-
-        var document = new DocumentUpload(Guid.NewGuid().ToString(), user.UserId, fileSummary.FileName, fileSummary.FileName, contentType, fileSummary.Size, indexName, user.SessionId, DocumentProcessingStatus.New);
-        await _cosmosContainer.CreateItemAsync(document, partitionKey: new PartitionKey(document.UserId));
-
-        var request = new ProcessingData()
+        var collections = new List<string>();
+        
+        await foreach (var containerItem in _blobServiceClient.GetBlobContainersAsync(BlobContainerTraits.Metadata, cancellationToken: cancellationToken))
         {
-            source_container = _configuration.UserDocumentUploadBlobStorageContentContainer,
-            extract_container = _configuration.UserDocumentUploadBlobStorageExtractContainer,
-            prefix_path = fileSummary.FileName,
-            entra_id = user.UserId,
-            session_id = user.SessionId,
-            index_name = indexName,
-            index_stem_name = "rag-index",
-            cosmos_record_id = document.Id,
-            automatically_delete = false
-        };
+            if (containerItem.Properties?.Metadata != null &&
+                containerItem.Properties.Metadata.TryGetValue("managed-collection", out var value) &&
+                value?.Equals("true", StringComparison.OrdinalIgnoreCase) == true)
+            {
+                collections.Add(containerItem.Name);
+            }
+        }
 
-        var json = System.Text.Json.JsonSerializer.Serialize(request, SerializerOptions.Default);
-        using var body = new StringContent(json, Encoding.UTF8, "application/json");
-        var triggerResponse = await _httpClient.PostAsync("/api/orchestrators/pdf_orchestrator", body);
+        return collections;
     }
 
+    /// <summary>
+    /// Adds the "managed-collection": "true" metadata tag to the specified container
+    /// </summary>
+    /// <param name="containerName">The name of the container to tag</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>True if successful, false otherwise</returns>
+    public async Task<bool> AddManagedCollectionTagAsync(string containerName, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var containerClient = _blobServiceClient.GetBlobContainerClient(containerName);
+            
+            if (!await containerClient.ExistsAsync(cancellationToken))
+            {
+                return false;
+            }
+
+            var properties = await containerClient.GetPropertiesAsync(cancellationToken: cancellationToken);
+            var metadata = properties.Value.Metadata ?? new Dictionary<string, string>();
+            
+            metadata["managed-collection"] = "true";
+            
+            await containerClient.SetMetadataAsync(metadata, cancellationToken: cancellationToken);
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Gets all files (blobs) in the specified container
+    /// </summary>
+    /// <param name="containerName">The name of the container</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>List of blob names in the container</returns>
+    public async Task<List<string>> GetFilesInContainerAsync(string containerName, CancellationToken cancellationToken = default)
+    {
+        var files = new List<string>();
+        var containerClient = _blobServiceClient.GetBlobContainerClient(containerName);
+
+        if (!await containerClient.ExistsAsync(cancellationToken))
+        {
+            return files;
+        }
+
+        await foreach (var blobItem in containerClient.GetBlobsAsync(cancellationToken: cancellationToken))
+        {
+            files.Add(blobItem.Name);
+        }
+
+        return files;
+    }
+
+    /// <summary>
+    /// Uploads files to a specific container using the blob storage service
+    /// </summary>
+    /// <param name="userInfo">User information</param>
+    /// <param name="files">Files to upload</param>
+    /// <param name="containerName">Target container name</param>
+    /// <param name="metadata">Optional metadata for the files</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>Upload response with details of uploaded files</returns>
+    public async Task<UploadDocumentsResponse> UploadFilesToContainerAsync(
+        UserInformation userInfo, 
+        IFormFileCollection files, 
+        string containerName, 
+        Dictionary<string, string>? metadata = null,
+        CancellationToken cancellationToken = default)
+    {
+        var fileMetadata = metadata ?? new Dictionary<string, string>();
+        var response = await _blobStorageService.UploadFilesAsync(userInfo, files, containerName, fileMetadata, cancellationToken);
+        return response;
+    }
 
     public async Task<List<DocumentUpload>> GetDocumentUploadsAsync(UserInformation user, string? profileId = null)
     {
-        var query = _cosmosContainer.GetItemQueryIterator<DocumentUpload>(
-            new QueryDefinition("SELECT TOP 100 * FROM c WHERE  c.userId = @username AND c.sessionId = @sessionId ORDER BY c.sourceName DESC")
-            .WithParameter("@username", user.UserId)
-            .WithParameter("@sessionId", user.SessionId));
-
-        var results = new List<DocumentUpload>();
-        while (query.HasMoreResults)
-        {
-            var response = await query.ReadNextAsync();
-            results.AddRange(response.ToList());
-        }
-
-        return results;
+        return null;
     }
 }

@@ -142,24 +142,14 @@ internal static class ServiceCollectionExtensions
         if (string.IsNullOrEmpty(configuration.CosmosDBConnectionString) && string.IsNullOrEmpty(configuration.CosmosDbEndpoint))
         {
             services.AddScoped<IChatHistoryService, ChatHistoryServiceStub>();
-            services.AddScoped<IDocumentService, DocumentServiceSub>();
         }
         else
         {
             services.AddSingleton<IChatHistoryService, ChatHistoryService>();
-
-            var documentUploadStrategy = configuration.DocumentUploadStrategy;
-            if (documentUploadStrategy == "AzureNative")
-            {
-                services.AddSingleton<IDocumentService, DocumentServiceAzureNative>();
-                services.AddHttpClient<DocumentServiceAzureNative>();
-            }
-            else
-            {
-                services.AddSingleton<IDocumentService, DocumentService>();
-                services.AddHttpClient<DocumentService>();
-            }
         }
+
+        services.AddSingleton<DocumentService, DocumentService>();
+        services.AddHttpClient<DocumentService>();
 
 
         services.AddSingleton<AzureAIAgentManagementService>();

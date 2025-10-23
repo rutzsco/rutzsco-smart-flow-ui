@@ -186,7 +186,7 @@ internal static class WebApiExtensions
 
     private static async Task<IResult> OnPostDocumentAsync(HttpContext context, [FromForm] IFormFileCollection files,
         [FromServices] AzureBlobStorageService service,
-        [FromServices] IDocumentService documentService,
+        [FromServices] DocumentService documentService,
         [FromServices] ILogger<AzureBlobStorageService> logger,
         CancellationToken cancellationToken)
     {
@@ -214,14 +214,14 @@ internal static class WebApiExtensions
         return Results.Ok(userInfo);
     }
 
-    private static async Task<IResult> OnGetUserDocumentsAsync(HttpContext context, IDocumentService documentService)
+    private static async Task<IResult> OnGetUserDocumentsAsync(HttpContext context, DocumentService documentService)
     {
         var userInfo = await context.GetUserInfoAsync();
         var documents = await documentService.GetDocumentUploadsAsync(userInfo, null);
         return TypedResults.Ok(documents.Select(d => new DocumentSummary(d.Id, d.SourceName, d.ContentType, d.Size, d.Status, d.StatusMessage, d.ProcessingProgress, d.Timestamp, d.Metadata)));
     }
 
-    private static async Task<IResult> OnGetCollectionDocumentsAsync(HttpContext context, IDocumentService documentService, string profileId)
+    private static async Task<IResult> OnGetCollectionDocumentsAsync(HttpContext context, DocumentService documentService, string profileId)
     {
         var userInfo = await context.GetUserInfoAsync();
         var documents = await documentService.GetDocumentUploadsAsync(userInfo, profileId);

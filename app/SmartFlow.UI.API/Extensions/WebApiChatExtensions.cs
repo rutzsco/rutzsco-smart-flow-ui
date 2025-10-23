@@ -24,10 +24,10 @@ internal static class WebApiChatExtensions
         return app;
     }
 
-    private static async Task<ApproachResponse> OnPostChatAsync(HttpContext context, ChatRequest request, ChatService chatService, RAGChatService ragChatService, IChatHistoryService chatHistoryService, EndpointChatService endpointChatService, EndpointChatServiceV2 endpointChatServiceV2, EndpointTaskService endpointTaskService, AzureAIAgentChatService azureAIAgentChatService, ImageGenerationChatAgent imageGenerationChatAgent, IDocumentService documentService, [EnumeratorCancellation] CancellationToken cancellationToken)
+    private static async Task<ApproachResponse> OnPostChatAsync(HttpContext context, ChatRequest request, ChatService chatService, RAGChatService ragChatService, IChatHistoryService chatHistoryService, EndpointChatService endpointChatService, EndpointChatServiceV2 endpointChatServiceV2, EndpointTaskService endpointTaskService, AzureAIAgentChatService azureAIAgentChatService, ImageGenerationChatAgent imageGenerationChatAgent, [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         ApproachResponse response = null;
-        var resultChunks = OnPostChatStreamingAsync(context, request, chatService, ragChatService, azureAIAgentChatService, chatHistoryService, endpointChatService, endpointChatServiceV2, endpointTaskService, imageGenerationChatAgent, documentService, cancellationToken);
+        var resultChunks = OnPostChatStreamingAsync(context, request, chatService, ragChatService, azureAIAgentChatService, chatHistoryService, endpointChatService, endpointChatServiceV2, endpointTaskService, imageGenerationChatAgent, cancellationToken);
         await foreach (var chunk in resultChunks)
         {
             if (chunk.FinalResult != null)
@@ -39,7 +39,7 @@ internal static class WebApiChatExtensions
         return response;
     }
 
-    private static async IAsyncEnumerable<ChatChunkResponse> OnPostChatStreamingAsync(HttpContext context, ChatRequest request, ChatService chatService, RAGChatService ragChatService, AzureAIAgentChatService azureAIAgentChatService, IChatHistoryService chatHistoryService, EndpointChatService endpointChatService, EndpointChatServiceV2 endpointChatServiceV2, EndpointTaskService endpointTaskService, ImageGenerationChatAgent imageGenerationChatAgent, IDocumentService documentService, [EnumeratorCancellation] CancellationToken cancellationToken)
+    private static async IAsyncEnumerable<ChatChunkResponse> OnPostChatStreamingAsync(HttpContext context, ChatRequest request, ChatService chatService, RAGChatService ragChatService, AzureAIAgentChatService azureAIAgentChatService, IChatHistoryService chatHistoryService, EndpointChatService endpointChatService, EndpointChatServiceV2 endpointChatServiceV2, EndpointTaskService endpointTaskService, ImageGenerationChatAgent imageGenerationChatAgent, [EnumeratorCancellation] CancellationToken cancellationToken)
     {
         var profileService = context.RequestServices.GetRequiredService<ProfileService>();
         var profileInfo = await profileService.GetProfileDataAsync();
@@ -51,17 +51,17 @@ internal static class WebApiChatExtensions
             throw new UnauthorizedAccessException("User does not have access to this profile");
         }
 
-        if (profile.Approach == ProfileApproach.UserDocumentChat.ToString())
-        {
-            ArgumentNullException.ThrowIfNull(profile.RAGSettings, "Profile RAGSettings is null");
+        //if (profile.Approach == ProfileApproach.UserDocumentChat.ToString())
+        //{
+        //    ArgumentNullException.ThrowIfNull(profile.RAGSettings, "Profile RAGSettings is null");
 
-            var selectedDocument = request.SelectedUserCollectionFiles.FirstOrDefault();
-            var documents = await documentService.GetDocumentUploadsAsync(userInfo, null);
-            var document = documents.FirstOrDefault(d => d.SourceName == selectedDocument);
+        //    var selectedDocument = request.SelectedUserCollectionFiles.FirstOrDefault();
+        //    var documents = await documentService.GetDocumentUploadsAsync(userInfo, null);
+        //    var document = documents.FirstOrDefault(d => d.SourceName == selectedDocument);
 
-            ArgumentNullException.ThrowIfNull(document, "Document is null");
-            profile.RAGSettings.DocumentRetrievalIndexName = document.RetrivalIndexName;
-        }
+        //    ArgumentNullException.ThrowIfNull(document, "Document is null");
+        //    profile.RAGSettings.DocumentRetrievalIndexName = document.RetrivalIndexName;
+        //}
 
         var chat = await ResolveChatServiceAsync(request, chatService, ragChatService, endpointChatService, endpointChatServiceV2, endpointTaskService, azureAIAgentChatService, imageGenerationChatAgent, profileService);
         await foreach (var chunk in chat.ReplyAsync(userInfo, profile, request).WithCancellation(cancellationToken))

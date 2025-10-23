@@ -117,6 +117,7 @@ app.MapFallbackToFile("index.html");
 app.MapAgentManagementApi();
 app.MapChatApi();
 app.MapApi();
+app.MapCollectionApi();
 
 // Map M365 Agent endpoints
 app.MapM365AgentEndpoints();
