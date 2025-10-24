@@ -12,6 +12,93 @@ public sealed class ApiClient(HttpClient httpClient)
         using var body = new StringContent(json, Encoding.UTF8, "application/json");
         var response = await httpClient.PostAsync("api/ingestion/trigger", body);
     }
+    
+    // Collection Management APIs
+    public async Task<List<string>> GetCollectionsAsync()
+    {
+        try
+        {
+            var response = await httpClient.GetAsync("api/collections");
+            response.EnsureSuccessStatusCode();
+            return await response.Content.ReadFromJsonAsync<List<string>>() ?? new List<string>();
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Error fetching collections: {ex.Message}");
+            return new List<string>();
+        }
+    }
+
+    public async Task<bool> CreateCollectionAsync(string containerName)
+    {
+        try
+        {
+            var response = await httpClient.PostAsync($"api/collections/{containerName}/tag", null);
+            return response.IsSuccessStatusCode;
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Error creating collection: {ex.Message}");
+            return false;
+        }
+    }
+
+    public async Task<List<string>> GetCollectionFilesAsync(string containerName)
+    {
+        try
+        {
+            var response = await httpClient.GetAsync($"api/collections/{containerName}/files");
+            response.EnsureSuccessStatusCode();
+            return await response.Content.ReadFromJsonAsync<List<string>>() ?? new List<string>();
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Error fetching collection files: {ex.Message}");
+            return new List<string>();
+        }
+    }
+
+    public async Task<UploadDocumentsResponse> UploadFilesToCollectionAsync(IReadOnlyList<IBrowserFile> files, long maxAllowedSize, string containerName, IDictionary<string, string>? metadata = null)
+    {
+        try
+        {
+            using var content = new MultipartFormDataContent();
+
+            foreach (var file in files)
+            {
+#pragma warning disable CA2000 // Dispose objects before losing scope
+                var fileContent = new StreamContent(file.OpenReadStream(maxAllowedSize));
+#pragma warning restore CA2000 // Dispose objects before losing scope
+                fileContent.Headers.ContentType = new MediaTypeHeaderValue(file.ContentType);
+
+                content.Add(fileContent, file.Name, file.Name);
+            }
+
+            var tokenResponse = await httpClient.GetAsync("api/token/csrf");
+            tokenResponse.EnsureSuccessStatusCode();
+            var token = await tokenResponse.Content.ReadAsStringAsync();
+            token = token.Trim('"');
+
+            content.Headers.Add("X-CSRF-TOKEN-FORM", token);
+            content.Headers.Add("X-CSRF-TOKEN-HEADER", token);
+
+            if (metadata != null)
+            {
+                string serializedHeaders = System.Text.Json.JsonSerializer.Serialize(metadata);
+                content.Headers.Add("X-FILE-METADATA", serializedHeaders);
+            }
+
+            var response = await httpClient.PostAsync($"api/collections/{containerName}/upload", content);
+            response.EnsureSuccessStatusCode();
+
+            var result = await response.Content.ReadFromJsonAsync<UploadDocumentsResponse>();
+            return result ?? UploadDocumentsResponse.FromError("Unable to upload files, unknown error.");
+        }
+        catch (Exception ex)
+        {
+            return UploadDocumentsResponse.FromError(ex.ToString());
+        }
+    }
     public async Task<UserInformation> GetUserAsync()
     {
         if (Cache.UserInformation != null)

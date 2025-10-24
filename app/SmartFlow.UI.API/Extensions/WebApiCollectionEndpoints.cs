@@ -57,24 +57,26 @@ internal static class WebApiCollectionEndpoints
     {
         try
         {
-            logger.LogInformation("Adding managed collection tag to container: {ContainerName}", containerName);
+            logger.LogInformation("Creating/tagging managed collection: {ContainerName}", containerName);
 
             var userInfo = await context.GetUserInfoAsync();
             var success = await documentService.AddManagedCollectionTagAsync(containerName, cancellationToken);
 
             if (success)
             {
-                return TypedResults.Ok(new { success = true, message = $"Container '{containerName}' tagged as managed collection" });
+                logger.LogInformation("Successfully created/tagged container '{ContainerName}' as managed collection", containerName);
+                return TypedResults.Ok(new { success = true, message = $"Collection '{containerName}' created successfully" });
             }
             else
             {
-                return Results.NotFound(new { success = false, message = $"Container '{containerName}' not found" });
+                logger.LogWarning("Failed to create/tag container '{ContainerName}'", containerName);
+                return Results.BadRequest(new { success = false, message = $"Failed to create collection '{containerName}'" });
             }
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Error adding managed collection tag to container: {ContainerName}", containerName);
-            return Results.Problem("Error tagging container");
+            logger.LogError(ex, "Error creating/tagging managed collection: {ContainerName}", containerName);
+            return Results.Problem("Error creating collection");
         }
     }
 

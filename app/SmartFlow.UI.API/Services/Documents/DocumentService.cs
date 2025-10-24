@@ -35,7 +35,7 @@ public class DocumentService
         await foreach (var containerItem in _blobServiceClient.GetBlobContainersAsync(BlobContainerTraits.Metadata, cancellationToken: cancellationToken))
         {
             if (containerItem.Properties?.Metadata != null &&
-                containerItem.Properties.Metadata.TryGetValue("managed-collection", out var value) &&
+                containerItem.Properties.Metadata.TryGetValue("managedcollection", out var value) &&
                 value?.Equals("true", StringComparison.OrdinalIgnoreCase) == true)
             {
                 collections.Add(containerItem.Name);
@@ -46,7 +46,8 @@ public class DocumentService
     }
 
     /// <summary>
-    /// Adds the "managed-collection": "true" metadata tag to the specified container
+    /// Adds the "managed-collection": "true" metadata tag to the specified container.
+    /// Creates the container if it doesn't exist.
     /// </summary>
     /// <param name="containerName">The name of the container to tag</param>
     /// <param name="cancellationToken">Cancellation token</param>
@@ -57,15 +58,18 @@ public class DocumentService
         {
             var containerClient = _blobServiceClient.GetBlobContainerClient(containerName);
             
+            // Create the container if it doesn't exist
             if (!await containerClient.ExistsAsync(cancellationToken))
             {
-                return false;
+                await containerClient.CreateAsync(cancellationToken: cancellationToken);
             }
 
+            // Get current metadata (if container already existed, preserve existing metadata)
             var properties = await containerClient.GetPropertiesAsync(cancellationToken: cancellationToken);
             var metadata = properties.Value.Metadata ?? new Dictionary<string, string>();
             
-            metadata["managed-collection"] = "true";
+            // Add or update the managed-collection tag
+            metadata["managedcollection"] = "true";
             
             await containerClient.SetMetadataAsync(metadata, cancellationToken: cancellationToken);
             return true;

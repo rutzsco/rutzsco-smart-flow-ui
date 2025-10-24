@@ -148,9 +148,7 @@ internal static class ServiceCollectionExtensions
             services.AddSingleton<IChatHistoryService, ChatHistoryService>();
         }
 
-        services.AddSingleton<DocumentService, DocumentService>();
-        services.AddHttpClient<DocumentService>();
-
+        services.AddSingleton<DocumentService>();
 
         services.AddSingleton<AzureAIAgentManagementService>();
         services.AddSingleton<ImageGenerationChatAgent>();

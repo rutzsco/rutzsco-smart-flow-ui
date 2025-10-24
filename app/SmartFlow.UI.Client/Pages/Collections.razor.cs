@@ -1,7 +1,6 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 
 using Shared.Models;
-using static System.Runtime.InteropServices.JavaScript.JSType;
 
 namespace SmartFlow.UI.Client.Pages;
 
@@ -10,71 +9,88 @@ public sealed partial class Collections : IDisposable
     private const long MaxIndividualFileSize = 1_024 * 1_024 * 10;
 
     private MudForm _form = null!;
+    private MudForm _createCollectionForm = null!;
+    private bool _createCollectionFormValid = false;
 
-    private IList<IBrowserFile> _files = new List<IBrowserFile>();
-    //private MudFileUpload<IReadOnlyList<IBrowserFile>> _fileUpload = null!;
-    private Task _getDocumentsTask = null!;
     private bool _isLoadingDocuments = false;
     private bool _isUploadingDocuments = false;
     private bool _isIndexingDocuments = false;
+    private bool _isLoadingCollections = false;
+    private bool _showUploadSection = false; // Hidden by default - user clicks "Upload Document" to show
     private string _filter = "";
 
     // Store a cancelation token that will be used to cancel if the user disposes of this component.
     private readonly CancellationTokenSource _cancellationTokenSource = new();
-    private readonly HashSet<DocumentSummary> _documents = [];
 
     [Inject] public required ApiClient Client { get; set; }
     [Inject] public required ISnackbar Snackbar { get; set; }
-    [Inject] public required ILogger<Docs> Logger { get; set; }
+    [Inject] public required ILogger<Collections> Logger { get; set; }
     [Inject] public required IJSRuntime JSRuntime { get; set; }
     [Inject] public required HttpClient HttpClient { get; set; }
 
-    //private bool FilesSelected => _fileUpload is { _files.: > 0 };
-
-    private List<ProfileSummary> _profiles = new();
-    private ProfileSummary? _selectedProfileSummary = null;
-    private string _selectedProfile = "";
-    private UserSelectionModel? _userSelectionModel = null;
+    // Collection management
+    private List<string> _collections = new();
+    private string _selectedCollection = "";
+    private List<string> _collectionFiles = new();
+    private bool _showCreateCollectionForm = false;
+    private string _newCollectionName = "";
 
     protected override async Task OnInitializedAsync()
     {
-        var user = await Client.GetUserAsync();
-        _profiles = user.Profiles.Where(x => x.SupportsUserSelectionOptions).ToList();
-        _selectedProfileSummary = user.Profiles.Where(x => x.SupportsUserSelectionOptions).FirstOrDefault();
-        await SetSelectedProfileAsync(_selectedProfileSummary);
-
-        // Instead of awaiting this async enumerable here, let's capture it in a task
-        // and start it in the background. This way, we can await it in the UI.
-        _getDocumentsTask = GetDocumentsAsync();
-    }
-    private async Task OnProfileClickAsync(string selection)
-    {
-        await SetSelectedProfileAsync(_profiles.FirstOrDefault(x => x.Name == selection));
-        await GetDocumentsAsync();
+        // Load collections
+        await LoadCollectionsAsync();
     }
 
-    private async Task SetSelectedProfileAsync(ProfileSummary profile)
+    private async Task LoadCollectionsAsync()
     {
-        _selectedProfile = profile.Name;
-        _selectedProfileSummary = profile;
-        _userSelectionModel = await Client.GetProfileUserSelectionModelAsync(profile.Id);
-    }
-
-    private bool OnFilter(DocumentSummary document) => document is not null
-        && (string.IsNullOrWhiteSpace(_filter) || document.Name.Contains(_filter, StringComparison.OrdinalIgnoreCase));
-
-    private async Task GetDocumentsAsync()
-    {
-        _isLoadingDocuments = true;
-
+        _isLoadingCollections = true;
         try
         {
-            var documents = await Client.GetCollectionDocumentsAsync(_selectedProfileSummary.Id);
-            _documents.Clear();
-            foreach (var document in documents)
-            {
-                _documents.Add(document);
-            }
+            _collections = await Client.GetCollectionsAsync();
+            // Don't auto-select - require explicit user selection
+            _selectedCollection = "";
+            _collectionFiles.Clear();
+            _fileUploads.Clear();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error loading collections");
+            SnackBarError("Failed to load collections");
+        }
+        finally
+        {
+            _isLoadingCollections = false;
+            StateHasChanged();
+        }
+    }
+
+    private async Task SelectCollectionAsync(string collectionName)
+    {
+        if (_selectedCollection != collectionName)
+        {
+            _selectedCollection = collectionName;
+            _fileUploads.Clear(); // Clear any selected files when switching collections
+            _filter = ""; // Clear filter when switching collections
+            _showCreateCollectionForm = false; // Hide create form when selecting a collection
+            _showUploadSection = false; // Hide upload section when switching collections
+            await LoadCollectionFilesAsync();
+        }
+    }
+
+    private async Task LoadCollectionFilesAsync()
+    {
+        if (string.IsNullOrEmpty(_selectedCollection))
+            return;
+
+        _isLoadingDocuments = true;
+        try
+        {
+            _collectionFiles = await Client.GetCollectionFilesAsync(_selectedCollection);
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error loading collection files for {Collection}", _selectedCollection);
+            SnackBarError($"Failed to load files from collection '{_selectedCollection}'");
         }
         finally
         {
@@ -82,67 +98,133 @@ public sealed partial class Collections : IDisposable
             StateHasChanged();
         }
     }
-    private async Task RefreshAsync()
+
+    private void ShowCreateCollectionForm()
     {
-        await GetDocumentsAsync();
+        _newCollectionName = "";
+        _createCollectionFormValid = false;
+        _showCreateCollectionForm = true;
     }
-    private async Task SubmitFilesForUploadAsync()
+
+    private void CancelCreateCollection()
     {
-        if (_fileUploads.Any())
+        _showCreateCollectionForm = false;
+        _newCollectionName = "";
+        _createCollectionFormValid = false;
+    }
+
+    private string ValidateCollectionName(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+            return "Collection name is required";
+
+        // Azure Storage container naming rules
+        if (name.Length < 3 || name.Length > 63)
+            return "Collection name must be between 3 and 63 characters";
+
+        if (!System.Text.RegularExpressions.Regex.IsMatch(name, "^[a-z0-9]([a-z0-9-]*[a-z0-9])?$"))
+            return "Collection name must contain only lowercase letters, numbers, and hyphens, and must start and end with a letter or number";
+
+        if (name.Contains("--"))
+            return "Collection name cannot contain consecutive hyphens";
+
+        if (_collections.Contains(name))
+            return "A collection with this name already exists";
+
+        return null!;
+    }
+
+    private async Task CreateCollectionAsync()
+    {
+        if (string.IsNullOrWhiteSpace(_newCollectionName) || !_createCollectionFormValid)
         {
-            _isUploadingDocuments = true;
-            _isIndexingDocuments = false;
-            //var cookie = await JSRuntime.InvokeAsync<string>("getCookie", "XSRF-TOKEN");
+            SnackBarError("Please enter a valid collection name");
+            return;
+        }
 
-            var metadata = new Dictionary<string, string>();
-            foreach (var option in _userSelectionModel.Options)
+        try
+        {
+            var success = await Client.CreateCollectionAsync(_newCollectionName);
+            if (success)
             {
-                if (!string.IsNullOrEmpty(option.SelectedValue))
-                {
-                    metadata.Add(option.Name, option.SelectedValue);
-                }  
-            }
-            var result = await Client.UploadDocumentsAsync(_fileUploads.ToArray(), MaxIndividualFileSize, _selectedProfileSummary.Id, metadata);
-
-            Logger.LogInformation("Result: {x}", result);
-
-            if (result.IsSuccessful)
-            {
-                SnackBarMessage($"Uploaded {result.UploadedFiles.Length} documents.");
-                _fileUploads.Clear();
+                SnackBarMessage($"Collection '{_newCollectionName}' created successfully");
+                _showCreateCollectionForm = false;
+                var createdCollectionName = _newCollectionName;
+                _newCollectionName = "";
+                await LoadCollectionsAsync();
+                // Auto-select the newly created collection
+                await SelectCollectionAsync(createdCollectionName);
             }
             else
             {
-                SnackBarError($"Failed to upload {_fileUploads.Count} documents. {result.Error}");
-                _isUploadingDocuments = false;
-                _isIndexingDocuments = false;
-                await GetDocumentsAsync();
-                return;
+                SnackBarError($"Failed to create collection '{_newCollectionName}'");
             }
-
-            _isUploadingDocuments = false;
-            _isIndexingDocuments = true;
-            StateHasChanged();
-
-            // tried to get the access token and pass it into the API call but it crashes and burns here...
-            //var accessToken = await GetAuthMeFieldAsync("access_token");
-            //var indexRequest = new DocumentIndexRequest(result, accessToken);
-            //var indexResult = await Client.NativeIndexDocumentsAsync(indexRequest);
-
-            //var indexResult = await Client.NativeIndexDocumentsAsync(result);
-            //if (indexResult.AllFilesIndexed)
-            //{
-            //    SnackBarMessage($"{indexResult.IndexedCount} files indexed!");
-            //}
-            //else
-            //{
-            //    SnackBarError($"Trigger Index Failure!  Indexed {indexResult.IndexedCount} documents out of {indexResult.DocumentCount}. {indexResult.ErrorMessage}");
-            //}
         }
-        _isUploadingDocuments = false;
-        _isIndexingDocuments = false;
-        await GetDocumentsAsync();
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error creating collection {CollectionName}", _newCollectionName);
+            SnackBarError($"Error creating collection: {ex.Message}");
+        }
     }
+
+    private bool OnFileFilter(string fileName) => 
+        string.IsNullOrWhiteSpace(_filter) || fileName.Contains(_filter, StringComparison.OrdinalIgnoreCase);
+
+    private async Task RefreshAsync()
+    {
+        await LoadCollectionFilesAsync();
+    }
+
+    private async Task SubmitFilesForUploadAsync()
+    {
+        if (!_fileUploads.Any())
+        {
+            SnackBarError("Please select files to upload");
+            return;
+        }
+
+        if (string.IsNullOrEmpty(_selectedCollection))
+        {
+            SnackBarError("Please select a collection to upload to");
+            return;
+        }
+
+        _isUploadingDocuments = true;
+
+        try
+        {
+            var metadata = new Dictionary<string, string>();
+            var result = await Client.UploadFilesToCollectionAsync(
+                _fileUploads.ToArray(), 
+                MaxIndividualFileSize, 
+                _selectedCollection, 
+                metadata);
+
+            Logger.LogInformation("Upload result: {Result}", result);
+
+            if (result.IsSuccessful)
+            {
+                SnackBarMessage($"Uploaded {result.UploadedFiles.Length} document(s) to '{_selectedCollection}'");
+                _fileUploads.Clear();
+                _showUploadSection = false; // Hide upload section after successful upload
+            }
+            else
+            {
+                SnackBarError($"Failed to upload documents. {result.Error}");
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error uploading files to collection {Collection}", _selectedCollection);
+            SnackBarError($"Error uploading files: {ex.Message}");
+        }
+        finally
+        {
+            _isUploadingDocuments = false;
+            await RefreshAsync();
+        }
+    }
+
     private void SnackBarMessage(string? message) { SnackBarAdd(false, message); }
     private void SnackBarError(string? message) { SnackBarAdd(true, message); }
     private void SnackBarAdd(bool isError, string? message)
@@ -158,6 +240,7 @@ public sealed partial class Collections : IDisposable
     }
 
     private IList<IBrowserFile> _fileUploads = new List<IBrowserFile>();
+    
     private void UploadFiles(IReadOnlyList<IBrowserFile> files)
     {
         foreach (var file in files)
@@ -166,10 +249,11 @@ public sealed partial class Collections : IDisposable
         }
     }
 
-    private void OnShowDocumentAsync(DocumentSummary document)
+    private void RemoveFile(IBrowserFile file)
     {
+        _fileUploads.Remove(file);
+        StateHasChanged();
     }
-
 
     public void Dispose() => _cancellationTokenSource.Cancel();
 }
