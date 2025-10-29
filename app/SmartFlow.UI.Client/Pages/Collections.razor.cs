@@ -310,41 +310,33 @@ public sealed partial class Collections : IDisposable
                 
                 if (extension == ".pdf")
                 {
-                    // Show PDF in dialog
                     var parameters = new DialogParameters<CollectionPdfViewerDialog>
                     {
                         { x => x.FileName, Path.GetFileName(fileName) },
                         { x => x.FileUrl, fileUrl }
                     };
-
-                    var options = new DialogOptions
-                    {
-                        MaxWidth = MaxWidth.Large,
-                        FullWidth = true,
-                        CloseButton = true,
-                        CloseOnEscapeKey = true
-                    };
-
+                    var options = new DialogOptions { MaxWidth = MaxWidth.Large, FullWidth = true, CloseButton = true, CloseOnEscapeKey = true };
                     await DialogService.ShowAsync<CollectionPdfViewerDialog>(Path.GetFileName(fileName), parameters, options);
                 }
                 else if (extension == ".md")
                 {
-                    // Show Markdown in dialog
                     var parameters = new DialogParameters<MarkdownViewerDialog>
                     {
                         { x => x.FileName, Path.GetFileName(fileName) },
                         { x => x.FileUrl, fileUrl }
                     };
-
-                    var options = new DialogOptions
-                    {
-                        MaxWidth = MaxWidth.Large,
-                        FullWidth = true,
-                        CloseButton = true,
-                        CloseOnEscapeKey = true
-                    };
-
+                    var options = new DialogOptions { MaxWidth = MaxWidth.Large, FullWidth = true, CloseButton = true, CloseOnEscapeKey = true };
                     await DialogService.ShowAsync<MarkdownViewerDialog>(Path.GetFileName(fileName), parameters, options);
+                }
+                else if (extension == ".json")
+                {
+                    var parameters = new DialogParameters<JsonViewerDialog>
+                    {
+                        { x => x.FileName, Path.GetFileName(fileName) },
+                        { x => x.FileUrl, fileUrl }
+                    };
+                    var options = new DialogOptions { MaxWidth = MaxWidth.Large, FullWidth = true, CloseButton = true, CloseOnEscapeKey = true };
+                    await DialogService.ShowAsync<JsonViewerDialog>(Path.GetFileName(fileName), parameters, options);
                 }
                 else
                 {
@@ -366,7 +358,7 @@ public sealed partial class Collections : IDisposable
     private bool CanViewFile(string fileName)
     {
         var extension = Path.GetExtension(fileName).ToLowerInvariant();
-        return extension == ".pdf" || extension == ".md";
+        return extension is ".pdf" or ".md" or ".json";
     }
 
     public void Dispose() => _cancellationTokenSource.Cancel();
