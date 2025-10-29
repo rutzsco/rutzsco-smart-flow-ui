@@ -1,6 +1,7 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 
 using Shared.Json;
+using Shared.Models;
 
 namespace MinimalApi.Services.ChatHistory;
 
@@ -81,14 +82,14 @@ public class DocumentService
     }
 
     /// <summary>
-    /// Gets all files (blobs) in the specified container
+    /// Gets all files (blobs) in the specified container along with their associated processing files
     /// </summary>
     /// <param name="containerName">The name of the container</param>
     /// <param name="cancellationToken">Cancellation token</param>
-    /// <returns>List of blob names in the container</returns>
-    public async Task<List<string>> GetFilesInContainerAsync(string containerName, CancellationToken cancellationToken = default)
+    /// <returns>List of container file information including main files and their processing files</returns>
+    public async Task<List<ContainerFileInfo>> GetFilesInContainerAsync(string containerName, CancellationToken cancellationToken = default)
     {
-        var files = new List<string>();
+        var files = new List<ContainerFileInfo>();
         var containerClient = _blobServiceClient.GetBlobContainerClient(containerName);
 
         if (!await containerClient.ExistsAsync(cancellationToken))
@@ -96,9 +97,35 @@ public class DocumentService
             return files;
         }
 
+        // Get the extract container client
+        var extractContainerName = $"{containerName}-extract";
+        var extractContainerClient = _blobServiceClient.GetBlobContainerClient(extractContainerName);
+        var extractContainerExists = await extractContainerClient.ExistsAsync(cancellationToken);
+
         await foreach (var blobItem in containerClient.GetBlobsAsync(cancellationToken: cancellationToken))
         {
-            files.Add(blobItem.Name);
+            var fileInfo = new ContainerFileInfo(blobItem.Name);
+
+            // Check for processing files in the extract container
+            if (extractContainerExists)
+            {
+                var baseNameWithoutExtension = Path.GetFileNameWithoutExtension(blobItem.Name);
+                var directoryPath = Path.GetDirectoryName(blobItem.Name);
+                
+                // Look for files with the same base name in the extract container
+                var searchPrefix = string.IsNullOrEmpty(directoryPath) 
+                    ? baseNameWithoutExtension 
+                    : $"{directoryPath}/{baseNameWithoutExtension}";
+
+                await foreach (var extractBlobItem in extractContainerClient.GetBlobsAsync(prefix: searchPrefix, cancellationToken: cancellationToken))
+                {
+                    var extractBaseName = Path.GetFileNameWithoutExtension(extractBlobItem.Name);
+                    var originalBaseName = Path.GetFileNameWithoutExtension(blobItem.Name);
+                    fileInfo.ProcessingFiles.Add(extractBlobItem.Name);
+                }
+            }
+
+            files.Add(fileInfo);
         }
 
         return files;
@@ -123,6 +150,60 @@ public class DocumentService
         var fileMetadata = metadata ?? new Dictionary<string, string>();
         var response = await _blobStorageService.UploadFilesAsync(userInfo, files, containerName, fileMetadata, cancellationToken);
         return response;
+    }
+
+    /// <summary>
+    /// Downloads a file from a specific container
+    /// </summary>
+    /// <param name="containerName">The name of the container</param>
+    /// <param name="fileName">The name of the file to download</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>Tuple containing the file stream and content type</returns>
+    public async Task<(Stream? stream, string contentType)> DownloadFileAsync(
+        string containerName, 
+        string fileName, 
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var containerClient = _blobServiceClient.GetBlobContainerClient(containerName);
+            
+            if (!await containerClient.ExistsAsync(cancellationToken))
+            {
+                return (null, string.Empty);
+            }
+
+            var blobClient = containerClient.GetBlobClient(fileName);
+            
+            if (!await blobClient.ExistsAsync(cancellationToken))
+            {
+                return (null, string.Empty);
+            }
+
+            var download = await blobClient.DownloadAsync(cancellationToken);
+            var properties = await blobClient.GetPropertiesAsync(cancellationToken: cancellationToken);
+            
+            var contentType = properties.Value.ContentType;
+            
+            // Set appropriate content type based on file extension if not already set
+            if (string.IsNullOrEmpty(contentType))
+            {
+                contentType = Path.GetExtension(fileName).ToLowerInvariant() switch
+                {
+                    ".pdf" => "application/pdf",
+                    ".md" => "text/markdown",
+                    ".txt" => "text/plain",
+                    ".json" => "application/json",
+                    _ => "application/octet-stream"
+                };
+            }
+
+            return (download.Value.Content, contentType);
+        }
+        catch
+        {
+            return (null, string.Empty);
+        }
     }
 
     public async Task<List<DocumentUpload>> GetDocumentUploadsAsync(UserInformation user, string? profileId = null)

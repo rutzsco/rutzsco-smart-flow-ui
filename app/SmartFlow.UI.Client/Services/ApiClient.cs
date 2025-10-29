@@ -43,18 +43,48 @@ public sealed class ApiClient(HttpClient httpClient)
         }
     }
 
-    public async Task<List<string>> GetCollectionFilesAsync(string containerName)
+    public async Task<List<ContainerFileInfo>> GetCollectionFilesAsync(string containerName)
     {
         try
         {
             var response = await httpClient.GetAsync($"api/collections/{containerName}/files");
             response.EnsureSuccessStatusCode();
-            return await response.Content.ReadFromJsonAsync<List<string>>() ?? new List<string>();
+            return await response.Content.ReadFromJsonAsync<List<ContainerFileInfo>>() ?? new List<ContainerFileInfo>();
         }
         catch (Exception ex)
         {
             Debug.WriteLine($"Error fetching collection files: {ex.Message}");
-            return new List<string>();
+            return new List<ContainerFileInfo>();
+        }
+    }
+
+    public async Task<bool> ProcessDocumentLayoutAsync(string containerName, string fileName)
+    {
+        try
+        {
+            // TODO: Implement actual document layout processing endpoint
+            var response = await httpClient.PostAsync($"api/collections/{containerName}/process/{fileName}", null);
+            return response.IsSuccessStatusCode;
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Error processing document layout: {ex.Message}");
+            return false;
+        }
+    }
+
+    public async Task<string?> GetFileUrlAsync(string containerName, string fileName)
+    {
+        try
+        {
+            // URL encode the filename to handle special characters and paths
+            var encodedFileName = Uri.EscapeDataString(fileName);
+            return $"api/collections/{containerName}/download/{encodedFileName}";
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Error generating file URL: {ex.Message}");
+            return null;
         }
     }
 

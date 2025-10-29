@@ -18,6 +18,7 @@ public sealed partial class Collections : IDisposable
     private bool _isLoadingCollections = false;
     private bool _showUploadSection = false; // Hidden by default - user clicks "Upload Document" to show
     private string _filter = "";
+    private HashSet<string> _processingFiles = new(); // Track files being processed
 
     // Store a cancelation token that will be used to cancel if the user disposes of this component.
     private readonly CancellationTokenSource _cancellationTokenSource = new();
@@ -27,11 +28,12 @@ public sealed partial class Collections : IDisposable
     [Inject] public required ILogger<Collections> Logger { get; set; }
     [Inject] public required IJSRuntime JSRuntime { get; set; }
     [Inject] public required HttpClient HttpClient { get; set; }
+    [Inject] public required IDialogService DialogService { get; set; }
 
     // Collection management
     private List<string> _collections = new();
     private string _selectedCollection = "";
-    private List<string> _collectionFiles = new();
+    private List<ContainerFileInfo> _collectionFiles = new();
     private bool _showCreateCollectionForm = false;
     private string _newCollectionName = "";
 
@@ -167,8 +169,8 @@ public sealed partial class Collections : IDisposable
         }
     }
 
-    private bool OnFileFilter(string fileName) => 
-        string.IsNullOrWhiteSpace(_filter) || fileName.Contains(_filter, StringComparison.OrdinalIgnoreCase);
+    private bool OnFileFilter(ContainerFileInfo fileInfo) => 
+        string.IsNullOrWhiteSpace(_filter) || fileInfo.FileName.Contains(_filter, StringComparison.OrdinalIgnoreCase);
 
     private async Task RefreshAsync()
     {
@@ -253,6 +255,118 @@ public sealed partial class Collections : IDisposable
     {
         _fileUploads.Remove(file);
         StateHasChanged();
+    }
+
+    private async Task ProcessDocumentLayoutAsync(string fileName)
+    {
+        if (string.IsNullOrEmpty(_selectedCollection) || string.IsNullOrEmpty(fileName))
+            return;
+
+        // Add to processing set
+        _processingFiles.Add(fileName);
+        StateHasChanged();
+
+        try
+        {
+            Logger.LogInformation("Processing document layout for {FileName} in {Collection}", fileName, _selectedCollection);
+            
+            var success = await Client.ProcessDocumentLayoutAsync(_selectedCollection, fileName);
+            
+            if (success)
+            {
+                SnackBarMessage($"Document '{fileName}' processing started successfully");
+            }
+            else
+            {
+                SnackBarError($"Failed to start processing for '{fileName}'");
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error processing document layout for {FileName}", fileName);
+            SnackBarError($"Error processing document: {ex.Message}");
+        }
+        finally
+        {
+            // Remove from processing set
+            _processingFiles.Remove(fileName);
+            StateHasChanged();
+        }
+    }
+
+    private async Task ViewFileAsync(string fileName, bool isProcessingFile = false)
+    {
+        if (string.IsNullOrEmpty(_selectedCollection) || string.IsNullOrEmpty(fileName))
+            return;
+
+        try
+        {
+            var containerName = isProcessingFile ? $"{_selectedCollection}-extract" : _selectedCollection;
+            var fileUrl = await Client.GetFileUrlAsync(containerName, fileName);
+            
+            if (!string.IsNullOrEmpty(fileUrl))
+            {
+                var extension = Path.GetExtension(fileName).ToLowerInvariant();
+                
+                if (extension == ".pdf")
+                {
+                    // Show PDF in dialog
+                    var parameters = new DialogParameters<CollectionPdfViewerDialog>
+                    {
+                        { x => x.FileName, Path.GetFileName(fileName) },
+                        { x => x.FileUrl, fileUrl }
+                    };
+
+                    var options = new DialogOptions
+                    {
+                        MaxWidth = MaxWidth.Large,
+                        FullWidth = true,
+                        CloseButton = true,
+                        CloseOnEscapeKey = true
+                    };
+
+                    await DialogService.ShowAsync<CollectionPdfViewerDialog>(Path.GetFileName(fileName), parameters, options);
+                }
+                else if (extension == ".md")
+                {
+                    // Show Markdown in dialog
+                    var parameters = new DialogParameters<MarkdownViewerDialog>
+                    {
+                        { x => x.FileName, Path.GetFileName(fileName) },
+                        { x => x.FileUrl, fileUrl }
+                    };
+
+                    var options = new DialogOptions
+                    {
+                        MaxWidth = MaxWidth.Large,
+                        FullWidth = true,
+                        CloseButton = true,
+                        CloseOnEscapeKey = true
+                    };
+
+                    await DialogService.ShowAsync<MarkdownViewerDialog>(Path.GetFileName(fileName), parameters, options);
+                }
+                else
+                {
+                    SnackBarError($"File type '{extension}' is not supported for viewing");
+                }
+            }
+            else
+            {
+                SnackBarError("Failed to generate file URL");
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error viewing file {FileName}", fileName);
+            SnackBarError($"Error viewing file: {ex.Message}");
+        }
+    }
+
+    private bool CanViewFile(string fileName)
+    {
+        var extension = Path.GetExtension(fileName).ToLowerInvariant();
+        return extension == ".pdf" || extension == ".md";
     }
 
     public void Dispose() => _cancellationTokenSource.Cancel();
