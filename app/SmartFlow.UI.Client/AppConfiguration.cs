@@ -1,14 +1,17 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 
 using Microsoft.Extensions.Configuration;
+using Shared.Models;
 
 namespace SmartFlow.UI.Client;
 
 public static class AppConfiguration
 {
+    private static UIConfiguration? _uiConfig;
 
     public static void Load(IConfiguration config)
     {
+        // Load from local configuration as fallback
         LogoImagePath = config.GetValue<string>("LogoImagePath", "icon-512.png");
         ColorPaletteLightPrimary = config.GetValue<string>("ColorPaletteLightPrimary", "#84B1CB");
         ColorPaletteLightSecondary = config.GetValue<string>("ColorPaletteLightSecondary", "#287FA4");
@@ -20,6 +23,20 @@ public static class AppConfiguration
         ShowPremiumAOAIToggleSelection = config.GetValue<bool>("ShowPremiumAOAIToggleSelection", true);
 
         DisclaimerMessage = config.GetValue<string>("DisclaimerMessage", "DISCMLAIMER MESSAGE?");
+    }
+
+    public static void LoadFromServer(UIConfiguration config)
+    {
+        _uiConfig = config;
+        ColorPaletteLightPrimary = config.ColorPaletteLightPrimary;
+        ColorPaletteLightSecondary = config.ColorPaletteLightSecondary;
+        ColorPaletteLightAppbarBackground = config.ColorPaletteLightAppbarBackground;
+        LogoImagePath = config.LogoImagePath;
+        LogoImageWidth = config.LogoImageWidth;
+        HelloText = config.HelloText;
+        ShowSampleQuestions = config.ShowSampleQuestions;
+        ShowPremiumAOAIToggleSelection = config.ShowPremiumAOAIToggleSelection;
+        DisclaimerMessage = config.DisclaimerMessage;
     }
 
     public static string ColorPaletteLightPrimary { get; set; } = "#005eb8";

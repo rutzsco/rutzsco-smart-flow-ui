@@ -20,6 +20,9 @@ builder.Services.AddLocalStorageServices();
 builder.Services.AddSessionStorageServices();
 builder.Services.AddMudServices();
 
+// Register UI Configuration Service
+builder.Services.AddScoped<UIConfigurationService>();
+
 AppConfiguration.Load(builder.Configuration);
 
 await JSHost.ImportAsync(

@@ -6,19 +6,25 @@ namespace SmartFlow.UI.Client.Shared;
 
 public sealed partial class MainLayout
 {
-    private readonly MudTheme _theme = new()
+    private MudTheme _theme = CreateTheme();
+
+    private static MudTheme CreateTheme()
     {
-        PaletteLight = new PaletteLight
+        return new MudTheme
         {
-            Primary = AppConfiguration.ColorPaletteLightPrimary,
-            AppbarBackground = AppConfiguration.ColorPaletteLightAppbarBackground,
-            Secondary = AppConfiguration.ColorPaletteLightSecondary
-        },
-        PaletteDark = new PaletteDark
-        {
-            Primary = "#1277bd",
-        }
-    };
+            PaletteLight = new PaletteLight
+            {
+                Primary = AppConfiguration.ColorPaletteLightPrimary,
+                AppbarBackground = AppConfiguration.ColorPaletteLightAppbarBackground,
+                Secondary = AppConfiguration.ColorPaletteLightSecondary
+            },
+            PaletteDark = new PaletteDark
+            {
+                Primary = "#1277bd",
+            }
+        };
+    }
+
     private bool _drawerOpen = false;
     private bool _settingsOpen = false;
     private SettingsPanel? _settingsPanel;
@@ -63,6 +69,21 @@ public sealed partial class MainLayout
     [Inject] public required NavigationManager Nav { get; set; }
     [Inject] public required ILocalStorageService LocalStorage { get; set; }
     [Inject] public required IDialogService Dialog { get; set; }
+    [Inject] public required UIConfigurationService UIConfigService { get; set; }
+
+    protected override async Task OnInitializedAsync()
+    {
+        await base.OnInitializedAsync();
+        
+        // Load UI configuration from server
+        await UIConfigService.LoadConfigurationAsync();
+        
+        // Recreate theme with new configuration
+        _theme = CreateTheme();
+        
+        // Force a re-render to apply the new theme colors
+        StateHasChanged();
+    }
 
     private bool SettingsDisabled => new Uri(Nav.Uri).Segments.LastOrDefault() switch
     {

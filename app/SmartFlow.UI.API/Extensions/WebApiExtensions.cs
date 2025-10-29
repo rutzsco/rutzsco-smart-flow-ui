@@ -9,7 +9,8 @@ internal static class WebApiExtensions
     {
         var api = app.MapGroup("api");
 
-
+        // UI Configuration endpoint
+        api.MapGet("config/ui", OnGetUIConfigAsync);
 
         // Get recent feedback
         api.MapGet("feedback", OnGetFeedbackAsync);
@@ -64,6 +65,24 @@ internal static class WebApiExtensions
     private static IResult OnGetStatus()
     {
         return Results.Ok("OK");
+    }
+
+    private static IResult OnGetUIConfigAsync(IConfiguration configuration)
+    {
+        var uiConfig = new UIConfiguration
+        {
+            ColorPaletteLightPrimary = configuration.GetValue<string>("ColorPaletteLightPrimary", "#84B1CB"),
+            ColorPaletteLightSecondary = configuration.GetValue<string>("ColorPaletteLightSecondary", "#287FA4"),
+            ColorPaletteLightAppbarBackground = configuration.GetValue<string>("ColorPaletteLightAppbarBackground", "#84B1CB"),
+            LogoImagePath = configuration.GetValue<string>("LogoImagePath", "icon-512.png"),
+            LogoImageWidth = configuration.GetValue<int>("LogoImageWidth", 150),
+            HelloText = configuration.GetValue<string>("HelloText", "How can I help you today?"),
+            ShowSampleQuestions = configuration.GetValue<bool>("ShowSampleQuestions", true),
+            ShowPremiumAOAIToggleSelection = configuration.GetValue<bool>("ShowPremiumAOAIToggleSelection", true),
+            DisclaimerMessage = configuration.GetValue<string>("DisclaimerMessage", string.Empty)
+        };
+
+        return Results.Ok(uiConfig);
     }
 
     private static IResult OnGetAntiforgeryToken(HttpContext context, IAntiforgery antiforgery)
