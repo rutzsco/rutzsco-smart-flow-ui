@@ -1,0 +1,100 @@
+<Project Sdk="Microsoft.NET.Sdk.Web">
+
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <Nullable>enable</Nullable>
+    <ImplicitUsings>enable</ImplicitUsings>
+    <LangVersion>preview</LangVersion>
+    <UserSecretsId>6c0daa7e-5118-4a21-8aeb-f7b977fe2f01</UserSecretsId>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
+    <PublishRelease>true</PublishRelease>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|AnyCPU'">
+    <NoWarn>1701;1702;CS8604;CS8618</NoWarn>
+  </PropertyGroup>
+
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|AnyCPU'">
+<<<<<<< HEAD:app/SmartFlowUI/backend/MinimalApi.csproj
+    <NoWarn>1701;1702;CS8604;CS8607 </NoWarn>
+=======
+    <NoWarn>1701;1702;CS8604;CS8607;CS8618</NoWarn>
+>>>>>>> project-type-migration:app/SmartFlow.UI.API/SmartFlow.UI.API.csproj
+  </PropertyGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\shared\Shared\Shared.csproj" />
+    <ProjectReference Include="..\SmartFlow.UI.Client\SmartFlow.UI.Client.csproj" />
+    <PackageReference Include="Microsoft.Agents.Authentication.Msal" />
+    <PackageReference Include="Microsoft.Agents.Hosting.AspNetCore" />
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Server" />
+    <PackageReference Include="Azure.Extensions.AspNetCore.DataProtection.Blobs" />
+    <PackageReference Include="Azure.Identity" />
+    <PackageReference Include="Azure.Search.Documents" />
+    <PackageReference Include="Microsoft.ApplicationInsights.AspNetCore" />
+    <PackageReference Include="Microsoft.Azure.Cosmos" />
+    <PackageReference Include="Microsoft.Extensions.Azure" />
+    <PackageReference Include="Microsoft.SemanticKernel" />
+    <PackageReference Include="Microsoft.SemanticKernel.Agents.AzureAI" />
+    <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" />
+    <PackageReference Include="PdfPig" />
+    <PackageReference Include="Swashbuckle.AspNetCore" />
+    <PackageReference Include="TiktokenSharp" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Content Remove="Services\Profile\Profiles-rutzsco.json" />
+    <Content Remove="Services\Profile\profiles.json" />
+    <Content Remove="Services\Profile\profiles.local.json" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Remove="Services\Profile\Prompts\AutoBodyCopilotSystemPrompt.txt" />
+    <None Remove="Services\Profile\Prompts\AutoBodyCopilotSystemPromptV2.txt" />
+    <None Remove="Services\Profile\Prompts\ChatSimpleSystemPrompt.txt" />
+    <None Remove="Services\Profile\Prompts\ChatSimpleUserPrompt.txt" />
+    <None Remove="Services\Profile\Prompts\CSVCopilotSystemPrompt.txt" />
+    <None Remove="Services\Profile\Prompts\RAGChatSystemPrompt.txt" />
+    <None Remove="Services\Profile\Prompts\RAGChatUserPrompt.txt" />
+    <None Remove="Services\Profile\Prompts\RAGSearchQuerySystemPrompt.txt" />
+    <None Remove="Services\Profile\Prompts\RAGSearchUserPrompt.txt" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <EmbeddedResource Include="Services\Profile\profiles-rutzsco.json" />
+    <EmbeddedResource Include="Services\Profile\profiles.json" />
+    <EmbeddedResource Include="Services\Profile\Prompts\CSVCopilotSystemPrompt.txt" />
+    <EmbeddedResource Include="Services\Profile\Prompts\ChatSimpleSystemPrompt.txt" />
+    <EmbeddedResource Include="Services\Profile\Prompts\RAGChatSystemPrompt.txt" />
+    <EmbeddedResource Include="Services\Profile\Prompts\ChatSimpleUserPrompt.txt" />
+    <EmbeddedResource Include="Services\Profile\Prompts\RAGChatUserPrompt.txt" />
+    <EmbeddedResource Include="Services\Profile\Prompts\RAGSearchQuerySystemPrompt.txt" />
+    <EmbeddedResource Include="Services\Profile\Prompts\RAGSearchUserPrompt.txt" />
+  </ItemGroup>
+
+<<<<<<< HEAD:app/SmartFlowUI/backend/MinimalApi.csproj
+  <ItemGroup>
+    <PackageReference Include="Azure.Extensions.AspNetCore.DataProtection.Blobs" />
+    <PackageReference Include="Azure.Identity" />
+    <PackageReference Include="Azure.Search.Documents" />
+    <PackageReference Include="Microsoft.ApplicationInsights.AspNetCore" />
+    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Server" />
+    <PackageReference Include="Microsoft.Azure.Cosmos" />
+    <PackageReference Include="Microsoft.Extensions.Azure" />
+    <PackageReference Include="Microsoft.SemanticKernel" />
+    <PackageReference Include="Microsoft.SemanticKernel.Agents.AzureAI" />
+    <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" />
+    <PackageReference Include="PdfPig" />
+    <PackageReference Include="Swashbuckle.AspNetCore" />
+    <PackageReference Include="TiktokenSharp" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\frontend\ClientApp.csproj" />
+    <ProjectReference Include="..\shared\Shared\Shared.csproj" />
+  </ItemGroup>
+
+=======
+>>>>>>> project-type-migration:app/SmartFlow.UI.API/SmartFlow.UI.API.csproj
+</Project>

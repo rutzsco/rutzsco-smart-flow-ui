@@ -1,0 +1,54 @@
+@using System.Text.Json
+
+<MudDialog>
+    <DialogContent>
+        <MudContainer Class="json-container" Style="max-height: 70vh; overflow-y: auto;">
+            @if (_isLoading)
+            {
+                <MudStack Spacing="3">
+                    <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="2rem" />
+                    <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="12rem" />
+                    <MudSkeleton Height="2rem" />
+                    <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="8rem" />
+                    <MudSkeleton Height="3rem" />
+                </MudStack>
+            }
+            else if (!string.IsNullOrEmpty(_errorMessage))
+            {
+                <MudAlert Severity="Severity.Error">@_errorMessage</MudAlert>
+            }
+            else
+            {
+                <MudPaper Class="pa-4" Elevation="0" Style="background-color: #1e1e1e;">
+                    <pre style="margin: 0; overflow-x: auto; color: #d4d4d4; font-family: 'Consolas', 'Monaco', 'Courier New', monospace; font-size: 14px; line-height: 1.6;">@_formattedJson</pre>
+                </MudPaper>
+            }
+        </MudContainer>
+    </DialogContent>
+    <DialogActions>
+        <MudButton Color="Color.Default"
+                   Size="Size.Large"
+                   StartIcon="@Icons.Material.Filled.ContentCopy"
+                   OnClick="@CopyToClipboardAsync"
+                   Disabled="@(_isLoading || !string.IsNullOrEmpty(_errorMessage))">
+            Copy
+        </MudButton>
+        <MudButton Color="Color.Primary" 
+                   Size="Size.Large"
+                   StartIcon="@Icons.Material.Filled.Close"
+                   OnClick="@OnCloseClick">
+            Close
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+<style>
+    .json-container {
+        font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+    }
+
+    .json-container pre {
+        white-space: pre-wrap;
+        word-wrap: break-word;
+    }
+</style>

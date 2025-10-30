@@ -1,0 +1,138 @@
+@using Markdig
+
+<MudDialog>
+    <DialogContent>
+        <MudContainer Class="markdown-container" Style="max-height: 70vh; overflow-y: auto;">
+            @if (_isLoading)
+            {
+                <MudStack Spacing="3">
+                    <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="2rem" />
+                    <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="12rem" />
+                    <MudSkeleton Height="2rem" />
+                    <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="8rem" />
+                    <MudSkeleton Height="3rem" />
+                </MudStack>
+            }
+            else if (!string.IsNullOrEmpty(_errorMessage))
+            {
+                <MudAlert Severity="Severity.Error">@_errorMessage</MudAlert>
+            }
+            else
+            {
+                <MudPaper Class="pa-4" Elevation="0">
+                    @((MarkupString)_htmlContent)
+                </MudPaper>
+            }
+        </MudContainer>
+    </DialogContent>
+    <DialogActions>
+        <MudButton Color="Color.Primary" 
+                   Size="Size.Large"
+                   StartIcon="@Icons.Material.Filled.Close"
+                   OnClick="@OnCloseClick">
+            Close
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+<style>
+    .markdown-container {
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, sans-serif;
+        line-height: 1.6;
+    }
+
+    .markdown-container h1 {
+        border-bottom: 2px solid #eaecef;
+        padding-bottom: 0.3em;
+        margin-top: 24px;
+        margin-bottom: 16px;
+        font-weight: 600;
+        font-size: 2em;
+    }
+
+    .markdown-container h2 {
+        border-bottom: 1px solid #eaecef;
+        padding-bottom: 0.3em;
+        margin-top: 24px;
+        margin-bottom: 16px;
+        font-weight: 600;
+        font-size: 1.5em;
+    }
+
+    .markdown-container h3 {
+        margin-top: 24px;
+        margin-bottom: 16px;
+        font-weight: 600;
+        font-size: 1.25em;
+    }
+
+    .markdown-container code {
+        background-color: rgba(175, 184, 193, 0.2);
+        padding: 0.2em 0.4em;
+        border-radius: 6px;
+        font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+        font-size: 85%;
+    }
+
+    .markdown-container pre {
+        background-color: #f6f8fa;
+        padding: 16px;
+        overflow: auto;
+        border-radius: 6px;
+        margin-bottom: 16px;
+    }
+
+    .markdown-container pre code {
+        background-color: transparent;
+        padding: 0;
+        border-radius: 0;
+        font-size: 100%;
+    }
+
+    .markdown-container blockquote {
+        padding: 0 1em;
+        color: #6a737d;
+        border-left: 0.25em solid #dfe2e5;
+        margin: 0 0 16px 0;
+    }
+
+    .markdown-container table {
+        border-collapse: collapse;
+        width: 100%;
+        margin-bottom: 16px;
+    }
+
+    .markdown-container table th,
+    .markdown-container table td {
+        padding: 6px 13px;
+        border: 1px solid #dfe2e5;
+    }
+
+    .markdown-container table tr {
+        background-color: #fff;
+        border-top: 1px solid #c6cbd1;
+    }
+
+    .markdown-container table tr:nth-child(2n) {
+        background-color: #f6f8fa;
+    }
+
+    .markdown-container ul,
+    .markdown-container ol {
+        padding-left: 2em;
+        margin-bottom: 16px;
+    }
+
+    .markdown-container p {
+        margin-bottom: 16px;
+    }
+
+    .markdown-container a {
+        color: #0366d6;
+        text-decoration: none;
+    }
+
+    .markdown-container a:hover {
+        text-decoration: underline;
+    }
+</style>
