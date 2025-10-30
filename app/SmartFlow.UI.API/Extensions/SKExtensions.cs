@@ -125,13 +125,8 @@ public static class SKExtensions
             dataSources.Distinct().ToArray(), // Remove duplicates
             thoughts.Select(x => new ThoughtRecord(x.Name, x.Result)).ToArray(), 
             request.ChatTurnId, 
-<<<<<<< HEAD:app/SmartFlowUI/backend/Extensions/SKExtensions.cs
-            request.ChatId,
-            null,
-=======
             request.ChatId, 
             string.Empty, // ThreadId - using empty Guid as placeholder
->>>>>>> project-type-migration:app/SmartFlow.UI.API/Extensions/SKExtensions.cs
             diagnostics);
 
         return new ApproachResponse(
@@ -147,11 +142,7 @@ public static class SKExtensions
         var chatDiagnostics = new CompletionsDiagnostics(completionTokens, requestTokenCount, totalTokens, 0);
         var diagnostics = new Diagnostics(chatDiagnostics, modelDeploymentName, workflowDurationMilliseconds);
 
-<<<<<<< HEAD:app/SmartFlowUI/backend/Extensions/SKExtensions.cs
-        var contextData = new ResponseContext(profile.Name, null, Array.Empty<ThoughtRecord>(), request.ChatTurnId, request.ChatId, null, diagnostics);
-=======
         var contextData = new ResponseContext(profile.Name, null, Array.Empty<ThoughtRecord>(), request.ChatTurnId, request.ChatId, string.Empty, diagnostics);
->>>>>>> project-type-migration:app/SmartFlow.UI.API/Extensions/SKExtensions.cs
 
         return new ApproachResponse(
             Answer: NormalizeResponseText(answer),
@@ -186,7 +177,7 @@ public static class SKExtensions
         var diagnosticsBuilder = GetRequestDiagnosticsBuilder(kernel);
         if (sources != null && sources.Any())
         {
-            var supportingContent = sources.Select(x => new SupportingContentRecord(x.FilePath, x.Content, "FUNCTION", string.Empty)).ToList();
+            var supportingContent = sources.Select(x => new SupportingContentRecord(x.FilePath, x.Content)).ToList();
             diagnosticsBuilder.AddFunctionCallResult(name, result, supportingContent);
         }
         else

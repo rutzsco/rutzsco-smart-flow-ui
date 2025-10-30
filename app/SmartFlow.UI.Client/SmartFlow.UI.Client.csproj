@@ -18,11 +18,6 @@
     <PackageReference Include="Blazor.LocalStorage.WebAssembly" />
     <PackageReference Include="Blazor.SessionStorage.WebAssembly" />
     <PackageReference Include="Markdig" />
-<<<<<<< HEAD:app/SmartFlowUI/frontend/ClientApp.csproj
-    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.DevServer" PrivateAssets="all" />
-    <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly" />
-=======
->>>>>>> project-type-migration:app/SmartFlow.UI.Client/SmartFlow.UI.Client.csproj
     <PackageReference Include="Microsoft.Extensions.Http" />
     <PackageReference Include="MudBlazor" />
     <PackageReference Include="System.Linq.Async" />

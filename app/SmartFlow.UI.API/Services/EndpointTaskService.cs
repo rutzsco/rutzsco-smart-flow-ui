@@ -60,11 +60,7 @@ internal sealed class EndpointTaskService : IChatService
         {
             thoughts.Add(new ThoughtRecord(FormatLogStep(thought), thought.content));
         }
-<<<<<<< HEAD:app/SmartFlowUI/backend/Services/EndpointTaskService.cs
-        yield return new ChatChunkResponse("", new ApproachResponse(taskResponse.answer, null, new ResponseContext(profile.Name, null, thoughts.ToArray(), request.ChatTurnId, request.ChatId, null, null)));
-=======
         yield return new ChatChunkResponse("", new ApproachResponse(taskResponse.answer, null, new ResponseContext(profile.Name, null, thoughts.ToArray(), request.ChatTurnId, request.ChatId, string.Empty, null)));
->>>>>>> project-type-migration:app/SmartFlow.UI.API/Services/EndpointTaskService.cs
     }
     private string BuildErrorTaskResponsePayload(string msg, string url, string profileName, string actionName)
     {

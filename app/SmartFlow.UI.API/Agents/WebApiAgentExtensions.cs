@@ -1,10 +1,6 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 using MinimalApi.Agents;
-<<<<<<< HEAD:app/SmartFlowUI/backend/Agents/WebApiAgentExtensions.cs
-using MinimalApi.Models;
-=======
 using Shared.Models;
->>>>>>> project-type-migration:app/SmartFlow.UI.API/Agents/WebApiAgentExtensions.cs
 using Azure;
 using Azure.Identity;
 using Microsoft.SemanticKernel.Agents.AzureAI;
@@ -39,11 +35,7 @@ internal static class WebApiAgentExtensions
             Instructions = agent.Instructions,
             Description = agent.Description,
             Model = agent.Model,
-<<<<<<< HEAD:app/SmartFlowUI/backend/Agents/WebApiAgentExtensions.cs
-            CreatedAt = agent.CreatedAt
-=======
             CreatedAt = agent.CreatedAt.DateTime
->>>>>>> project-type-migration:app/SmartFlow.UI.API/Agents/WebApiAgentExtensions.cs
         });
         return Results.Ok(agentViewModels);
     }
@@ -75,11 +67,7 @@ internal static class WebApiAgentExtensions
                 Instructions = createdAgent.Definition.Instructions,
                 Description = createdAgent.Definition.Description,
                 Model = createdAgent.Definition.Model,
-<<<<<<< HEAD:app/SmartFlowUI/backend/Agents/WebApiAgentExtensions.cs
-                CreatedAt = createdAgent.Definition.CreatedAt
-=======
                 CreatedAt = createdAgent.Definition.CreatedAt.DateTime
->>>>>>> project-type-migration:app/SmartFlow.UI.API/Agents/WebApiAgentExtensions.cs
             };
 
             return Results.Created($"/api/agents/{response.Id}", response);
@@ -128,11 +116,7 @@ internal static class WebApiAgentExtensions
                 Instructions = updatedAgent.Definition.Instructions,
                 Description = updatedAgent.Definition.Description,
                 Model = updatedAgent.Definition.Model,
-<<<<<<< HEAD:app/SmartFlowUI/backend/Agents/WebApiAgentExtensions.cs
-                CreatedAt = updatedAgent.Definition.CreatedAt
-=======
                 CreatedAt = updatedAgent.Definition.CreatedAt.DateTime
->>>>>>> project-type-migration:app/SmartFlow.UI.API/Agents/WebApiAgentExtensions.cs
             };
 
             return Results.Ok(response);

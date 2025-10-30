@@ -36,8 +36,6 @@
       "Write a function in C# that will invoke a rest API",
       "Explain why popcorn pops to a kid who loves watching it in the microwave.",
       "What is the 10 day forecast for Mankato MN?"
-<<<<<<< HEAD:app/SmartFlowUI/backend/Services/Profile/profiles-rutzsco.json
-=======
     ]
   },
   {
@@ -51,7 +49,6 @@
       "How do I change the oil?",
       "What are the different maintenance intervals?",
       "What is the air filter part number?"
->>>>>>> project-type-migration:app/SmartFlow.UI.API/Services/Profile/profiles-rutzsco.json
     ]
   },
   {

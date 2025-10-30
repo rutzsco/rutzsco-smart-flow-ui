@@ -7,10 +7,7 @@ using Azure;
 using Azure.Identity;
 using Azure.AI.Agents.Persistent;
 using Microsoft.SemanticKernel.Agents.AzureAI;
-<<<<<<< HEAD:app/SmartFlowUI/backend/Program.cs
-=======
 using MinimalApi.M365;
->>>>>>> project-type-migration:app/SmartFlow.UI.API/Program.cs
 
 #pragma warning disable SKEXP0110
 

@@ -53,11 +53,7 @@ internal sealed class EndpointChatServiceV2 : IChatService
         var thoughts = new List<ThoughtRecord>();
         thoughts.Add(new ThoughtRecord("Assistant Response", sb.ToString()));
 
-<<<<<<< HEAD:app/SmartFlowUI/backend/Services/EndpointChatServiceV2.cs
-        yield return new ChatChunkResponse("", new ApproachResponse(sb.ToString(), null, new ResponseContext(profile.Name, null, thoughts.ToArray(), request.ChatTurnId, request.ChatId,null, null)));
-=======
         yield return new ChatChunkResponse("", new ApproachResponse(sb.ToString(), null, new ResponseContext(profile.Name, null, thoughts.ToArray(), request.ChatTurnId, request.ChatId, string.Empty, null)));
->>>>>>> project-type-migration:app/SmartFlow.UI.API/Services/EndpointChatServiceV2.cs
     }
     private async Task<string> ResolveThreadIdAsync(ProfileDefinition profile, ChatRequest request)
     {

@@ -213,12 +213,8 @@ public class TextToImageService
 
         foreach (var kvp in editFields)
         {
-<<<<<<< HEAD:app/SmartFlowUI/backend/Services/TextToImageService.cs
-            form.Add(new StringContent(kvp.Value), kvp.Key);
-=======
             using var content = new StringContent(kvp.Value);
             form.Add(content, kvp.Key);
->>>>>>> project-type-migration:app/SmartFlow.UI.API/Services/TextToImageService.cs
         }
     }
     
@@ -227,17 +223,10 @@ public class TextToImageService
     /// </summary>
     private void AddImageContent(MultipartFormDataContent form, byte[] imageData, string imageMediaType)
     {
-<<<<<<< HEAD:app/SmartFlowUI/backend/Services/TextToImageService.cs
-        var imageContent = new ByteArrayContent(imageData);
-        imageContent.Headers.ContentType = new MediaTypeHeaderValue(imageMediaType);
-        string fileName = $"image.{imageMediaType.Split('/')[1]}";
-        form.Add(imageContent, "image", fileName);
-=======
     using var imageContent = new ByteArrayContent(imageData);
     imageContent.Headers.ContentType = new MediaTypeHeaderValue(imageMediaType);
     string fileName = $"image.{imageMediaType.Split('/')[1]}";
     form.Add(imageContent, "image", fileName);
->>>>>>> project-type-migration:app/SmartFlow.UI.API/Services/TextToImageService.cs
     }
     
     /// <summary>
