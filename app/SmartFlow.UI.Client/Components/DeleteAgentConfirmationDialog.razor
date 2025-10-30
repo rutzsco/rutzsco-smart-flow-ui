@@ -1,0 +1,30 @@
+@using MudBlazor
+
+<MudDialog>
+    <TitleContent>
+        <MudText Typo="Typo.h6">
+            <MudIcon Icon="@Icons.Material.Filled.Warning" Color="Color.Warning" Class="mr-3" />
+            Confirm Deletion
+        </MudText>
+    </TitleContent>
+    <DialogContent>
+        <MudText>
+            Are you sure you want to delete all agents with the name "<strong>@AgentName</strong>"?
+        </MudText>
+        <MudText Typo="Typo.body2" Class="mt-2" Color="Color.Warning">
+            This action cannot be undone.
+        </MudText>
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancel</MudButton>
+        <MudButton Color="Color.Error" Variant="Variant.Filled" OnClick="Confirm">Delete</MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter] public required IMudDialogInstance Dialog { get; set; }
+    [Parameter] public string AgentName { get; set; } = string.Empty;
+
+    void Cancel() => Dialog.Cancel();
+    void Confirm() => Dialog.Close(DialogResult.Ok(true));
+}

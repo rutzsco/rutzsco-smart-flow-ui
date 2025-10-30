@@ -1,0 +1,22 @@
+﻿// Copyright (c) Microsoft. All rights reserved.
+
+namespace SmartFlow.UI.Client.Components;
+
+public sealed partial class Question
+{
+    private static readonly MarkdownPipeline s_pipeline = new MarkdownPipelineBuilder()
+        .UsePipeTables()
+        .UseSoftlineBreakAsHardlineBreak()
+        .Build();
+
+    [Parameter, EditorRequired] public required string UserQuestion { get; set; }
+    [Parameter, EditorRequired] public required DateTime AskedOn { get; set; }
+    private string? _userAnswerHTML;
+
+    protected override void OnParametersSet()
+    {
+        _userAnswerHTML = !string.IsNullOrEmpty(UserQuestion) ? Markdown.ToHtml(UserQuestion, s_pipeline) : string.Empty;
+
+        base.OnParametersSet();
+    }
+}
