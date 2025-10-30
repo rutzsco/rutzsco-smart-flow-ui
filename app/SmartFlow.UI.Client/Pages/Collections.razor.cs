@@ -49,10 +49,17 @@ public sealed partial class Collections : IDisposable
         try
         {
             _collections = await Client.GetCollectionsAsync();
-            // Don't auto-select - require explicit user selection
-            _selectedCollection = "";
-            _collectionFiles.Clear();
-            _fileUploads.Clear();
+            // Auto-select first collection if available
+            if (_collections.Any())
+            {
+                await SelectCollectionAsync(_collections.First());
+            }
+            else
+            {
+                _selectedCollection = "";
+                _collectionFiles.Clear();
+                _fileUploads.Clear();
+            }
         }
         catch (Exception ex)
         {
