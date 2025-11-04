@@ -1,0 +1,156 @@
+@page "/voicechat"
+@inject IJSRuntime JS
+
+<PageTitle>Voice Chat</PageTitle>
+
+<MudGrid Justify="Justify.Center" Class="pa-4">
+    <MudItem xs="12" Class="text-align-center">
+        <MudText Typo="Typo.h3" Class="mb-4">
+            <MudIcon Icon="@Icons.Material.Filled.RecordVoiceOver" Class="mr-2" />
+            Voice Chat
+        </MudText>
+        <MudText Typo="Typo.subtitle1" Color="Color.Secondary" Class="mb-6">
+            Speak naturally with our AI Agent using real-time voice interaction
+        </MudText>
+    </MudItem>
+
+    @if (_errorMessage != null)
+    {
+        <MudItem xs="12" md="8">
+            <MudAlert Severity="Severity.Error" Class="mb-4">
+                @_errorMessage
+            </MudAlert>
+        </MudItem>
+    }
+
+    <MudItem xs="12" md="8">
+        <MudPaper Elevation="4" Class="pa-6">
+            <MudStack Spacing="4">
+                <!-- Status Display -->
+                <MudCard Outlined="true">
+                    <MudCardContent>
+                        <MudStack Row="true" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                            <MudStack Spacing="1">
+                                <MudText Typo="Typo.body2" Color="Color.Secondary">Status</MudText>
+                                <MudChip T="string" Color="@GetStatusColor()" Size="Size.Medium">
+                                    @_connectionStatus
+                                </MudChip>
+                            </MudStack>
+                            @if (_isConnected)
+                            {
+                                <MudStack Spacing="1" Style="text-align: right;">
+                                    <MudText Typo="Typo.body2" Color="Color.Secondary">Session Time</MudText>
+                                    <MudText Typo="Typo.body1">@_sessionDuration</MudText>
+                                </MudStack>
+                            }
+                        </MudStack>
+                    </MudCardContent>
+                </MudCard>
+
+                <!-- Control Buttons -->
+                <MudStack Row="true" Justify="Justify.Center" Spacing="3" Class="mt-4">
+                    @if (!_isConnected)
+                    {
+                        <MudButton Variant="Variant.Filled" 
+                                   Color="Color.Primary" 
+                                   Size="Size.Large"
+                                   StartIcon="@Icons.Material.Filled.PlayArrow"
+                                   OnClick="StartVoiceChatAsync"
+                                   Disabled="@_isConnecting">
+                            @(_isConnecting ? "Connecting..." : "Start Voice Chat")
+                        </MudButton>
+                    }
+                    else
+                    {
+                        <MudButton Variant="Variant.Filled" 
+                                   Color="@(_isListening ? Color.Error : Color.Success)" 
+                                   Size="Size.Large"
+                                   StartIcon="@(_isListening ? Icons.Material.Filled.Stop : Icons.Material.Filled.Mic)"
+                                   OnClick="ToggleListeningAsync">
+                            @(_isListening ? "Stop Listening" : "Start Listening")
+                        </MudButton>
+
+                        @if (_isListening)
+                        {
+                            <MudButton Variant="Variant.Filled" 
+                                       Color="Color.Info" 
+                                       Size="Size.Large"
+                                       StartIcon="@Icons.Material.Filled.Send"
+                                       OnClick="SendAudioAsync"
+                                       Disabled="@(!_hasAudioData)">
+                                Ask
+                            </MudButton>
+                        }
+
+                        <MudButton Variant="Variant.Outlined" 
+                                   Color="Color.Error" 
+                                   Size="Size.Large"
+                                   StartIcon="@Icons.Material.Filled.StopCircle"
+                                   OnClick="StopVoiceChatAsync">
+                            End Session
+                        </MudButton>
+                    }
+                </MudStack>
+
+                <!-- Transcript Display -->
+                @if (_transcript.Any())
+                {
+                    <MudCard Outlined="true" Class="mt-4">
+                        <MudCardHeader>
+                            <CardHeaderContent>
+                                <MudText Typo="Typo.h6">
+                                    <MudIcon Icon="@Icons.Material.Filled.Transcribe" Class="mr-2" />
+                                    Conversation
+                                </MudText>
+                            </CardHeaderContent>
+                            <CardHeaderActions>
+                                <MudIconButton Icon="@Icons.Material.Filled.Clear" 
+                                               Color="Color.Default" 
+                                               Size="Size.Small"
+                                               OnClick="@(() => _transcript.Clear())"
+                                               Title="Clear transcript" />
+                            </CardHeaderActions>
+                        </MudCardHeader>
+                        <MudCardContent>
+                            <MudStack Spacing="2" Style="max-height: 400px; overflow-y: auto;">
+                                @foreach (var message in _transcript)
+                                {
+                                    <MudPaper Elevation="0" Class="pa-3" Style="@GetMessageStyle(message.IsUser)">
+                                        <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Start">
+                                            <MudIcon Icon="@(message.IsUser ? Icons.Material.Filled.Person : Icons.Material.Filled.SmartToy)" 
+                                                     Color="@(message.IsUser ? Color.Primary : Color.Secondary)" />
+                                            <MudStack Spacing="1" Style="flex: 1;">
+                                                <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                                    @(message.IsUser ? "You" : "AI Agent") • @message.Timestamp.ToString("HH:mm:ss")
+                                                </MudText>
+                                                <MudText Typo="Typo.body1">@message.Text</MudText>
+                                            </MudStack>
+                                        </MudStack>
+                                    </MudPaper>
+                                }
+                            </MudStack>
+                        </MudCardContent>
+                    </MudCard>
+                }
+
+                <!-- Instructions -->
+                @if (!_isConnected && !_isConnecting)
+                {
+                    <MudAlert Severity="Severity.Info" Class="mt-4">
+                        <MudText Typo="Typo.body2">
+                            <strong>How to use:</strong>
+                            <ol style="margin-top: 8px; margin-bottom: 0;">
+                                <li>Click "Start Voice Chat" to connect to the AI Agent</li>
+                                <li>Click "Start Listening" to begin recording your voice</li>
+                                <li>Speak your question naturally</li>
+                                <li>Click "Ask" to send your audio to the AI Agent</li>
+                                <li>Listen to the AI's response in real-time</li>
+                                <li>Click "End Session" when you're done</li>
+                            </ol>
+                        </MudText>
+                    </MudAlert>
+                }
+            </MudStack>
+        </MudPaper>
+    </MudItem>
+</MudGrid>

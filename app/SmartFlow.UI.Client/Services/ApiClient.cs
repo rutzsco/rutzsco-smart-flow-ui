@@ -347,6 +347,22 @@ public sealed class ApiClient(HttpClient httpClient)
     {
         await PostBasicAsync(request, "api/chat/rating");
     }
+
+    public async Task<VoiceLiveTokenResponse?> GetVoiceLiveTokenAsync()
+    {
+        try
+        {
+            var response = await httpClient.GetAsync("api/voicelive/token");
+            response.EnsureSuccessStatusCode();
+            return await response.Content.ReadFromJsonAsync<VoiceLiveTokenResponse>();
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Error fetching Voice Live token: {ex.Message}");
+            return null;
+        }
+    }
+
     private async Task PostBasicAsync<TRequest>(TRequest request, string apiRoute)
     {
         var json = System.Text.Json.JsonSerializer.Serialize(request, SerializerOptions.Default);
