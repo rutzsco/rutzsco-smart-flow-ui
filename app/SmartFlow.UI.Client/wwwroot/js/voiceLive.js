@@ -8,6 +8,7 @@ let isConnected = false;
 let audioQueue = [];
 let isPlayingAudio = false;
 let currentAudioSource = null;
+let nextPlayTime = 0;
 
 export async function initialize(websocketUrl, apiVersion, projectName, agentId, agentAccessToken, authorizationToken, speechKey, dotNetReference) {
     try {
@@ -105,6 +106,9 @@ export async function initialize(websocketUrl, apiVersion, projectName, agentId,
             sampleRate: 24000
         });
         
+        // Initialize nextPlayTime
+        nextPlayTime = audioContext.currentTime;
+        
     } catch (error) {
         console.error('Error initializing Voice Live:', error);
         dotNetRef.invokeMethodAsync('OnError', error.message);
@@ -132,17 +136,18 @@ async function handleWebSocketMessage(message) {
             
         case 'response.audio.delta':
             if (message.delta) {
-                queueAudioChunk(message.delta);
+                // Play audio chunks immediately as they arrive for lower latency
+                await playAudioChunkStreaming(message.delta);
             }
             break;
             
         case 'response.audio.done':
-            // Mark end of audio response
-            await playQueuedAudio();
+            // Audio streaming complete
             break;
             
         case 'response.done':
-            // Silent completion
+            // Reset play time for next response
+            nextPlayTime = audioContext.currentTime;
             break;
             
         case 'error':
@@ -156,51 +161,17 @@ async function handleWebSocketMessage(message) {
     }
 }
 
-function queueAudioChunk(base64Audio) {
-    audioQueue.push(base64Audio);
-}
-
-async function playQueuedAudio() {
-    if (isPlayingAudio || audioQueue.length === 0) {
-        return;
-    }
-    
-    isPlayingAudio = true;
-    
+async function playAudioChunkStreaming(base64Audio) {
     try {
-        // Stop any currently playing audio
-        if (currentAudioSource) {
-            currentAudioSource.stop();
-            currentAudioSource = null;
-        }
-        
-        // Decode each chunk and combine the raw audio data
-        let totalLength = 0;
-        const decodedChunks = [];
-        
-        for (const base64Chunk of audioQueue) {
-            const binaryString = atob(base64Chunk);
-            const bytes = new Uint8Array(binaryString.length);
-            for (let i = 0; i < binaryString.length; i++) {
-                bytes[i] = binaryString.charCodeAt(i);
-            }
-            decodedChunks.push(bytes);
-            totalLength += bytes.length;
-        }
-        
-        // Clear the queue
-        audioQueue = [];
-        
-        // Combine all chunks into a single array
-        const combinedBytes = new Uint8Array(totalLength);
-        let offset = 0;
-        for (const chunk of decodedChunks) {
-            combinedBytes.set(chunk, offset);
-            offset += chunk.length;
+        // Decode the base64 audio chunk
+        const binaryString = atob(base64Audio);
+        const bytes = new Uint8Array(binaryString.length);
+        for (let i = 0; i < binaryString.length; i++) {
+            bytes[i] = binaryString.charCodeAt(i);
         }
         
         // Convert to audio buffer
-        const int16Array = new Int16Array(combinedBytes.buffer);
+        const int16Array = new Int16Array(bytes.buffer);
         const float32Array = new Float32Array(int16Array.length);
         for (let i = 0; i < int16Array.length; i++) {
             float32Array[i] = int16Array[i] / 32768.0;
@@ -209,23 +180,20 @@ async function playQueuedAudio() {
         const audioBuffer = audioContext.createBuffer(1, float32Array.length, 24000);
         audioBuffer.getChannelData(0).set(float32Array);
         
+        // Schedule this chunk to play immediately after the previous one
         const source = audioContext.createBufferSource();
         source.buffer = audioBuffer;
         source.connect(audioContext.destination);
         
-        currentAudioSource = source;
+        // Use current time if we're ahead of schedule, otherwise use nextPlayTime
+        const startTime = Math.max(audioContext.currentTime, nextPlayTime);
+        source.start(startTime);
         
-        source.onended = () => {
-            currentAudioSource = null;
-            isPlayingAudio = false;
-        };
-        
-        source.start();
+        // Update nextPlayTime for the next chunk
+        nextPlayTime = startTime + audioBuffer.duration;
         
     } catch (error) {
-        console.error('Error playing audio:', error);
-        isPlayingAudio = false;
-        audioQueue = [];
+        console.error('Error playing audio chunk:', error);
     }
 }
 
@@ -236,12 +204,7 @@ export async function startListening() {
         }
         
         // Stop any playing audio before starting to listen
-        if (currentAudioSource) {
-            currentAudioSource.stop();
-            currentAudioSource = null;
-        }
-        isPlayingAudio = false;
-        audioQueue = [];
+        nextPlayTime = audioContext.currentTime;
         
         mediaStream = await navigator.mediaDevices.getUserMedia({
             audio: {
@@ -345,6 +308,7 @@ function cleanup() {
     audioQueue = [];
     isPlayingAudio = false;
     currentAudioSource = null;
+    nextPlayTime = 0;
     isConnected = false;
 }
 
