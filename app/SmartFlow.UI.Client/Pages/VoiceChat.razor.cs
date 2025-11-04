@@ -273,12 +273,6 @@ public sealed partial class VoiceChat : IDisposable
         };
     }
 
-    private string GetMessageStyle(bool isUser)
-    {
-        var bgColor = isUser ? "rgba(25, 118, 210, 0.08)" : "rgba(156, 39, 176, 0.08)";
-        return $"background-color: {bgColor}; border-left: 3px solid {(isUser ? "var(--mud-palette-primary)" : "var(--mud-palette-secondary)")};";
-    }
-
     public void Dispose()
     {
         StopSessionTimer();
