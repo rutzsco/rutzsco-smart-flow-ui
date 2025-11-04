@@ -139,8 +139,16 @@ public sealed partial class VoiceChat : IDisposable
 
             if (_isListening)
             {
+                // Stop listening and automatically send the audio
                 await _voiceLiveModule.InvokeVoidAsync("stopListening");
                 _isListening = false;
+                
+                // Automatically send the audio
+                if (_hasAudioData)
+                {
+                    await _voiceLiveModule.InvokeVoidAsync("sendAudio");
+                    _hasAudioData = false;
+                }
             }
             else
             {

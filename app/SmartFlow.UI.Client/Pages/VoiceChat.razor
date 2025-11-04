@@ -67,20 +67,8 @@
                                    Size="Size.Large"
                                    StartIcon="@(_isListening ? Icons.Material.Filled.Stop : Icons.Material.Filled.Mic)"
                                    OnClick="ToggleListeningAsync">
-                            @(_isListening ? "Stop Listening" : "Start Listening")
+                            @(_isListening ? "Stop & Send" : "Start Listening")
                         </MudButton>
-
-                        @if (_isListening)
-                        {
-                            <MudButton Variant="Variant.Filled" 
-                                       Color="Color.Info" 
-                                       Size="Size.Large"
-                                       StartIcon="@Icons.Material.Filled.Send"
-                                       OnClick="SendAudioAsync"
-                                       Disabled="@(!_hasAudioData)">
-                                Ask
-                            </MudButton>
-                        }
 
                         <MudButton Variant="Variant.Outlined" 
                                    Color="Color.Error" 
@@ -121,7 +109,7 @@
                                                      Color="@(message.IsUser ? Color.Primary : Color.Secondary)" />
                                             <MudStack Spacing="1" Style="flex: 1;">
                                                 <MudText Typo="Typo.caption" Color="Color.Secondary">
-                                                    @(message.IsUser ? "You" : "AI Agent") • @message.Timestamp.ToString("HH:mm:ss")
+                                                    @(message.IsUser ? "You" : "AI Agent") · @message.Timestamp.ToString("HH:mm:ss")
                                                 </MudText>
                                                 <MudText Typo="Typo.body1">@message.Text</MudText>
                                             </MudStack>
@@ -131,24 +119,6 @@
                             </MudStack>
                         </MudCardContent>
                     </MudCard>
-                }
-
-                <!-- Instructions -->
-                @if (!_isConnected && !_isConnecting)
-                {
-                    <MudAlert Severity="Severity.Info" Class="mt-4">
-                        <MudText Typo="Typo.body2">
-                            <strong>How to use:</strong>
-                            <ol style="margin-top: 8px; margin-bottom: 0;">
-                                <li>Click "Start Voice Chat" to connect to the AI Agent</li>
-                                <li>Click "Start Listening" to begin recording your voice</li>
-                                <li>Speak your question naturally</li>
-                                <li>Click "Ask" to send your audio to the AI Agent</li>
-                                <li>Listen to the AI's response in real-time</li>
-                                <li>Click "End Session" when you're done</li>
-                            </ol>
-                        </MudText>
-                    </MudAlert>
                 }
             </MudStack>
         </MudPaper>

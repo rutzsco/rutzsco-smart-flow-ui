@@ -6,6 +6,8 @@ let mediaStream = null;
 let dotNetRef = null;
 let isConnected = false;
 let audioQueue = [];
+let isPlayingAudio = false;
+let currentAudioSource = null;
 
 export async function initialize(websocketUrl, apiVersion, projectName, agentId, agentAccessToken, authorizationToken, speechKey, dotNetReference) {
     try {
@@ -130,11 +132,15 @@ async function handleWebSocketMessage(message) {
             
         case 'response.audio.delta':
             if (message.delta) {
-                await playAudioChunk(message.delta);
+                queueAudioChunk(message.delta);
             }
             break;
             
         case 'response.audio.done':
+            // Mark end of audio response
+            await playQueuedAudio();
+            break;
+            
         case 'response.done':
             // Silent completion
             break;
@@ -150,11 +156,92 @@ async function handleWebSocketMessage(message) {
     }
 }
 
+function queueAudioChunk(base64Audio) {
+    audioQueue.push(base64Audio);
+}
+
+async function playQueuedAudio() {
+    if (isPlayingAudio || audioQueue.length === 0) {
+        return;
+    }
+    
+    isPlayingAudio = true;
+    
+    try {
+        // Stop any currently playing audio
+        if (currentAudioSource) {
+            currentAudioSource.stop();
+            currentAudioSource = null;
+        }
+        
+        // Decode each chunk and combine the raw audio data
+        let totalLength = 0;
+        const decodedChunks = [];
+        
+        for (const base64Chunk of audioQueue) {
+            const binaryString = atob(base64Chunk);
+            const bytes = new Uint8Array(binaryString.length);
+            for (let i = 0; i < binaryString.length; i++) {
+                bytes[i] = binaryString.charCodeAt(i);
+            }
+            decodedChunks.push(bytes);
+            totalLength += bytes.length;
+        }
+        
+        // Clear the queue
+        audioQueue = [];
+        
+        // Combine all chunks into a single array
+        const combinedBytes = new Uint8Array(totalLength);
+        let offset = 0;
+        for (const chunk of decodedChunks) {
+            combinedBytes.set(chunk, offset);
+            offset += chunk.length;
+        }
+        
+        // Convert to audio buffer
+        const int16Array = new Int16Array(combinedBytes.buffer);
+        const float32Array = new Float32Array(int16Array.length);
+        for (let i = 0; i < int16Array.length; i++) {
+            float32Array[i] = int16Array[i] / 32768.0;
+        }
+        
+        const audioBuffer = audioContext.createBuffer(1, float32Array.length, 24000);
+        audioBuffer.getChannelData(0).set(float32Array);
+        
+        const source = audioContext.createBufferSource();
+        source.buffer = audioBuffer;
+        source.connect(audioContext.destination);
+        
+        currentAudioSource = source;
+        
+        source.onended = () => {
+            currentAudioSource = null;
+            isPlayingAudio = false;
+        };
+        
+        source.start();
+        
+    } catch (error) {
+        console.error('Error playing audio:', error);
+        isPlayingAudio = false;
+        audioQueue = [];
+    }
+}
+
 export async function startListening() {
     try {
         if (!isConnected) {
             throw new Error('Not connected to Voice Live');
         }
+        
+        // Stop any playing audio before starting to listen
+        if (currentAudioSource) {
+            currentAudioSource.stop();
+            currentAudioSource = null;
+        }
+        isPlayingAudio = false;
+        audioQueue = [];
         
         mediaStream = await navigator.mediaDevices.getUserMedia({
             audio: {
@@ -230,35 +317,14 @@ export function sendAudio() {
     });
 }
 
-async function playAudioChunk(base64Audio) {
-    try {
-        const binaryString = atob(base64Audio);
-        const bytes = new Uint8Array(binaryString.length);
-        for (let i = 0; i < binaryString.length; i++) {
-            bytes[i] = binaryString.charCodeAt(i);
-        }
-        
-        const int16Array = new Int16Array(bytes.buffer);
-        const float32Array = new Float32Array(int16Array.length);
-        for (let i = 0; i < int16Array.length; i++) {
-            float32Array[i] = int16Array[i] / 32768.0;
-        }
-        
-        const audioBuffer = audioContext.createBuffer(1, float32Array.length, 24000);
-        audioBuffer.getChannelData(0).set(float32Array);
-        
-        const source = audioContext.createBufferSource();
-        source.buffer = audioBuffer;
-        source.connect(audioContext.destination);
-        source.start();
-        
-    } catch (error) {
-        console.error('Error playing audio:', error);
-    }
-}
-
 export function disconnect() {
     stopListening();
+    
+    // Stop any playing audio
+    if (currentAudioSource) {
+        currentAudioSource.stop();
+        currentAudioSource = null;
+    }
     
     if (websocket) {
         websocket.close();
@@ -277,6 +343,8 @@ function cleanup() {
     }
     
     audioQueue = [];
+    isPlayingAudio = false;
+    currentAudioSource = null;
     isConnected = false;
 }
 
