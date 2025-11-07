@@ -118,6 +118,7 @@ app.MapAgentManagementApi();
 app.MapChatApi();
 app.MapApi();
 app.MapCollectionApi();
+app.MapVoiceLiveApi();
 
 // Map M365 Agent endpoints
 app.MapM365AgentEndpoints();
@@ -125,5 +126,7 @@ app.MapM365AgentEndpoints();
 app.MapCustomHealthChecks();
 
 app.Run();
+
+
 
 
