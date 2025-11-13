@@ -160,14 +160,19 @@ internal static class ServiceCollectionExtensions
 
         services.AddSingleton<DocumentService>();
 
-        services.AddSingleton<AzureAIAgentManagementService>();
+        // Only register Azure AI Foundry-dependent services if endpoint is configured
+        if (!string.IsNullOrEmpty(configuration.AzureAIFoundryProjectEndpoint))
+        {
+            services.AddSingleton<AzureAIAgentManagementService>();
+            services.AddSingleton<AzureAIAgentChatService>();
+        }
+        
         services.AddSingleton<ImageGenerationChatAgent>();
         services.AddSingleton<TextToImageService>();
         services.AddSingleton<ChatService>();
         // Register ChatService as the default IChatService implementation for M365 integration
         services.AddSingleton<IChatService>(sp => sp.GetRequiredService<ChatService>());
         services.AddSingleton<RAGChatService>();
-        services.AddSingleton<AzureAIAgentChatService>();
         services.AddSingleton<EndpointChatService>();
         services.AddSingleton<EndpointChatServiceV2>();
         services.AddSingleton<EndpointTaskService>();
