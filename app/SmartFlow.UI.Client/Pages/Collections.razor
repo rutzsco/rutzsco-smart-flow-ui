@@ -279,6 +279,10 @@
                                     {
                                         <MudProgressCircular Size="Size.Small" Indeterminate="true" />
                                     }
+                                    else if (_deletingFiles.Contains(context.FileName))
+                                    {
+                                        <MudProgressCircular Size="Size.Small" Indeterminate="true" Color="Color.Error" />
+                                    }
                                     else
                                     {
                                         <MudTooltip Text="Process document layout">
@@ -287,6 +291,13 @@
                                                            Size="Size.Small"
                                                            OnClick="@(async () => await ProcessDocumentLayoutAsync(context.FileName))"
                                                            Title="Process Layout" />
+                                        </MudTooltip>
+                                        <MudTooltip Text="Delete file">
+                                            <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                                           Color="Color.Error"
+                                                           Size="Size.Small"
+                                                           OnClick="@(async () => await DeleteFileAsync(context.FileName))"
+                                                           Title="Delete File" />
                                         </MudTooltip>
                                     }
                                 </MudStack>

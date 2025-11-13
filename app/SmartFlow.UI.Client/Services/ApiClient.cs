@@ -58,6 +58,22 @@ public sealed class ApiClient(HttpClient httpClient)
         }
     }
 
+    public async Task<bool> DeleteFileFromCollectionAsync(string containerName, string fileName)
+    {
+        try
+        {
+            // URL encode the filename to handle special characters and paths
+            var encodedFileName = Uri.EscapeDataString(fileName);
+            var response = await httpClient.DeleteAsync($"api/collections/{containerName}/files/{encodedFileName}");
+            return response.IsSuccessStatusCode;
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Error deleting file from collection: {ex.Message}");
+            return false;
+        }
+    }
+
     public async Task<bool> ProcessDocumentLayoutAsync(string containerName, string fileName)
     {
         try

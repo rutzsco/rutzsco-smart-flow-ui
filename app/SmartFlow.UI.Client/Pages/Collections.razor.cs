@@ -19,6 +19,7 @@ public sealed partial class Collections : IDisposable
     private bool _showUploadSection = false; // Hidden by default - user clicks "Upload Document" to show
     private string _filter = "";
     private HashSet<string> _processingFiles = new(); // Track files being processed
+    private HashSet<string> _deletingFiles = new(); // Track files being deleted
 
     // Store a cancelation token that will be used to cancel if the user disposes of this component.
     private readonly CancellationTokenSource _cancellationTokenSource = new();
@@ -366,6 +367,58 @@ public sealed partial class Collections : IDisposable
     {
         var extension = Path.GetExtension(fileName).ToLowerInvariant();
         return extension is ".pdf" or ".md" or ".json";
+    }
+
+    private async Task DeleteFileAsync(string fileName)
+    {
+        if (string.IsNullOrEmpty(_selectedCollection) || string.IsNullOrEmpty(fileName))
+            return;
+
+        // Show confirmation dialog
+        var parameters = new DialogParameters
+        {
+            { "ContentText", $"Are you sure you want to delete '{fileName}'? This action cannot be undone. Associated processing files will also be deleted." },
+            { "ButtonText", "Delete" },
+            { "Color", Color.Error }
+        };
+
+        var dialog = await DialogService.ShowAsync<ConfirmationDialog>("Confirm Deletion", parameters);
+        var result = await dialog.Result;
+
+        if (result.Canceled)
+            return;
+
+        // Add to deleting set
+        _deletingFiles.Add(fileName);
+        StateHasChanged();
+
+        try
+        {
+            Logger.LogInformation("Deleting file {FileName} from {Collection}", fileName, _selectedCollection);
+            
+            var success = await Client.DeleteFileFromCollectionAsync(_selectedCollection, fileName);
+            
+            if (success)
+            {
+                SnackBarMessage($"File '{fileName}' deleted successfully");
+                await RefreshAsync();
+            }
+            else
+            {
+                SnackBarError($"Failed to delete file '{fileName}'");
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error deleting file {FileName}", fileName);
+            SnackBarError($"Error deleting file: {ex.Message}");
+        }
+        finally
+        {
+            // Remove from deleting set
+            _deletingFiles.Remove(fileName);
+            StateHasChanged();
+        }
     }
 
     public void Dispose() => _cancellationTokenSource.Cancel();

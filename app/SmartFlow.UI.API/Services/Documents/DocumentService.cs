@@ -153,6 +153,67 @@ public class DocumentService
     }
 
     /// <summary>
+    /// Deletes a file from a specific container and its associated processing files
+    /// </summary>
+    /// <param name="containerName">The name of the container</param>
+    /// <param name="fileName">The name of the file to delete</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>True if file was deleted successfully, false otherwise</returns>
+    public async Task<bool> DeleteFileFromContainerAsync(
+        string containerName, 
+        string fileName, 
+        CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var containerClient = _blobServiceClient.GetBlobContainerClient(containerName);
+            
+            if (!await containerClient.ExistsAsync(cancellationToken))
+            {
+                return false;
+            }
+
+            var blobClient = containerClient.GetBlobClient(fileName);
+            
+            if (!await blobClient.ExistsAsync(cancellationToken))
+            {
+                return false;
+            }
+
+            // Delete the main file
+            await blobClient.DeleteAsync(cancellationToken: cancellationToken);
+
+            // Delete associated processing files from the extract container
+            var extractContainerName = $"{containerName}-extract";
+            var extractContainerClient = _blobServiceClient.GetBlobContainerClient(extractContainerName);
+            var extractContainerExists = await extractContainerClient.ExistsAsync(cancellationToken);
+
+            if (extractContainerExists)
+            {
+                var baseNameWithoutExtension = Path.GetFileNameWithoutExtension(fileName);
+                var directoryPath = Path.GetDirectoryName(fileName);
+                
+                // Look for files with the same base name in the extract container
+                var searchPrefix = string.IsNullOrEmpty(directoryPath) 
+                    ? baseNameWithoutExtension 
+                    : $"{directoryPath}/{baseNameWithoutExtension}";
+
+                await foreach (var extractBlobItem in extractContainerClient.GetBlobsAsync(prefix: searchPrefix, cancellationToken: cancellationToken))
+                {
+                    var extractBlobClient = extractContainerClient.GetBlobClient(extractBlobItem.Name);
+                    await extractBlobClient.DeleteIfExistsAsync(cancellationToken: cancellationToken);
+                }
+            }
+
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    /// <summary>
     /// Downloads a file from a specific container
     /// </summary>
     /// <param name="containerName">The name of the container</param>

@@ -23,6 +23,9 @@ internal static class WebApiCollectionEndpoints
         // Download a file from a container
         api.MapGet("{containerName}/download/{*fileName}", OnDownloadFileAsync);
 
+        // Delete a file from a container
+        api.MapDelete("{containerName}/files/{*fileName}", OnDeleteFileAsync);
+
         return app;
     }
 
@@ -146,6 +149,42 @@ internal static class WebApiCollectionEndpoints
         {
             logger.LogError(ex, "Error uploading files to container: {ContainerName}", containerName);
             return Results.Problem("Error uploading files to container");
+        }
+    }
+
+    private static async Task<IResult> OnDeleteFileAsync(
+        HttpContext context,
+        string containerName,
+        string fileName,
+        [FromServices] DocumentService documentService,
+        [FromServices] ILogger<WebApplication> logger,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            // URL decode the filename since it comes URL-encoded from the client
+            fileName = Uri.UnescapeDataString(fileName);
+            
+            logger.LogInformation("Deleting file {FileName} from container: {ContainerName}", fileName, containerName);
+
+            var userInfo = await context.GetUserInfoAsync();
+            var success = await documentService.DeleteFileFromContainerAsync(containerName, fileName, cancellationToken);
+
+            if (success)
+            {
+                logger.LogInformation("Successfully deleted file '{FileName}' from container '{ContainerName}'", fileName, containerName);
+                return TypedResults.Ok(new { success = true, message = $"File '{fileName}' deleted successfully" });
+            }
+            else
+            {
+                logger.LogWarning("Failed to delete file '{FileName}' from container '{ContainerName}'", fileName, containerName);
+                return Results.NotFound(new { success = false, message = $"File '{fileName}' not found" });
+            }
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error deleting file {FileName} from container: {ContainerName}", fileName, containerName);
+            return Results.Problem("Error deleting file from container");
         }
     }
 
