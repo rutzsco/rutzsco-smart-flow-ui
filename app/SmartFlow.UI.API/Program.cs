@@ -114,7 +114,12 @@ app.Use(next => context =>
 });
 app.MapFallbackToFile("index.html");
 
-app.MapAgentManagementApi();
+// Only map agent management API if Azure AI Foundry is configured
+if (!string.IsNullOrEmpty(appConfiguration.AzureAIFoundryProjectEndpoint))
+{
+    app.MapAgentManagementApi();
+}
+
 app.MapChatApi();
 app.MapApi();
 app.MapCollectionApi();
