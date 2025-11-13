@@ -159,6 +159,9 @@ internal static class WebApiCollectionEndpoints
     {
         try
         {
+            // URL decode the filename since it comes URL-encoded from the client
+            fileName = Uri.UnescapeDataString(fileName);
+            
             logger.LogInformation("Downloading file {FileName} from container: {ContainerName}", fileName, containerName);
 
             var userInfo = await context.GetUserInfoAsync();
@@ -172,10 +175,39 @@ internal static class WebApiCollectionEndpoints
             var fileNameOnly = Path.GetFileName(fileName);
             var extension = Path.GetExtension(fileName).ToLowerInvariant();
             
-            // For PDFs and Markdown files, use inline disposition so they can be viewed in browser
+            // Ensure content type is set correctly
+            if (string.IsNullOrEmpty(contentType) || contentType == "application/octet-stream")
+            {
+                contentType = extension switch
+                {
+                    ".pdf" => "application/pdf",
+                    ".md" => "text/markdown",
+                    ".txt" => "text/plain",
+                    ".json" => "application/json",
+                    _ => "application/octet-stream"
+                };
+            }
+            
+            // For PDFs, explicitly set headers for inline viewing
+            if (extension == ".pdf")
+            {
+                context.Response.Headers["Content-Type"] = "application/pdf";
+                context.Response.Headers["Content-Disposition"] = $"inline; filename=\"{fileNameOnly}\"";
+                context.Response.Headers["Accept-Ranges"] = "bytes";
+                context.Response.Headers["Cache-Control"] = "public, max-age=3600";
+                
+                return Results.Stream(stream, contentType: "application/pdf", enableRangeProcessing: true);
+            }
+            
+            // For Markdown and JSON files, use inline disposition so they can be viewed in browser
             // For other files, use attachment disposition to trigger download
-            var enableRangeProcessing = extension == ".pdf"; // Enable range requests for PDFs
-            var fileDownloadName = (extension == ".pdf" || extension == ".md") ? null : fileNameOnly;
+            var enableRangeProcessing = extension == ".pdf";
+            var fileDownloadName = (extension == ".pdf" || extension == ".md" || extension == ".json") ? null : fileNameOnly;
+            
+            if (fileDownloadName == null)
+            {
+                context.Response.Headers["Content-Disposition"] = $"inline; filename=\"{fileNameOnly}\"";
+            }
             
             return Results.Stream(
                 stream, 

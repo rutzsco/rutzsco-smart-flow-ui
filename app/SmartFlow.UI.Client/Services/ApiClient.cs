@@ -78,6 +78,7 @@ public sealed class ApiClient(HttpClient httpClient)
         try
         {
             // URL encode the filename to handle special characters and paths
+            // The catch-all route {*fileName} will preserve the encoded value
             var encodedFileName = Uri.EscapeDataString(fileName);
             return $"api/collections/{containerName}/download/{encodedFileName}";
         }
