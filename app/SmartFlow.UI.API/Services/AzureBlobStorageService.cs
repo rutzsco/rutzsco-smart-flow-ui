@@ -24,7 +24,8 @@ public sealed class AzureBlobStorageService(BlobServiceClient blobServiceClient,
                 var fileName = file.FileName;
 
                 await using var stream = file.OpenReadStream();
-                var blobName = BlobNameFromFilePage(fileName, DateTime.UtcNow.Ticks);
+                // Use the original filename without timestamp
+                var blobName = Path.GetFileName(fileName);
                 var blobClient = container.GetBlobClient(blobName);
                 //if (await blobClient.ExistsAsync(cancellationToken))
                 //{
