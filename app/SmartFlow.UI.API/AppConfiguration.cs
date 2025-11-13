@@ -74,6 +74,8 @@ public class AppConfiguration
     public string? AOAIStandardServiceEndpoint { get; init; }
     public string? AOAIStandardServiceKey { get; init; }
 
+    // Azure AI Gateway / APIM
+    public string? AzureAIGatewayAPIMKey { get; init; }
 
     // Azure AI Projects
     public string? AzureAIFoundryProjectEndpoint { get; init; }

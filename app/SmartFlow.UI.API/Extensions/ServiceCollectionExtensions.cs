@@ -126,7 +126,8 @@ internal static class ServiceCollectionExtensions
                 keyCredential,
                 tokenCredential,
                 sp.GetRequiredService<IHttpClientFactory>(),
-                sp.GetRequiredService<SearchClientFactory>());
+                sp.GetRequiredService<SearchClientFactory>(),
+                configuration.AzureAIGatewayAPIMKey);
         });
     }
 

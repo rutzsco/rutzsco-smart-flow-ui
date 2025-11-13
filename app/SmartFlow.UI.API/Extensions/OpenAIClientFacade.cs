@@ -1,7 +1,8 @@
-﻿
+﻿using Azure;
 using Azure.Core;
-using Azure;
 using Assistants.Hub.API.Assistants.RAG;
+using Azure.Core.Pipeline;
+using System.ClientModel.Primitives;
 
 namespace MinimalApi.Extensions;
 
@@ -14,10 +15,11 @@ public class OpenAIClientFacade
     private readonly IHttpClientFactory _httpClientFactory;
     private readonly SearchClientFactory _searchClientFactory;
     private readonly AzureKeyCredential _azureKeyCredential;
+    private readonly string _apimKey;
 
     private readonly AzureOpenAIClient _standardChatGptClient;
 
-    public OpenAIClientFacade(AppConfiguration configuration, AzureKeyCredential azureKeyCredential, TokenCredential tokenCredential, IHttpClientFactory httpClientFactory, SearchClientFactory searchClientFactory)
+    public OpenAIClientFacade(AppConfiguration configuration, AzureKeyCredential azureKeyCredential, TokenCredential tokenCredential, IHttpClientFactory httpClientFactory, SearchClientFactory searchClientFactory, string apimKey = null)
     {
         ArgumentNullException.ThrowIfNull(configuration, "AppConfiguration");
         ArgumentNullException.ThrowIfNull(configuration.AOAIStandardChatGptDeployment, "AOAIStandardChatGptDeployment");
@@ -31,11 +33,31 @@ public class OpenAIClientFacade
         _tokenCredential = tokenCredential;
         _httpClientFactory = httpClientFactory;
         _searchClientFactory = searchClientFactory;
+        _apimKey = apimKey;
 
-        if (azureKeyCredential != null)
-            _standardChatGptClient = new AzureOpenAIClient(new Uri(_standardServiceEndpoint), _azureKeyCredential);
+        // Create client with APIM key header if provided
+        if (!string.IsNullOrEmpty(_apimKey))
+        {
+            var httpClient = _httpClientFactory.CreateClient();
+            httpClient.DefaultRequestHeaders.Add("Ocp-Apim-Subscription-Key", _apimKey);
+            
+            var clientOptions = new AzureOpenAIClientOptions
+            {
+                Transport = new HttpClientPipelineTransport(httpClient)
+            };
+
+            if (azureKeyCredential != null)
+                _standardChatGptClient = new AzureOpenAIClient(new Uri(_standardServiceEndpoint), _azureKeyCredential, clientOptions);
+            else
+                _standardChatGptClient = new AzureOpenAIClient(new Uri(_standardServiceEndpoint), _tokenCredential, clientOptions);
+        }
         else
-            _standardChatGptClient = new AzureOpenAIClient(new Uri(_standardServiceEndpoint), _tokenCredential);
+        {
+            if (azureKeyCredential != null)
+                _standardChatGptClient = new AzureOpenAIClient(new Uri(_standardServiceEndpoint), _azureKeyCredential);
+            else
+                _standardChatGptClient = new AzureOpenAIClient(new Uri(_standardServiceEndpoint), _tokenCredential);
+        }
     }
 
     public string GetKernelDeploymentName()
