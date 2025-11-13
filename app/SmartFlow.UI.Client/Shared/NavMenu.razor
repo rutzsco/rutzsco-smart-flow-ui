@@ -2,7 +2,7 @@
 
     <MudNavLink Href="" aria-label="Chat navigation option." Icon="@Icons.Material.Filled.QuestionAnswer" Match="NavLinkMatch.All">Chat</MudNavLink>
     
-    <MudNavLink Href="voicechat" aria-label="Voice Chat with AI Agent." Icon="@Icons.Material.Filled.RecordVoiceOver">Voice Chat</MudNavLink>
+@*     <MudNavLink Href="voicechat" aria-label="Voice Chat with AI Agent." Icon="@Icons.Material.Filled.RecordVoiceOver">Voice Chat</MudNavLink> *@
     
     @if (_user != null && _user.Profiles.Where(p => p.Approach == ProfileApproach.UserDocumentChat).Any())
     {
