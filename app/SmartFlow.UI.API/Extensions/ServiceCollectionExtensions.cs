@@ -67,12 +67,21 @@ internal static class ServiceCollectionExtensions
 
     private static void RegisterBlobServices(IServiceCollection services, AppConfiguration configuration, TokenCredential azureCredential)
     {
-        services.AddSingleton<BlobServiceClient>(sp =>
+        // Prefer connection string if provided, otherwise use endpoint with credential
+        if (!string.IsNullOrEmpty(configuration.AzureStorageAccountConnectionString))
         {
-            var endpoint = configuration.AzureStorageAccountEndpoint;
-            ArgumentNullException.ThrowIfNullOrEmpty(endpoint);
-            return new BlobServiceClient(new Uri(endpoint), azureCredential);
-        });
+            services.AddSingleton<BlobServiceClient>(sp =>
+            {
+                return new BlobServiceClient(configuration.AzureStorageAccountConnectionString);
+            });
+        }
+        else if (!string.IsNullOrEmpty(configuration.AzureStorageAccountEndpoint))
+        {
+            services.AddSingleton<BlobServiceClient>(sp =>
+            {
+                return new BlobServiceClient(new Uri(configuration.AzureStorageAccountEndpoint), azureCredential);
+            });
+        }
 
         services.AddSingleton<BlobContainerClient>(sp =>
         {
