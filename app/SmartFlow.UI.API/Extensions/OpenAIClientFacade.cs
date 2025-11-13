@@ -82,39 +82,111 @@ public class OpenAIClientFacade
 
     private Kernel BuildKernelBasedOnIdentity()
     {
+        var kernelBuilder = Kernel.CreateBuilder();
+
         if (_azureKeyCredential != null)
         {
-            var keyKernel = Kernel.CreateBuilder()
-                .AddAzureOpenAIChatCompletion(_standardChatGptDeployment, _standardServiceEndpoint, _config.AOAIStandardServiceKey)
-                .Build();
-            return keyKernel;
+            // Use key-based authentication
+            if (!string.IsNullOrEmpty(_apimKey))
+            {
+                // Create HttpClient with APIM key header
+                var httpClient = _httpClientFactory.CreateClient();
+                httpClient.DefaultRequestHeaders.Add("Ocp-Apim-Subscription-Key", _apimKey);
+                
+                kernelBuilder.AddAzureOpenAIChatCompletion(
+                    _standardChatGptDeployment, 
+                    _standardServiceEndpoint, 
+                    _config.AOAIStandardServiceKey,
+                    httpClient: httpClient);
+            }
+            else
+            {
+                kernelBuilder.AddAzureOpenAIChatCompletion(
+                    _standardChatGptDeployment, 
+                    _standardServiceEndpoint, 
+                    _config.AOAIStandardServiceKey);
+            }
+        }
+        else
+        {
+            // Use token-based authentication
+            if (!string.IsNullOrEmpty(_apimKey))
+            {
+                // Create HttpClient with APIM key header
+                var httpClient = _httpClientFactory.CreateClient();
+                httpClient.DefaultRequestHeaders.Add("Ocp-Apim-Subscription-Key", _apimKey);
+                
+                kernelBuilder.AddAzureOpenAIChatCompletion(
+                    _standardChatGptDeployment, 
+                    _standardServiceEndpoint, 
+                    _tokenCredential,
+                    httpClient: httpClient);
+            }
+            else
+            {
+                kernelBuilder.AddAzureOpenAIChatCompletion(
+                    _standardChatGptDeployment, 
+                    _standardServiceEndpoint, 
+                    _tokenCredential);
+            }
         }
 
-        var kernel = Kernel.CreateBuilder()
-       .AddAzureOpenAIChatCompletion(_standardChatGptDeployment, _standardServiceEndpoint, _tokenCredential)
-       .Build();
-
-        return kernel;
+        return kernelBuilder.Build();
     }
 
     #pragma warning disable SKEXP0010
     private Kernel BuildImageGenerationKernelBasedOnIdentity()
     {
+        var kernelBuilder = Kernel.CreateBuilder();
+
         if (_azureKeyCredential != null)
         {
-
-            var keyKernel = Kernel.CreateBuilder()
-                .AddAzureOpenAITextToImage(_standardChatGptDeployment, _standardServiceEndpoint,_config.AOAIStandardServiceKey)
-                .Build();
-
-            return keyKernel;
+            // Use key-based authentication
+            if (!string.IsNullOrEmpty(_apimKey))
+            {
+                // Create HttpClient with APIM key header
+                var httpClient = _httpClientFactory.CreateClient();
+                httpClient.DefaultRequestHeaders.Add("Ocp-Apim-Subscription-Key", _apimKey);
+                
+                kernelBuilder.AddAzureOpenAITextToImage(
+                    _standardChatGptDeployment, 
+                    _standardServiceEndpoint,
+                    _config.AOAIStandardServiceKey,
+                    httpClient: httpClient);
+            }
+            else
+            {
+                kernelBuilder.AddAzureOpenAITextToImage(
+                    _standardChatGptDeployment, 
+                    _standardServiceEndpoint,
+                    _config.AOAIStandardServiceKey);
+            }
+        }
+        else
+        {
+            // Use token-based authentication
+            if (!string.IsNullOrEmpty(_apimKey))
+            {
+                // Create HttpClient with APIM key header
+                var httpClient = _httpClientFactory.CreateClient();
+                httpClient.DefaultRequestHeaders.Add("Ocp-Apim-Subscription-Key", _apimKey);
+                
+                kernelBuilder.AddAzureOpenAITextToImage(
+                    "dall-e-3", 
+                    _standardServiceEndpoint, 
+                    _tokenCredential,
+                    httpClient: httpClient);
+            }
+            else
+            {
+                kernelBuilder.AddAzureOpenAITextToImage(
+                    "dall-e-3", 
+                    _standardServiceEndpoint, 
+                    _tokenCredential);
+            }
         }
 
-        var kernel = Kernel.CreateBuilder()
-            .AddAzureOpenAITextToImage("dall-e-3", _standardServiceEndpoint, _tokenCredential)
-            .Build();
-
-        return kernel;
+        return kernelBuilder.Build();
     }
     #pragma warning restore SKEXP0010
 }
