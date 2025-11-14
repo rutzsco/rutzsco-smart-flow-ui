@@ -3,127 +3,24 @@
 <PageTitle>Project Management</PageTitle>
 
 <MudGrid>
+    <!-- Header Section -->
     <MudItem xs="12">
         <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3" Class="mb-4">
             <MudText Typo="Typo.h5">Project Management</MudText>
             <MudSpacer />
-            
-            @if (_isLoadingProjects)
-            {
-                <MudProgressCircular Indeterminate="true" Size="Size.Small" />
-                <MudText>Loading projects...</MudText>
-            }
-            else if (_projects.Any())
-            {
-                @if (!string.IsNullOrEmpty(_selectedProject))
-                {
-                    <MudChip T="string" Size="Size.Small" Color="Color.Primary">@_projectFiles.Count file@(_projectFiles.Count != 1 ? "s" : "")</MudChip>
-                    
-                    @if (_selectedProjectInfo != null && !string.IsNullOrWhiteSpace(_selectedProjectInfo.Type))
-                    {
-                        <MudChip T="string" 
-                                 Size="Size.Small" 
-                                 Color="Color.Info" 
-                                 Icon="@Icons.Material.Filled.Label"
-                                 Style="text-transform: uppercase;">
-                            @_selectedProjectInfo.Type
-                        </MudChip>
-                    }
-                }
-                
-                <MudMenu Label="@(_selectedProject ?? "Select Project")" Color="Color.Primary">
-                    <ActivatorContent>
-                        <MudButton Color="Color.Primary" 
-                                   Variant="Variant.Outlined" 
-                                   StartIcon="@Icons.Material.Filled.Folder" 
-                                   EndIcon="@Icons.Material.Filled.KeyboardArrowDown">
-                            @(_selectedProject ?? "Select Project")
-                        </MudButton>
-                    </ActivatorContent>
-                    <ChildContent>
-                        @foreach (var project in _projects)
-                        {
-                            <MudMenuItem OnClick="@(async () => await SelectProjectAsync(project.Name))">
-                                <MudStack Spacing="0">
-                                    <MudText Typo="Typo.body1">@project.Name</MudText>
-                                    @if (!string.IsNullOrWhiteSpace(project.Type))
-                                    {
-                                        <MudText Typo="Typo.caption" Color="Color.Primary">Type: @project.Type</MudText>
-                                    }
-                                    @if (!string.IsNullOrWhiteSpace(project.Description))
-                                    {
-                                        <MudText Typo="Typo.caption" Color="Color.Default">@project.Description</MudText>
-                                    }
-                                </MudStack>
-                            </MudMenuItem>
-                        }
-                    </ChildContent>
-                </MudMenu>
-            }
             
             <MudIconButton Icon="@Icons.Material.Filled.Add" 
                            Color="Color.Primary" 
                            Variant="Variant.Filled"
                            OnClick="ShowCreateProjectForm"
                            Title="Create Project" />
-            
-            @if (!string.IsNullOrEmpty(_selectedProject))
-            {
-                <MudIconButton Icon="@Icons.Material.Filled.Edit" 
-                               Color="Color.Secondary" 
-                               Variant="Variant.Filled"
-                               OnClick="ShowEditMetadataForm"
-                               Title="Edit Project Metadata" />
-                
-                <MudIconButton Icon="@Icons.Material.Filled.Delete" 
-                               Color="Color.Error" 
-                               Variant="Variant.Filled"
-                               OnClick="ShowDeleteProjectDialogAsync"
-                               Title="Delete Project" />
-                
-                <MudButton StartIcon="@Icons.Material.Filled.Upload"
-                           Color="Color.Primary"
-                           Variant="Variant.Filled"
-                           OnClick="@(() => _showUploadSection = true)">
-                    Upload
-                </MudButton>
-            }
         </MudStack>
-        
-        @if (!string.IsNullOrEmpty(_selectedProject) && _selectedProjectInfo != null && !string.IsNullOrWhiteSpace(_selectedProjectInfo.Description))
-        {
-            <MudPaper Elevation="1" Class="pa-3 mb-4">
-                <MudStack Spacing="1">
-                    <MudText Typo="Typo.body2" Color="Color.Default">
-                        <MudIcon Icon="@Icons.Material.Filled.Info" Size="Size.Small" Class="mr-1" />
-                        @_selectedProjectInfo.Description
-                    </MudText>
-                </MudStack>
-            </MudPaper>
-        }
-        
-        @if (!string.IsNullOrEmpty(_selectedProject))
-        {
-            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="mb-4">
-                <MudTextField @bind-Value="@_filter" 
-                              Placeholder="Filter" 
-                              Adornment="Adornment.Start"
-                              AdornmentIcon="@Icons.Material.Filled.Search" 
-                              IconSize="Size.Medium"
-                              Margin="Margin.Dense"
-                              DebounceInterval="300"
-                              Style="max-width: 400px;">
-                </MudTextField>
-                <MudIconButton Icon="@Icons.Material.Filled.Refresh" 
-                              OnClick="RefreshAsync" 
-                              Size="Size.Small"
-                              Title="Refresh file list" />
-            </MudStack>
-        }
-        
+    </MudItem>
+
+    <!-- Create/Edit Forms Section -->
+    <MudItem xs="12">
         @if (_showCreateProjectForm)
         {
-            <!-- Create Project Form -->
             <MudPaper Elevation="2" Class="pa-4 mb-4">
                 <MudText Typo="Typo.h6" Class="mb-3">
                     <MudIcon Icon="@Icons.Material.Filled.CreateNewFolder" Class="mr-2" />
@@ -172,7 +69,6 @@
 
         @if (_showEditMetadataForm)
         {
-            <!-- Edit Project Metadata Form -->
             <MudPaper Elevation="2" Class="pa-4 mb-4">
                 <MudText Typo="Typo.h6" Class="mb-3">
                     <MudIcon Icon="@Icons.Material.Filled.Edit" Class="mr-2" />
@@ -217,30 +113,171 @@
                              OnClose="@(() => _showUploadSection = false)"
                              OnUpload="SubmitFilesForUploadAsync" />
         }
-
-        @if (!_projects.Any() && !_showCreateProjectForm && !_isLoadingProjects)
-        {
-            <MudAlert Severity="Severity.Info">No projects found. Create your first project to get started.</MudAlert>
-        }
-        else if (string.IsNullOrEmpty(_selectedProject) && _projects.Any() && !_showCreateProjectForm)
-        {
-            <MudAlert Severity="Severity.Info">
-                <MudText Typo="Typo.h6">Select a project to continue</MudText>
-                <MudText>Choose a project from the dropdown above to upload documents and view files.</MudText>
-            </MudAlert>
-        }
     </MudItem>
-</MudGrid>
 
-@if (!string.IsNullOrEmpty(_selectedProject))
-{
-    <br />
+    <!-- Projects List Section (Master) - Connected to Details -->
+    <MudItem xs="12">
+        <MudPaper Elevation="3" Style="border-radius: 4px 4px 0 0;">
+            <MudToolBar Dense="true" Style="border-bottom: 1px solid var(--mud-palette-divider);">
+                <MudTextField @bind-Value="_projectFilter" 
+                              Placeholder="Find..." 
+                              Adornment="Adornment.Start"
+                              AdornmentIcon="@Icons.Material.Filled.Search" 
+                              IconSize="Size.Small"
+                              Margin="Margin.Dense"
+                              Immediate="true"
+                              DebounceInterval="300"
+                              Variant="Variant.Outlined"
+                              Style="max-width: 300px;">
+                </MudTextField>
+                <MudSpacer />
+                @if (_isLoadingProjects)
+                {
+                    <MudProgressCircular Indeterminate="true" Size="Size.Small" Class="mr-3" />
+                }
+                else
+                {
+                    <MudChip T="string" Size="Size.Small" Color="Color.Primary" Class="mr-3">
+                        @_projects.Count project@(_projects.Count != 1 ? "s" : "")
+                    </MudChip>
+                }
+                
+                @if (!string.IsNullOrEmpty(_selectedProject))
+                {
+                    <MudIconButton Icon="@Icons.Material.Filled.Edit" 
+                                   Color="Color.Default" 
+                                   Size="Size.Small"
+                                   OnClick="ShowEditMetadataForm"
+                                   Title="Edit Project Metadata" />
+                    
+                    <MudIconButton Icon="@Icons.Material.Filled.Delete" 
+                                   Color="Color.Default" 
+                                   Size="Size.Small"
+                                   OnClick="ShowDeleteProjectDialogAsync"
+                                   Title="Delete Project"
+                                   Class="mr-2" />
+                }
+                
+                <MudIconButton Icon="@Icons.Material.Filled.Refresh" 
+                               OnClick="LoadProjectsAsync" 
+                               Size="Size.Small"
+                               Title="Refresh project list" />
+            </MudToolBar>
+            
+            @if (!_projects.Any() && !_isLoadingProjects)
+            {
+                <MudAlert Severity="Severity.Info" Class="ma-4">No projects found. Create your first project to get started.</MudAlert>
+            }
+            else if (_projects.Any())
+            {
+                <div style="max-height: 400px; overflow-y: auto;">
+                    <MudTable Items="@_projects" 
+                              Dense="true" 
+                              Hover="true" 
+                              Bordered="false" 
+                              Striped="true"
+                              Filter="OnProjectFilter"
+                              SelectedItem="_selectedProjectInfo"
+                              SelectedItemChanged="@((CollectionInfo? p) => OnProjectSelectionChangedAsync(p))"
+                              Elevation="0"
+                              Class="project-table">
+                        <HeaderContent>
+                            <MudTh Style="width: 40%;"><MudTableSortLabel SortBy="new Func<CollectionInfo, object>(x => x.Name)">Project Name</MudTableSortLabel></MudTh>
+                            <MudTh Style="width: 15%;"><MudTableSortLabel SortBy="new Func<CollectionInfo, object>(x => x.Type ?? string.Empty)">Type</MudTableSortLabel></MudTh>
+                            <MudTh Style="width: 45%;">Description</MudTh>
+                        </HeaderContent>
+                        <RowTemplate>
+                            <MudTd DataLabel="Name">
+                                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                                    <MudIcon Icon="@Icons.Material.Filled.Folder" Size="Size.Small" Color="Color.Primary" />
+                                    <MudText Typo="Typo.body2" Style="font-weight: 500;">@context.Name</MudText>
+                                </MudStack>
+                            </MudTd>
+                            <MudTd DataLabel="Type">
+                                @if (!string.IsNullOrWhiteSpace(context.Type))
+                                {
+                                    <MudChip T="string" Size="Size.Small" Color="Color.Info" Style="text-transform: uppercase;">
+                                        @context.Type
+                                    </MudChip>
+                                }
+                                else
+                                {
+                                    <MudText Typo="Typo.body2" Color="Color.Secondary">-</MudText>
+                                }
+                            </MudTd>
+                            <MudTd DataLabel="Description">
+                                <MudText Typo="Typo.body2" Color="Color.Secondary" Style="white-space: normal;">
+                                    @(string.IsNullOrWhiteSpace(context.Description) ? "-" : context.Description)
+                                </MudText>
+                            </MudTd>
+                        </RowTemplate>
+                    </MudTable>
+                </div>
+                
+                <MudDivider />
+                
+                <div class="pa-2" style="background-color: var(--mud-palette-background-grey);">
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">
+                        Showing @_filteredProjectCount of @_projects.Count project@(_projects.Count != 1 ? "s" : "")
+                    </MudText>
+                </div>
+            }
+        </MudPaper>
 
-    <MudGrid>
-        <!-- Project Files Table - Elevated -->
-        <MudItem xs="12">
-            <MudCard Elevation="4">
-                <MudCardContent>
+        <!-- Project Details Section (Detail Panel) - Connected to List -->
+        @if (!string.IsNullOrEmpty(_selectedProject))
+        {
+            <MudPaper Elevation="3" Style="border-radius: 0 0 4px 4px; margin-top: 0; border-top: 2px solid var(--mud-palette-primary);">
+                <MudToolBar Dense="true" Style="background-color: var(--mud-palette-primary); color: white; border-bottom: 1px solid var(--mud-palette-divider);">
+                    <MudTextField @bind-Value="@_filter" 
+                                  Placeholder="Find..." 
+                                  Adornment="Adornment.Start"
+                                  AdornmentIcon="@Icons.Material.Filled.Search" 
+                                  IconSize="Size.Small"
+                                  Margin="Margin.Dense"
+                                  DebounceInterval="300"
+                                  Variant="Variant.Outlined"
+                                  Style="max-width: 300px; background-color: rgba(255,255,255,0.9);">
+                    </MudTextField>
+                    
+                    <MudSpacer />
+                    
+                    @if (_selectedProjectInfo != null && !string.IsNullOrWhiteSpace(_selectedProjectInfo.Type))
+                    {
+                        <MudChip T="string" Size="Size.Small" Color="Color.Secondary" Style="text-transform: uppercase; margin-right: 8px;">
+                            @_selectedProjectInfo.Type
+                        </MudChip>
+                    }
+                    
+                    <MudChip T="string" Size="Size.Small" Style="background-color: rgba(255,255,255,0.2); color: white; margin-right: 8px;">
+                        @_projectFiles.Count file@(_projectFiles.Count != 1 ? "s" : "")
+                    </MudChip>
+                    
+                    <MudButton StartIcon="@Icons.Material.Filled.Upload"
+                               Color="Color.Inherit"
+                               Variant="Variant.Text"
+                               Size="Size.Small"
+                               OnClick="@(() => _showUploadSection = true)"
+                               Class="mr-2">
+                        Upload
+                    </MudButton>
+                    
+                    <MudIconButton Icon="@Icons.Material.Filled.Refresh" 
+                                  OnClick="RefreshAsync" 
+                                  Size="Size.Small"
+                                  Color="Color.Inherit"
+                                  Title="Refresh file list" />
+                </MudToolBar>
+
+                @if (_selectedProjectInfo != null && !string.IsNullOrWhiteSpace(_selectedProjectInfo.Description))
+                {
+                    <MudAlert Severity="Severity.Info" Dense="true" Class="ma-0" Style="border-radius: 0;">
+                        @_selectedProjectInfo.Description
+                    </MudAlert>
+                }
+
+                <div class="pa-4">
+                    <!-- Files Table -->
                     <MudTable Items="@_projectFiles" 
                               Dense="true" 
                               Hover="true" 
@@ -249,7 +286,7 @@
                               Filter="OnFileFilter" 
                               Elevation="0">
                         <HeaderContent>
-                            <MudTh>File Name</MudTh>
+                            <MudTh><MudTableSortLabel SortBy="new Func<ContainerFileInfo, object>(x => x.FileName)">File Name</MudTableSortLabel></MudTh>
                             <MudTh Style="width: 200px;">Processing Files</MudTh>
                             <MudTh Style="text-align: center; width: 200px;">Actions</MudTh>
                         </HeaderContent>
@@ -333,8 +370,22 @@
                             <MudTablePager PageSizeOptions="new int[] { 10, 25, 50, 100 }" />
                         </PagerContent>
                     </MudTable>
-                </MudCardContent>
-            </MudCard>
-        </MudItem>
-    </MudGrid>
-}
+                </div>
+            </MudPaper>
+        }
+    </MudItem>
+</MudGrid>
+
+<style>
+    .project-table .mud-table-row.mud-selected {
+        background-color: var(--mud-palette-action-default-hover) !important;
+    }
+    
+    .project-table .mud-table-row.mud-selected:hover {
+        background-color: var(--mud-palette-action-default-hover) !important;
+    }
+    
+    .project-table .mud-table-row {
+        cursor: pointer;
+    }
+</style>

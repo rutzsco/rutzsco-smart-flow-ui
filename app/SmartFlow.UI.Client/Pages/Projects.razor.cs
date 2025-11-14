@@ -18,6 +18,8 @@ public sealed partial class Projects : IDisposable
     private bool _isLoadingProjects = false;
     private bool _showUploadSection = false; // Hidden by default - user clicks "Upload Document" to show
     private string _filter = "";
+    private string _projectFilter = "";
+    private int _filteredProjectCount = 0;
     private HashSet<string> _processingFiles = new(); // Track files being processed
     private HashSet<string> _deletingFiles = new(); // Track files being deleted
 
@@ -50,6 +52,15 @@ public sealed partial class Projects : IDisposable
     {
         // Load projects
         await LoadProjectsAsync();
+    }
+
+    protected override void OnAfterRender(bool firstRender)
+    {
+        if (!firstRender)
+        {
+            // Reset counter before filter runs
+            _filteredProjectCount = 0;
+        }
     }
 
     private async Task LoadProjectsAsync()
@@ -324,6 +335,38 @@ public sealed partial class Projects : IDisposable
 
     private bool OnFileFilter(ContainerFileInfo fileInfo) => 
         string.IsNullOrWhiteSpace(_filter) || fileInfo.FileName.Contains(_filter, StringComparison.OrdinalIgnoreCase);
+
+    private bool OnProjectFilter(CollectionInfo projectInfo)
+    {
+        if (string.IsNullOrWhiteSpace(_projectFilter))
+        {
+            _filteredProjectCount = _projects.Count;
+            return true;
+        }
+
+        var filter = _projectFilter.ToLower();
+        
+        var matches = projectInfo.Name.Contains(filter, StringComparison.OrdinalIgnoreCase) ||
+                     (!string.IsNullOrWhiteSpace(projectInfo.Type) && 
+                      projectInfo.Type.Contains(filter, StringComparison.OrdinalIgnoreCase)) ||
+                     (!string.IsNullOrWhiteSpace(projectInfo.Description) && 
+                      projectInfo.Description.Contains(filter, StringComparison.OrdinalIgnoreCase));
+
+        if (matches)
+        {
+            _filteredProjectCount++;
+        }
+
+        return matches;
+    }
+
+    private async Task OnProjectSelectionChangedAsync(CollectionInfo? project)
+    {
+        if (project != null)
+        {
+            await SelectProjectAsync(project.Name);
+        }
+    }
 
     private async Task RefreshAsync()
     {
