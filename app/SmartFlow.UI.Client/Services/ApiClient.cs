@@ -109,7 +109,6 @@ public sealed class ApiClient(HttpClient httpClient)
     {
         try
         {
-            // URL encode the filename to handle special characters and paths
             var encodedFileName = Uri.EscapeDataString(fileName);
             var response = await httpClient.DeleteAsync($"api/collections/{containerName}/files/{encodedFileName}");
             return response.IsSuccessStatusCode;
@@ -125,7 +124,6 @@ public sealed class ApiClient(HttpClient httpClient)
     {
         try
         {
-            // TODO: Implement actual document layout processing endpoint
             var response = await httpClient.PostAsync($"api/collections/{containerName}/process/{fileName}", null);
             return response.IsSuccessStatusCode;
         }
@@ -140,8 +138,6 @@ public sealed class ApiClient(HttpClient httpClient)
     {
         try
         {
-            // URL encode the filename to handle special characters and paths
-            // The catch-all route {*fileName} will preserve the encoded value
             var encodedFileName = Uri.EscapeDataString(fileName);
             return $"api/collections/{containerName}/download/{encodedFileName}";
         }
@@ -193,6 +189,200 @@ public sealed class ApiClient(HttpClient httpClient)
             return UploadDocumentsResponse.FromError(ex.ToString());
         }
     }
+
+    // Project Management APIs
+    public async Task<List<CollectionInfo>> GetProjectsAsync()
+    {
+        try
+        {
+            var response = await httpClient.GetAsync("api/projects");
+            response.EnsureSuccessStatusCode();
+            return await response.Content.ReadFromJsonAsync<List<CollectionInfo>>() ?? new List<CollectionInfo>();
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Error fetching projects: {ex.Message}");
+            return new List<CollectionInfo>();
+        }
+    }
+
+    public async Task<bool> CreateProjectAsync(string projectName, string? description = null, string? type = null)
+    {
+        try
+        {
+            var request = new CreateCollectionRequest
+            {
+                Name = projectName,
+                Description = description,
+                Type = type
+            };
+            
+            var json = System.Text.Json.JsonSerializer.Serialize(request, SerializerOptions.Default);
+            using var content = new StringContent(json, Encoding.UTF8, "application/json");
+            var response = await httpClient.PostAsync("api/projects", content);
+            return response.IsSuccessStatusCode;
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Error creating project: {ex.Message}");
+            return false;
+        }
+    }
+
+    public async Task<bool> DeleteProjectAsync(string projectName)
+    {
+        try
+        {
+            var response = await httpClient.DeleteAsync($"api/projects/{projectName}");
+            return response.IsSuccessStatusCode;
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Error deleting project: {ex.Message}");
+            return false;
+        }
+    }
+
+    public async Task<bool> UpdateProjectMetadataAsync(string projectName, string? description = null, string? type = null)
+    {
+        try
+        {
+            var request = new CreateCollectionRequest
+            {
+                Name = projectName,
+                Description = description,
+                Type = type
+            };
+            
+            var json = System.Text.Json.JsonSerializer.Serialize(request, SerializerOptions.Default);
+            using var content = new StringContent(json, Encoding.UTF8, "application/json");
+            var response = await httpClient.PutAsync($"api/projects/{projectName}/metadata", content);
+            return response.IsSuccessStatusCode;
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Error updating project metadata: {ex.Message}");
+            return false;
+        }
+    }
+
+    public async Task<CollectionInfo?> GetProjectMetadataAsync(string projectName)
+    {
+        try
+        {
+            var response = await httpClient.GetAsync($"api/projects/{projectName}/metadata");
+            response.EnsureSuccessStatusCode();
+            return await response.Content.ReadFromJsonAsync<CollectionInfo>();
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Error fetching project metadata: {ex.Message}");
+            return null;
+        }
+    }
+
+    public async Task<List<ContainerFileInfo>> GetProjectFilesAsync(string projectName)
+    {
+        try
+        {
+            var response = await httpClient.GetAsync($"api/projects/{projectName}/files");
+            response.EnsureSuccessStatusCode();
+            return await response.Content.ReadFromJsonAsync<List<ContainerFileInfo>>() ?? new List<ContainerFileInfo>();
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Error fetching project files: {ex.Message}");
+            return new List<ContainerFileInfo>();
+        }
+    }
+
+    public async Task<bool> DeleteFileFromProjectAsync(string projectName, string fileName)
+    {
+        try
+        {
+            var encodedFileName = Uri.EscapeDataString(fileName);
+            var response = await httpClient.DeleteAsync($"api/projects/{projectName}/files/{encodedFileName}");
+            return response.IsSuccessStatusCode;
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Error deleting file from project: {ex.Message}");
+            return false;
+        }
+    }
+
+    public async Task<bool> ProcessProjectDocumentLayoutAsync(string projectName, string fileName)
+    {
+        try
+        {
+            var response = await httpClient.PostAsync($"api/projects/{projectName}/process/{fileName}", null);
+            return response.IsSuccessStatusCode;
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Error processing project document layout: {ex.Message}");
+            return false;
+        }
+    }
+
+    public async Task<string?> GetProjectFileUrlAsync(string projectName, string fileName, bool isProcessingFile = false)
+    {
+        try
+        {
+            var encodedFileName = Uri.EscapeDataString(fileName);
+            var processingParam = isProcessingFile ? "?processing=true" : "";
+            return $"api/projects/{projectName}/download/{encodedFileName}{processingParam}";
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Error generating project file URL: {ex.Message}");
+            return null;
+        }
+    }
+
+    public async Task<UploadDocumentsResponse> UploadFilesToProjectAsync(IReadOnlyList<IBrowserFile> files, long maxAllowedSize, string projectName, IDictionary<string, string>? metadata = null)
+    {
+        try
+        {
+            using var content = new MultipartFormDataContent();
+
+            foreach (var file in files)
+            {
+#pragma warning disable CA2000 // Dispose objects before losing scope
+                var fileContent = new StreamContent(file.OpenReadStream(maxAllowedSize));
+#pragma warning restore CA2000 // Dispose objects before losing scope
+                fileContent.Headers.ContentType = new MediaTypeHeaderValue(file.ContentType);
+
+                content.Add(fileContent, file.Name, file.Name);
+            }
+
+            var tokenResponse = await httpClient.GetAsync("api/token/csrf");
+            tokenResponse.EnsureSuccessStatusCode();
+            var token = await tokenResponse.Content.ReadAsStringAsync();
+            token = token.Trim('"');
+
+            content.Headers.Add("X-CSRF-TOKEN-FORM", token);
+            content.Headers.Add("X-CSRF-TOKEN-HEADER", token);
+
+            // Add project name to metadata
+            var fileMetadata = metadata ?? new Dictionary<string, string>();
+            fileMetadata["project"] = projectName;
+
+            string serializedHeaders = System.Text.Json.JsonSerializer.Serialize(fileMetadata);
+            content.Headers.Add("X-FILE-METADATA", serializedHeaders);
+
+            var response = await httpClient.PostAsync($"api/projects/{projectName}/upload", content);
+            response.EnsureSuccessStatusCode();
+
+            var result = await response.Content.ReadFromJsonAsync<UploadDocumentsResponse>();
+            return result ?? UploadDocumentsResponse.FromError("Unable to upload files, unknown error.");
+        }
+        catch (Exception ex)
+        {
+            return UploadDocumentsResponse.FromError(ex.ToString());
+        }
+    }
+
     public async Task<UserInformation> GetUserAsync()
     {
         if (Cache.UserInformation != null)

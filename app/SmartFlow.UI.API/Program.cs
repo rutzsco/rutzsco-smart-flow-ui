@@ -123,6 +123,7 @@ if (!string.IsNullOrEmpty(appConfiguration.AzureAIFoundryProjectEndpoint))
 app.MapChatApi();
 app.MapApi();
 app.MapCollectionApi();
+app.MapProjectApi();
 app.MapVoiceLiveApi();
 
 // Map M365 Agent endpoints
@@ -131,6 +132,9 @@ app.MapM365AgentEndpoints();
 app.MapCustomHealthChecks();
 
 app.Run();
+
+
+
 
 
 

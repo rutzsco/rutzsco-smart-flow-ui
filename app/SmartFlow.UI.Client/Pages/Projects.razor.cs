@@ -57,7 +57,7 @@ public sealed partial class Projects : IDisposable
         _isLoadingProjects = true;
         try
         {
-            _projects = await Client.GetCollectionsAsync();
+            _projects = await Client.GetProjectsAsync();
             // Auto-select first project if available
             if (_projects.Any())
             {
@@ -106,7 +106,7 @@ public sealed partial class Projects : IDisposable
         _isLoadingDocuments = true;
         try
         {
-            _projectFiles = await Client.GetCollectionFilesAsync(_selectedProject);
+            _projectFiles = await Client.GetProjectFilesAsync(_selectedProject);
         }
         catch (Exception ex)
         {
@@ -170,7 +170,7 @@ public sealed partial class Projects : IDisposable
 
         try
         {
-            var success = await Client.CreateCollectionAsync(
+            var success = await Client.CreateProjectAsync(
                 _newProjectName, 
                 string.IsNullOrWhiteSpace(_newProjectDescription) ? null : _newProjectDescription,
                 string.IsNullOrWhiteSpace(_newProjectType) ? null : _newProjectType);
@@ -218,6 +218,65 @@ public sealed partial class Projects : IDisposable
         _editProjectType = "";
     }
 
+    private async Task ShowDeleteProjectDialogAsync()
+    {
+        if (string.IsNullOrEmpty(_selectedProject))
+        {
+            SnackBarError("No project selected");
+            return;
+        }
+
+        // Show confirmation dialog
+        var parameters = new DialogParameters
+        {
+            { "ContentText", $"Are you sure you want to delete project '{_selectedProject}'? This action cannot be undone. All files and metadata in this project will be deleted." },
+            { "ButtonText", "Delete Project" },
+            { "Color", Color.Error }
+        };
+
+        var dialog = await DialogService.ShowAsync<ConfirmationDialog>("Confirm Project Deletion", parameters);
+        var result = await dialog.Result;
+
+        if (result.Canceled)
+            return;
+
+        await DeleteProjectAsync();
+    }
+
+    private async Task DeleteProjectAsync()
+    {
+        if (string.IsNullOrEmpty(_selectedProject))
+        {
+            SnackBarError("No project selected");
+            return;
+        }
+
+        try
+        {
+            var projectToDelete = _selectedProject;
+            var success = await Client.DeleteProjectAsync(projectToDelete);
+
+            if (success)
+            {
+                SnackBarMessage($"Project '{projectToDelete}' deleted successfully");
+                _selectedProject = "";
+                _selectedProjectInfo = null;
+                _projectFiles.Clear();
+                _fileUploads.Clear();
+                await LoadProjectsAsync();
+            }
+            else
+            {
+                SnackBarError($"Failed to delete project '{projectToDelete}'");
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error deleting project {ProjectName}", _selectedProject);
+            SnackBarError($"Error deleting project: {ex.Message}");
+        }
+    }
+
     private async Task UpdateProjectMetadataAsync()
     {
         if (string.IsNullOrEmpty(_selectedProject))
@@ -228,7 +287,7 @@ public sealed partial class Projects : IDisposable
 
         try
         {
-            var success = await Client.UpdateCollectionMetadataAsync(
+            var success = await Client.UpdateProjectMetadataAsync(
                 _selectedProject,
                 string.IsNullOrWhiteSpace(_editProjectDescription) ? null : _editProjectDescription,
                 string.IsNullOrWhiteSpace(_editProjectType) ? null : _editProjectType);
@@ -239,7 +298,7 @@ public sealed partial class Projects : IDisposable
                 _showEditMetadataForm = false;
                 
                 // Refresh the project info
-                _selectedProjectInfo = await Client.GetCollectionMetadataAsync(_selectedProject);
+                _selectedProjectInfo = await Client.GetProjectMetadataAsync(_selectedProject);
                 
                 // Update the project in the list
                 var projectInList = _projects.FirstOrDefault(c => c.Name == _selectedProject);
@@ -290,7 +349,7 @@ public sealed partial class Projects : IDisposable
         try
         {
             var metadata = new Dictionary<string, string>();
-            var result = await Client.UploadFilesToCollectionAsync(
+            var result = await Client.UploadFilesToProjectAsync(
                 _fileUploads.ToArray(), 
                 MaxIndividualFileSize, 
                 _selectedProject, 
@@ -350,7 +409,7 @@ public sealed partial class Projects : IDisposable
         {
             Logger.LogInformation("Processing document layout for {FileName} in {Project}", fileName, _selectedProject);
             
-            var success = await Client.ProcessDocumentLayoutAsync(_selectedProject, fileName);
+            var success = await Client.ProcessProjectDocumentLayoutAsync(_selectedProject, fileName);
             
             if (success)
             {
@@ -381,8 +440,7 @@ public sealed partial class Projects : IDisposable
 
         try
         {
-            var containerName = isProcessingFile ? $"{_selectedProject}-extract" : _selectedProject;
-            var fileUrl = await Client.GetFileUrlAsync(containerName, fileName);
+            var fileUrl = await Client.GetProjectFileUrlAsync(_selectedProject, fileName, isProcessingFile);
             
             if (!string.IsNullOrEmpty(fileUrl))
             {
@@ -468,7 +526,7 @@ public sealed partial class Projects : IDisposable
         {
             Logger.LogInformation("Deleting file {FileName} from {Project}", fileName, _selectedProject);
             
-            var success = await Client.DeleteFileFromCollectionAsync(_selectedProject, fileName);
+            var success = await Client.DeleteFileFromProjectAsync(_selectedProject, fileName);
             
             if (success)
             {
