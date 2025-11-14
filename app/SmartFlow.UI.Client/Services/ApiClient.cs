@@ -14,32 +14,79 @@ public sealed class ApiClient(HttpClient httpClient)
     }
     
     // Collection Management APIs
-    public async Task<List<string>> GetCollectionsAsync()
+    public async Task<List<CollectionInfo>> GetCollectionsAsync()
     {
         try
         {
             var response = await httpClient.GetAsync("api/collections");
             response.EnsureSuccessStatusCode();
-            return await response.Content.ReadFromJsonAsync<List<string>>() ?? new List<string>();
+            return await response.Content.ReadFromJsonAsync<List<CollectionInfo>>() ?? new List<CollectionInfo>();
         }
         catch (Exception ex)
         {
             Debug.WriteLine($"Error fetching collections: {ex.Message}");
-            return new List<string>();
+            return new List<CollectionInfo>();
         }
     }
 
-    public async Task<bool> CreateCollectionAsync(string containerName)
+    public async Task<bool> CreateCollectionAsync(string containerName, string? description = null, string? type = null)
     {
         try
         {
-            var response = await httpClient.PostAsync($"api/collections/{containerName}/tag", null);
+            var request = new CreateCollectionRequest
+            {
+                Name = containerName,
+                Description = description,
+                Type = type
+            };
+            
+            var json = System.Text.Json.JsonSerializer.Serialize(request, SerializerOptions.Default);
+            using var content = new StringContent(json, Encoding.UTF8, "application/json");
+            var response = await httpClient.PostAsync("api/collections", content);
             return response.IsSuccessStatusCode;
         }
         catch (Exception ex)
         {
             Debug.WriteLine($"Error creating collection: {ex.Message}");
             return false;
+        }
+    }
+
+    public async Task<bool> UpdateCollectionMetadataAsync(string containerName, string? description = null, string? type = null)
+    {
+        try
+        {
+            var request = new CreateCollectionRequest
+            {
+                Name = containerName,
+                Description = description,
+                Type = type
+            };
+            
+            var json = System.Text.Json.JsonSerializer.Serialize(request, SerializerOptions.Default);
+            using var content = new StringContent(json, Encoding.UTF8, "application/json");
+            var response = await httpClient.PutAsync($"api/collections/{containerName}/metadata", content);
+            return response.IsSuccessStatusCode;
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Error updating collection metadata: {ex.Message}");
+            return false;
+        }
+    }
+
+    public async Task<CollectionInfo?> GetCollectionMetadataAsync(string containerName)
+    {
+        try
+        {
+            var response = await httpClient.GetAsync($"api/collections/{containerName}/metadata");
+            response.EnsureSuccessStatusCode();
+            return await response.Content.ReadFromJsonAsync<CollectionInfo>();
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Error fetching collection metadata: {ex.Message}");
+            return null;
         }
     }
 

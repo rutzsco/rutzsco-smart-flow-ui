@@ -28,10 +28,10 @@ public class DocumentService
     /// Gets all blob storage containers that have the metadata tag "managed-collection" set to "true"
     /// </summary>
     /// <param name="cancellationToken">Cancellation token</param>
-    /// <returns>List of container names that are managed collections</returns>
-    public async Task<List<string>> GetCollectionsAsync(CancellationToken cancellationToken = default)
+    /// <returns>List of collection information with metadata</returns>
+    public async Task<List<CollectionInfo>> GetCollectionsAsync(CancellationToken cancellationToken = default)
     {
-        var collections = new List<string>();
+        var collections = new List<CollectionInfo>();
         
         await foreach (var containerItem in _blobServiceClient.GetBlobContainersAsync(BlobContainerTraits.Metadata, cancellationToken: cancellationToken))
         {
@@ -39,7 +39,10 @@ public class DocumentService
                 containerItem.Properties.Metadata.TryGetValue("managedcollection", out var value) &&
                 value?.Equals("true", StringComparison.OrdinalIgnoreCase) == true)
             {
-                collections.Add(containerItem.Name);
+                var description = containerItem.Properties.Metadata.TryGetValue("description", out var desc) ? desc : null;
+                var type = containerItem.Properties.Metadata.TryGetValue("type", out var typeValue) ? typeValue : null;
+                
+                collections.Add(new CollectionInfo(containerItem.Name, description, type));
             }
         }
 
@@ -47,13 +50,15 @@ public class DocumentService
     }
 
     /// <summary>
-    /// Adds the "managed-collection": "true" metadata tag to the specified container.
+    /// Adds the "managed-collection": "true" metadata tag to the specified container along with optional description and type.
     /// Creates the container if it doesn't exist.
     /// </summary>
     /// <param name="containerName">The name of the container to tag</param>
+    /// <param name="description">Optional description of the collection</param>
+    /// <param name="type">Optional type/category of the collection</param>
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>True if successful, false otherwise</returns>
-    public async Task<bool> AddManagedCollectionTagAsync(string containerName, CancellationToken cancellationToken = default)
+    public async Task<bool> AddManagedCollectionTagAsync(string containerName, string? description = null, string? type = null, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -72,12 +77,112 @@ public class DocumentService
             // Add or update the managed-collection tag
             metadata["managedcollection"] = "true";
             
+            // Add or update description if provided
+            if (!string.IsNullOrWhiteSpace(description))
+            {
+                metadata["description"] = description;
+            }
+            
+            // Add or update type if provided
+            if (!string.IsNullOrWhiteSpace(type))
+            {
+                metadata["type"] = type;
+            }
+            
             await containerClient.SetMetadataAsync(metadata, cancellationToken: cancellationToken);
             return true;
         }
         catch
         {
             return false;
+        }
+    }
+
+    /// <summary>
+    /// Updates the metadata for an existing collection
+    /// </summary>
+    /// <param name="containerName">The name of the container</param>
+    /// <param name="description">Optional description of the collection</param>
+    /// <param name="type">Optional type/category of the collection</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>True if successful, false otherwise</returns>
+    public async Task<bool> UpdateCollectionMetadataAsync(string containerName, string? description = null, string? type = null, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var containerClient = _blobServiceClient.GetBlobContainerClient(containerName);
+            
+            if (!await containerClient.ExistsAsync(cancellationToken))
+            {
+                return false;
+            }
+
+            // Get current metadata
+            var properties = await containerClient.GetPropertiesAsync(cancellationToken: cancellationToken);
+            var metadata = properties.Value.Metadata ?? new Dictionary<string, string>();
+            
+            // Update description
+            if (!string.IsNullOrWhiteSpace(description))
+            {
+                metadata["description"] = description;
+            }
+            else
+            {
+                metadata.Remove("description");
+            }
+            
+            // Update type
+            if (!string.IsNullOrWhiteSpace(type))
+            {
+                metadata["type"] = type;
+            }
+            else
+            {
+                metadata.Remove("type");
+            }
+            
+            await containerClient.SetMetadataAsync(metadata, cancellationToken: cancellationToken);
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    /// <summary>
+    /// Gets metadata for a specific collection
+    /// </summary>
+    /// <param name="containerName">The name of the container</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>Collection information with metadata, or null if not found</returns>
+    public async Task<CollectionInfo?> GetCollectionMetadataAsync(string containerName, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var containerClient = _blobServiceClient.GetBlobContainerClient(containerName);
+            
+            if (!await containerClient.ExistsAsync(cancellationToken))
+            {
+                return null;
+            }
+
+            var properties = await containerClient.GetPropertiesAsync(cancellationToken: cancellationToken);
+            var metadata = properties.Value.Metadata;
+            
+            if (metadata == null)
+            {
+                return new CollectionInfo(containerName);
+            }
+
+            var description = metadata.TryGetValue("description", out var desc) ? desc : null;
+            var type = metadata.TryGetValue("type", out var typeValue) ? typeValue : null;
+            
+            return new CollectionInfo(containerName, description, type);
+        }
+        catch
+        {
+            return null;
         }
     }
 

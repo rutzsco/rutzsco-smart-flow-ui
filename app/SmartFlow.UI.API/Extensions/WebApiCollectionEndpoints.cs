@@ -14,6 +14,15 @@ internal static class WebApiCollectionEndpoints
         // Add managed collection tag to a container
         api.MapPost("{containerName}/tag", OnAddManagedCollectionTagAsync);
 
+        // Create a new collection with metadata
+        api.MapPost("", OnCreateCollectionAsync);
+
+        // Update collection metadata
+        api.MapPut("{containerName}/metadata", OnUpdateCollectionMetadataAsync);
+
+        // Get collection metadata
+        api.MapGet("{containerName}/metadata", OnGetCollectionMetadataAsync);
+
         // Get all files in a container
         api.MapGet("{containerName}/files", OnGetFilesInContainerAsync);
 
@@ -54,6 +63,43 @@ internal static class WebApiCollectionEndpoints
         }
     }
 
+    private static async Task<IResult> OnCreateCollectionAsync(
+        HttpContext context,
+        [FromBody] CreateCollectionRequest request,
+        [FromServices] DocumentService documentService,
+        [FromServices] ILogger<WebApplication> logger,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            logger.LogInformation("Creating managed collection: {ContainerName} with description: {Description}, type: {Type}", 
+                request.Name, request.Description, request.Type);
+
+            var userInfo = await context.GetUserInfoAsync();
+            var success = await documentService.AddManagedCollectionTagAsync(
+                request.Name, 
+                request.Description, 
+                request.Type, 
+                cancellationToken);
+
+            if (success)
+            {
+                logger.LogInformation("Successfully created collection '{ContainerName}'", request.Name);
+                return TypedResults.Ok(new { success = true, message = $"Collection '{request.Name}' created successfully" });
+            }
+            else
+            {
+                logger.LogWarning("Failed to create collection '{ContainerName}'", request.Name);
+                return Results.BadRequest(new { success = false, message = $"Failed to create collection '{request.Name}'" });
+            }
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error creating managed collection: {ContainerName}", request.Name);
+            return Results.Problem("Error creating collection");
+        }
+    }
+
     private static async Task<IResult> OnAddManagedCollectionTagAsync(
         HttpContext context,
         string containerName,
@@ -66,7 +112,7 @@ internal static class WebApiCollectionEndpoints
             logger.LogInformation("Creating/tagging managed collection: {ContainerName}", containerName);
 
             var userInfo = await context.GetUserInfoAsync();
-            var success = await documentService.AddManagedCollectionTagAsync(containerName, cancellationToken);
+            var success = await documentService.AddManagedCollectionTagAsync(containerName, cancellationToken: cancellationToken);
 
             if (success)
             {
@@ -83,6 +129,73 @@ internal static class WebApiCollectionEndpoints
         {
             logger.LogError(ex, "Error creating/tagging managed collection: {ContainerName}", containerName);
             return Results.Problem("Error creating collection");
+        }
+    }
+
+    private static async Task<IResult> OnUpdateCollectionMetadataAsync(
+        HttpContext context,
+        string containerName,
+        [FromBody] CreateCollectionRequest request,
+        [FromServices] DocumentService documentService,
+        [FromServices] ILogger<WebApplication> logger,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            logger.LogInformation("Updating metadata for collection: {ContainerName}", containerName);
+
+            var userInfo = await context.GetUserInfoAsync();
+            var success = await documentService.UpdateCollectionMetadataAsync(
+                containerName, 
+                request.Description, 
+                request.Type, 
+                cancellationToken);
+
+            if (success)
+            {
+                logger.LogInformation("Successfully updated metadata for collection '{ContainerName}'", containerName);
+                return TypedResults.Ok(new { success = true, message = $"Collection '{containerName}' metadata updated successfully" });
+            }
+            else
+            {
+                logger.LogWarning("Failed to update metadata for collection '{ContainerName}'", containerName);
+                return Results.NotFound(new { success = false, message = $"Collection '{containerName}' not found" });
+            }
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error updating metadata for collection: {ContainerName}", containerName);
+            return Results.Problem("Error updating collection metadata");
+        }
+    }
+
+    private static async Task<IResult> OnGetCollectionMetadataAsync(
+        HttpContext context,
+        string containerName,
+        [FromServices] DocumentService documentService,
+        [FromServices] ILogger<WebApplication> logger,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            logger.LogInformation("Getting metadata for collection: {ContainerName}", containerName);
+
+            var userInfo = await context.GetUserInfoAsync();
+            var metadata = await documentService.GetCollectionMetadataAsync(containerName, cancellationToken);
+
+            if (metadata != null)
+            {
+                return TypedResults.Ok(metadata);
+            }
+            else
+            {
+                return Results.NotFound(new { message = $"Collection '{containerName}' not found" });
+            }
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error getting metadata for collection: {ContainerName}", containerName);
+            return Results.Problem("Error retrieving collection metadata");
         }
     }
 

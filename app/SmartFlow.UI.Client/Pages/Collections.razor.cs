@@ -32,11 +32,19 @@ public sealed partial class Collections : IDisposable
     [Inject] public required IDialogService DialogService { get; set; }
 
     // Collection management
-    private List<string> _collections = new();
+    private List<CollectionInfo> _collections = new();
     private string _selectedCollection = "";
+    private CollectionInfo? _selectedCollectionInfo = null;
     private List<ContainerFileInfo> _collectionFiles = new();
     private bool _showCreateCollectionForm = false;
     private string _newCollectionName = "";
+    private string _newCollectionDescription = "";
+    private string _newCollectionType = "";
+
+    // Edit collection metadata
+    private bool _showEditMetadataForm = false;
+    private string _editCollectionDescription = "";
+    private string _editCollectionType = "";
 
     protected override async Task OnInitializedAsync()
     {
@@ -53,11 +61,12 @@ public sealed partial class Collections : IDisposable
             // Auto-select first collection if available
             if (_collections.Any())
             {
-                await SelectCollectionAsync(_collections.First());
+                await SelectCollectionAsync(_collections.First().Name);
             }
             else
             {
                 _selectedCollection = "";
+                _selectedCollectionInfo = null;
                 _collectionFiles.Clear();
                 _fileUploads.Clear();
             }
@@ -79,10 +88,12 @@ public sealed partial class Collections : IDisposable
         if (_selectedCollection != collectionName)
         {
             _selectedCollection = collectionName;
+            _selectedCollectionInfo = _collections.FirstOrDefault(c => c.Name == collectionName);
             _fileUploads.Clear(); // Clear any selected files when switching collections
             _filter = ""; // Clear filter when switching collections
             _showCreateCollectionForm = false; // Hide create form when selecting a collection
             _showUploadSection = false; // Hide upload section when switching collections
+            _showEditMetadataForm = false; // Hide edit metadata form when switching collections
             await LoadCollectionFilesAsync();
         }
     }
@@ -112,14 +123,19 @@ public sealed partial class Collections : IDisposable
     private void ShowCreateCollectionForm()
     {
         _newCollectionName = "";
+        _newCollectionDescription = "";
+        _newCollectionType = "";
         _createCollectionFormValid = false;
         _showCreateCollectionForm = true;
+        _showEditMetadataForm = false;
     }
 
     private void CancelCreateCollection()
     {
         _showCreateCollectionForm = false;
         _newCollectionName = "";
+        _newCollectionDescription = "";
+        _newCollectionType = "";
         _createCollectionFormValid = false;
     }
 
@@ -138,7 +154,7 @@ public sealed partial class Collections : IDisposable
         if (name.Contains("--"))
             return "Collection name cannot contain consecutive hyphens";
 
-        if (_collections.Contains(name))
+        if (_collections.Any(c => c.Name == name))
             return "A collection with this name already exists";
 
         return null!;
@@ -154,13 +170,19 @@ public sealed partial class Collections : IDisposable
 
         try
         {
-            var success = await Client.CreateCollectionAsync(_newCollectionName);
+            var success = await Client.CreateCollectionAsync(
+                _newCollectionName, 
+                string.IsNullOrWhiteSpace(_newCollectionDescription) ? null : _newCollectionDescription,
+                string.IsNullOrWhiteSpace(_newCollectionType) ? null : _newCollectionType);
+            
             if (success)
             {
                 SnackBarMessage($"Collection '{_newCollectionName}' created successfully");
                 _showCreateCollectionForm = false;
                 var createdCollectionName = _newCollectionName;
                 _newCollectionName = "";
+                _newCollectionDescription = "";
+                _newCollectionType = "";
                 await LoadCollectionsAsync();
                 // Auto-select the newly created collection
                 await SelectCollectionAsync(createdCollectionName);
@@ -174,6 +196,70 @@ public sealed partial class Collections : IDisposable
         {
             Logger.LogError(ex, "Error creating collection {CollectionName}", _newCollectionName);
             SnackBarError($"Error creating collection: {ex.Message}");
+        }
+    }
+
+    private void ShowEditMetadataForm()
+    {
+        if (_selectedCollectionInfo != null)
+        {
+            _editCollectionDescription = _selectedCollectionInfo.Description ?? "";
+            _editCollectionType = _selectedCollectionInfo.Type ?? "";
+            _showEditMetadataForm = true;
+            _showCreateCollectionForm = false;
+            _showUploadSection = false;
+        }
+    }
+
+    private void CancelEditMetadata()
+    {
+        _showEditMetadataForm = false;
+        _editCollectionDescription = "";
+        _editCollectionType = "";
+    }
+
+    private async Task UpdateCollectionMetadataAsync()
+    {
+        if (string.IsNullOrEmpty(_selectedCollection))
+        {
+            SnackBarError("No collection selected");
+            return;
+        }
+
+        try
+        {
+            var success = await Client.UpdateCollectionMetadataAsync(
+                _selectedCollection,
+                string.IsNullOrWhiteSpace(_editCollectionDescription) ? null : _editCollectionDescription,
+                string.IsNullOrWhiteSpace(_editCollectionType) ? null : _editCollectionType);
+
+            if (success)
+            {
+                SnackBarMessage($"Collection '{_selectedCollection}' metadata updated successfully");
+                _showEditMetadataForm = false;
+                
+                // Refresh the collection info
+                _selectedCollectionInfo = await Client.GetCollectionMetadataAsync(_selectedCollection);
+                
+                // Update the collection in the list
+                var collectionInList = _collections.FirstOrDefault(c => c.Name == _selectedCollection);
+                if (collectionInList != null && _selectedCollectionInfo != null)
+                {
+                    collectionInList.Description = _selectedCollectionInfo.Description;
+                    collectionInList.Type = _selectedCollectionInfo.Type;
+                }
+                
+                StateHasChanged();
+            }
+            else
+            {
+                SnackBarError($"Failed to update metadata for collection '{_selectedCollection}'");
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error updating collection metadata for {CollectionName}", _selectedCollection);
+            SnackBarError($"Error updating collection metadata: {ex.Message}");
         }
     }
 

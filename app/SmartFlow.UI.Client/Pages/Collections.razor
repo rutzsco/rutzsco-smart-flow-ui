@@ -18,6 +18,17 @@
                 @if (!string.IsNullOrEmpty(_selectedCollection))
                 {
                     <MudChip T="string" Size="Size.Small" Color="Color.Primary">@_collectionFiles.Count file@(_collectionFiles.Count != 1 ? "s" : "")</MudChip>
+                    
+                    @if (_selectedCollectionInfo != null && !string.IsNullOrWhiteSpace(_selectedCollectionInfo.Type))
+                    {
+                        <MudChip T="string" 
+                                 Size="Size.Small" 
+                                 Color="Color.Info" 
+                                 Icon="@Icons.Material.Filled.Label"
+                                 Style="text-transform: uppercase;">
+                            @_selectedCollectionInfo.Type
+                        </MudChip>
+                    }
                 }
                 
                 <MudMenu Label="@(_selectedCollection ?? "Select Collection")" Color="Color.Primary">
@@ -32,8 +43,18 @@
                     <ChildContent>
                         @foreach (var collection in _collections)
                         {
-                            <MudMenuItem OnClick="@(async () => await SelectCollectionAsync(collection))">
-                                @collection
+                            <MudMenuItem OnClick="@(async () => await SelectCollectionAsync(collection.Name))">
+                                <MudStack Spacing="0">
+                                    <MudText Typo="Typo.body1">@collection.Name</MudText>
+                                    @if (!string.IsNullOrWhiteSpace(collection.Type))
+                                    {
+                                        <MudText Typo="Typo.caption" Color="Color.Primary">Type: @collection.Type</MudText>
+                                    }
+                                    @if (!string.IsNullOrWhiteSpace(collection.Description))
+                                    {
+                                        <MudText Typo="Typo.caption" Color="Color.Default">@collection.Description</MudText>
+                                    }
+                                </MudStack>
                             </MudMenuItem>
                         }
                     </ChildContent>
@@ -48,6 +69,12 @@
             
             @if (!string.IsNullOrEmpty(_selectedCollection))
             {
+                <MudIconButton Icon="@Icons.Material.Filled.Edit" 
+                               Color="Color.Secondary" 
+                               Variant="Variant.Filled"
+                               OnClick="ShowEditMetadataForm"
+                               Title="Edit Collection Metadata" />
+                
                 <MudButton StartIcon="@Icons.Material.Filled.Upload"
                            Color="Color.Primary"
                            Variant="Variant.Filled"
@@ -56,6 +83,18 @@
                 </MudButton>
             }
         </MudStack>
+        
+        @if (!string.IsNullOrEmpty(_selectedCollection) && _selectedCollectionInfo != null && !string.IsNullOrWhiteSpace(_selectedCollectionInfo.Description))
+        {
+            <MudPaper Elevation="1" Class="pa-3 mb-4">
+                <MudStack Spacing="1">
+                    <MudText Typo="Typo.body2" Color="Color.Default">
+                        <MudIcon Icon="@Icons.Material.Filled.Info" Size="Size.Small" Class="mr-1" />
+                        @_selectedCollectionInfo.Description
+                    </MudText>
+                </MudStack>
+            </MudPaper>
+        }
         
         @if (!string.IsNullOrEmpty(_selectedCollection))
         {
@@ -94,6 +133,19 @@
                                   Immediate="true"
                                   HelperText="Enter a unique name for the collection. Use lowercase letters, numbers, and hyphens only."
                                   Class="mb-3" />
+                    
+                    <MudTextField @bind-Value="_newCollectionType" 
+                                  Label="Type (Optional)" 
+                                  Variant="Variant.Outlined"
+                                  HelperText="Specify the type or category of this collection (e.g., Documents, Images, Reports)"
+                                  Class="mb-3" />
+                    
+                    <MudTextField @bind-Value="_newCollectionDescription" 
+                                  Label="Description (Optional)" 
+                                  Variant="Variant.Outlined"
+                                  Lines="3"
+                                  HelperText="Provide a brief description of what this collection contains"
+                                  Class="mb-3" />
                 </MudForm>
                 <MudStack Row="true" Spacing="2" Class="mt-4">
                     <MudButton OnClick="CancelCreateCollection" 
@@ -112,6 +164,44 @@
             </MudPaper>
         }
 
+        @if (_showEditMetadataForm)
+        {
+            <!-- Edit Collection Metadata Form -->
+            <MudPaper Elevation="2" Class="pa-4 mb-4">
+                <MudText Typo="Typo.h6" Class="mb-3">
+                    <MudIcon Icon="@Icons.Material.Filled.Edit" Class="mr-2" />
+                    Edit Collection Metadata: @_selectedCollection
+                </MudText>
+                <MudForm>
+                    <MudTextField @bind-Value="_editCollectionType" 
+                                  Label="Type (Optional)" 
+                                  Variant="Variant.Outlined"
+                                  HelperText="Specify the type or category of this collection (e.g., Documents, Images, Reports)"
+                                  Class="mb-3" />
+                    
+                    <MudTextField @bind-Value="_editCollectionDescription" 
+                                  Label="Description (Optional)" 
+                                  Variant="Variant.Outlined"
+                                  Lines="3"
+                                  HelperText="Provide a brief description of what this collection contains"
+                                  Class="mb-3" />
+                </MudForm>
+                <MudStack Row="true" Spacing="2" Class="mt-4">
+                    <MudButton OnClick="CancelEditMetadata" 
+                               Variant="Variant.Text"
+                               StartIcon="@Icons.Material.Filled.Cancel">
+                        Cancel
+                    </MudButton>
+                    <MudButton Color="Color.Primary" 
+                               Variant="Variant.Filled" 
+                               OnClick="UpdateCollectionMetadataAsync"
+                               StartIcon="@Icons.Material.Filled.Save">
+                        Save Changes
+                    </MudButton>
+                </MudStack>
+            </MudPaper>
+        }
+
         @if (_showUploadSection)
         {
             <!-- Upload Section -->
@@ -121,7 +211,7 @@
                     <MudText Typo="Typo.h6">Upload Documents to @_selectedCollection</MudText>
                     <MudSpacer />
                     <MudIconButton Icon="@Icons.Material.Filled.Close" 
-                                   OnClick="@(() => _showUploadSection = false)"
+                                   OnClick="@(() => _showUploadSection = false)")
                                    Title="Close upload section" />
                 </MudStack>
                 
