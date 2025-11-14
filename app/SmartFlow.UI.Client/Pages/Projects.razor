@@ -1,58 +1,58 @@
-@page "/collections"
+@page "/projects"
 
-<PageTitle>Collection Management</PageTitle>
+<PageTitle>Project Management</PageTitle>
 
 <MudGrid>
     <MudItem xs="12">
         <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3" Class="mb-4">
-            <MudText Typo="Typo.h5">Collection Management</MudText>
+            <MudText Typo="Typo.h5">Project Management</MudText>
             <MudSpacer />
             
-            @if (_isLoadingCollections)
+            @if (_isLoadingProjects)
             {
                 <MudProgressCircular Indeterminate="true" Size="Size.Small" />
-                <MudText>Loading collections...</MudText>
+                <MudText>Loading projects...</MudText>
             }
-            else if (_collections.Any())
+            else if (_projects.Any())
             {
-                @if (!string.IsNullOrEmpty(_selectedCollection))
+                @if (!string.IsNullOrEmpty(_selectedProject))
                 {
-                    <MudChip T="string" Size="Size.Small" Color="Color.Primary">@_collectionFiles.Count file@(_collectionFiles.Count != 1 ? "s" : "")</MudChip>
+                    <MudChip T="string" Size="Size.Small" Color="Color.Primary">@_projectFiles.Count file@(_projectFiles.Count != 1 ? "s" : "")</MudChip>
                     
-                    @if (_selectedCollectionInfo != null && !string.IsNullOrWhiteSpace(_selectedCollectionInfo.Type))
+                    @if (_selectedProjectInfo != null && !string.IsNullOrWhiteSpace(_selectedProjectInfo.Type))
                     {
                         <MudChip T="string" 
                                  Size="Size.Small" 
                                  Color="Color.Info" 
                                  Icon="@Icons.Material.Filled.Label"
                                  Style="text-transform: uppercase;">
-                            @_selectedCollectionInfo.Type
+                            @_selectedProjectInfo.Type
                         </MudChip>
                     }
                 }
                 
-                <MudMenu Label="@(_selectedCollection ?? "Select Collection")" Color="Color.Primary">
+                <MudMenu Label="@(_selectedProject ?? "Select Project")" Color="Color.Primary">
                     <ActivatorContent>
                         <MudButton Color="Color.Primary" 
                                    Variant="Variant.Outlined" 
                                    StartIcon="@Icons.Material.Filled.Folder" 
                                    EndIcon="@Icons.Material.Filled.KeyboardArrowDown">
-                            @(_selectedCollection ?? "Select Collection")
+                            @(_selectedProject ?? "Select Project")
                         </MudButton>
                     </ActivatorContent>
                     <ChildContent>
-                        @foreach (var collection in _collections)
+                        @foreach (var project in _projects)
                         {
-                            <MudMenuItem OnClick="@(async () => await SelectCollectionAsync(collection.Name))">
+                            <MudMenuItem OnClick="@(async () => await SelectProjectAsync(project.Name))">
                                 <MudStack Spacing="0">
-                                    <MudText Typo="Typo.body1">@collection.Name</MudText>
-                                    @if (!string.IsNullOrWhiteSpace(collection.Type))
+                                    <MudText Typo="Typo.body1">@project.Name</MudText>
+                                    @if (!string.IsNullOrWhiteSpace(project.Type))
                                     {
-                                        <MudText Typo="Typo.caption" Color="Color.Primary">Type: @collection.Type</MudText>
+                                        <MudText Typo="Typo.caption" Color="Color.Primary">Type: @project.Type</MudText>
                                     }
-                                    @if (!string.IsNullOrWhiteSpace(collection.Description))
+                                    @if (!string.IsNullOrWhiteSpace(project.Description))
                                     {
-                                        <MudText Typo="Typo.caption" Color="Color.Default">@collection.Description</MudText>
+                                        <MudText Typo="Typo.caption" Color="Color.Default">@project.Description</MudText>
                                     }
                                 </MudStack>
                             </MudMenuItem>
@@ -64,16 +64,16 @@
             <MudIconButton Icon="@Icons.Material.Filled.Add" 
                            Color="Color.Primary" 
                            Variant="Variant.Filled"
-                           OnClick="ShowCreateCollectionForm"
-                           Title="Create Collection" />
+                           OnClick="ShowCreateProjectForm"
+                           Title="Create Project" />
             
-            @if (!string.IsNullOrEmpty(_selectedCollection))
+            @if (!string.IsNullOrEmpty(_selectedProject))
             {
                 <MudIconButton Icon="@Icons.Material.Filled.Edit" 
                                Color="Color.Secondary" 
                                Variant="Variant.Filled"
                                OnClick="ShowEditMetadataForm"
-                               Title="Edit Collection Metadata" />
+                               Title="Edit Project Metadata" />
                 
                 <MudButton StartIcon="@Icons.Material.Filled.Upload"
                            Color="Color.Primary"
@@ -84,19 +84,19 @@
             }
         </MudStack>
         
-        @if (!string.IsNullOrEmpty(_selectedCollection) && _selectedCollectionInfo != null && !string.IsNullOrWhiteSpace(_selectedCollectionInfo.Description))
+        @if (!string.IsNullOrEmpty(_selectedProject) && _selectedProjectInfo != null && !string.IsNullOrWhiteSpace(_selectedProjectInfo.Description))
         {
             <MudPaper Elevation="1" Class="pa-3 mb-4">
                 <MudStack Spacing="1">
                     <MudText Typo="Typo.body2" Color="Color.Default">
                         <MudIcon Icon="@Icons.Material.Filled.Info" Size="Size.Small" Class="mr-1" />
-                        @_selectedCollectionInfo.Description
+                        @_selectedProjectInfo.Description
                     </MudText>
                 </MudStack>
             </MudPaper>
         }
         
-        @if (!string.IsNullOrEmpty(_selectedCollection))
+        @if (!string.IsNullOrEmpty(_selectedProject))
         {
             <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="mb-4">
                 <MudTextField @bind-Value="@_filter" 
@@ -115,50 +115,50 @@
             </MudStack>
         }
         
-        @if (_showCreateCollectionForm)
+        @if (_showCreateProjectForm)
         {
-            <!-- Create Collection Form -->
+            <!-- Create Project Form -->
             <MudPaper Elevation="2" Class="pa-4 mb-4">
                 <MudText Typo="Typo.h6" Class="mb-3">
                     <MudIcon Icon="@Icons.Material.Filled.CreateNewFolder" Class="mr-2" />
-                    Create New Collection
+                    Create New Project
                 </MudText>
-                <MudForm @ref="_createCollectionForm" @bind-IsValid="_createCollectionFormValid">
-                    <MudTextField @bind-Value="_newCollectionName" 
-                                  Label="Collection Name" 
+                <MudForm @ref="_createProjectForm" @bind-IsValid="_createProjectFormValid">
+                    <MudTextField @bind-Value="_newProjectName" 
+                                  Label="Project Name" 
                                   Variant="Variant.Outlined"
                                   Required="true"
-                                  RequiredError="Collection name is required"
-                                  Validation="@(new Func<string, string>(ValidateCollectionName))"
+                                  RequiredError="Project name is required"
+                                  Validation="@(new Func<string, string>(ValidateProjectName))"
                                   Immediate="true"
-                                  HelperText="Enter a unique name for the collection. Use lowercase letters, numbers, and hyphens only."
+                                  HelperText="Enter a unique name for the project. Use lowercase letters, numbers, and hyphens only."
                                   Class="mb-3" />
                     
-                    <MudTextField @bind-Value="_newCollectionType" 
+                    <MudTextField @bind-Value="_newProjectType" 
                                   Label="Type (Optional)" 
                                   Variant="Variant.Outlined"
-                                  HelperText="Specify the type or category of this collection (e.g., Documents, Images, Reports)"
+                                  HelperText="Specify the type or category of this project (e.g., Research, Analysis, Development)"
                                   Class="mb-3" />
                     
-                    <MudTextField @bind-Value="_newCollectionDescription" 
+                    <MudTextField @bind-Value="_newProjectDescription" 
                                   Label="Description (Optional)" 
                                   Variant="Variant.Outlined"
                                   Lines="3"
-                                  HelperText="Provide a brief description of what this collection contains"
+                                  HelperText="Provide a brief description of what this project contains"
                                   Class="mb-3" />
                 </MudForm>
                 <MudStack Row="true" Spacing="2" Class="mt-4">
-                    <MudButton OnClick="CancelCreateCollection" 
+                    <MudButton OnClick="CancelCreateProject" 
                                Variant="Variant.Text"
                                StartIcon="@Icons.Material.Filled.Cancel">
                         Cancel
                     </MudButton>
                     <MudButton Color="Color.Primary" 
                                Variant="Variant.Filled" 
-                               OnClick="CreateCollectionAsync"
+                               OnClick="CreateProjectAsync"
                                StartIcon="@Icons.Material.Filled.Check"
-                               Disabled="@(!_createCollectionFormValid || string.IsNullOrWhiteSpace(_newCollectionName))">
-                        Create Collection
+                               Disabled="@(!_createProjectFormValid || string.IsNullOrWhiteSpace(_newProjectName))">
+                        Create Project
                     </MudButton>
                 </MudStack>
             </MudPaper>
@@ -166,24 +166,24 @@
 
         @if (_showEditMetadataForm)
         {
-            <!-- Edit Collection Metadata Form -->
+            <!-- Edit Project Metadata Form -->
             <MudPaper Elevation="2" Class="pa-4 mb-4">
                 <MudText Typo="Typo.h6" Class="mb-3">
                     <MudIcon Icon="@Icons.Material.Filled.Edit" Class="mr-2" />
-                    Edit Collection Metadata: @_selectedCollection
+                    Edit Project Metadata: @_selectedProject
                 </MudText>
                 <MudForm>
-                    <MudTextField @bind-Value="_editCollectionType" 
+                    <MudTextField @bind-Value="_editProjectType" 
                                   Label="Type (Optional)" 
                                   Variant="Variant.Outlined"
-                                  HelperText="Specify the type or category of this collection (e.g., Documents, Images, Reports)"
+                                  HelperText="Specify the type or category of this project (e.g., Research, Analysis, Development)"
                                   Class="mb-3" />
                     
-                    <MudTextField @bind-Value="_editCollectionDescription" 
+                    <MudTextField @bind-Value="_editProjectDescription" 
                                   Label="Description (Optional)" 
                                   Variant="Variant.Outlined"
                                   Lines="3"
-                                  HelperText="Provide a brief description of what this collection contains"
+                                  HelperText="Provide a brief description of what this project contains"
                                   Class="mb-3" />
                 </MudForm>
                 <MudStack Row="true" Spacing="2" Class="mt-4">
@@ -194,7 +194,7 @@
                     </MudButton>
                     <MudButton Color="Color.Primary" 
                                Variant="Variant.Filled" 
-                               OnClick="UpdateCollectionMetadataAsync"
+                               OnClick="UpdateProjectMetadataAsync"
                                StartIcon="@Icons.Material.Filled.Save">
                         Save Changes
                     </MudButton>
@@ -204,7 +204,7 @@
 
         @if (_showUploadSection)
         {
-            <FileUploadSection TargetName="@_selectedCollection"
+            <FileUploadSection TargetName="@_selectedProject"
                              MaxIndividualFileSize="MaxIndividualFileSize"
                              SelectedFiles="_fileUploads"
                              IsUploading="_isUploadingDocuments"
@@ -212,30 +212,30 @@
                              OnUpload="SubmitFilesForUploadAsync" />
         }
 
-        @if (!_collections.Any() && !_showCreateCollectionForm && !_isLoadingCollections)
+        @if (!_projects.Any() && !_showCreateProjectForm && !_isLoadingProjects)
         {
-            <MudAlert Severity="Severity.Info">No collections found. Create your first collection to get started.</MudAlert>
+            <MudAlert Severity="Severity.Info">No projects found. Create your first project to get started.</MudAlert>
         }
-        else if (string.IsNullOrEmpty(_selectedCollection) && _collections.Any() && !_showCreateCollectionForm)
+        else if (string.IsNullOrEmpty(_selectedProject) && _projects.Any() && !_showCreateProjectForm)
         {
             <MudAlert Severity="Severity.Info">
-                <MudText Typo="Typo.h6">Select a collection to continue</MudText>
-                <MudText>Choose a collection from the dropdown above to upload documents and view files.</MudText>
+                <MudText Typo="Typo.h6">Select a project to continue</MudText>
+                <MudText>Choose a project from the dropdown above to upload documents and view files.</MudText>
             </MudAlert>
         }
     </MudItem>
 </MudGrid>
 
-@if (!string.IsNullOrEmpty(_selectedCollection))
+@if (!string.IsNullOrEmpty(_selectedProject))
 {
     <br />
 
     <MudGrid>
-        <!-- Collection Files Table - Elevated -->
+        <!-- Project Files Table - Elevated -->
         <MudItem xs="12">
             <MudCard Elevation="4">
                 <MudCardContent>
-                    <MudTable Items="@_collectionFiles" 
+                    <MudTable Items="@_projectFiles" 
                               Dense="true" 
                               Hover="true" 
                               Bordered="true" 
