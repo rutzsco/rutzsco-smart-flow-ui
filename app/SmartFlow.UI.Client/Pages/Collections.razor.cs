@@ -218,6 +218,65 @@ public sealed partial class Collections : IDisposable
         _editCollectionType = "";
     }
 
+    private async Task ShowDeleteCollectionDialogAsync()
+    {
+        if (string.IsNullOrEmpty(_selectedCollection))
+        {
+            SnackBarError("No collection selected");
+            return;
+        }
+
+        // Show confirmation dialog
+        var parameters = new DialogParameters
+        {
+            { "ContentText", $"Are you sure you want to remove collection '{_selectedCollection}'? This will only remove the collection metadata tag. The container and all its files will remain intact and can be re-added as a collection later." },
+            { "ButtonText", "Remove Collection" },
+            { "Color", Color.Error }
+        };
+
+        var dialog = await DialogService.ShowAsync<ConfirmationDialog>("Confirm Collection Removal", parameters);
+        var result = await dialog.Result;
+
+        if (result.Canceled)
+            return;
+
+        await DeleteCollectionAsync();
+    }
+
+    private async Task DeleteCollectionAsync()
+    {
+        if (string.IsNullOrEmpty(_selectedCollection))
+        {
+            SnackBarError("No collection selected");
+            return;
+        }
+
+        try
+        {
+            var collectionToDelete = _selectedCollection;
+            var success = await Client.DeleteCollectionAsync(collectionToDelete);
+
+            if (success)
+            {
+                SnackBarMessage($"Collection '{collectionToDelete}' removed successfully. The container and its files remain intact.");
+                _selectedCollection = "";
+                _selectedCollectionInfo = null;
+                _collectionFiles.Clear();
+                _fileUploads.Clear();
+                await LoadCollectionsAsync();
+            }
+            else
+            {
+                SnackBarError($"Failed to remove collection '{collectionToDelete}'");
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error removing collection {CollectionName}", _selectedCollection);
+            SnackBarError($"Error removing collection: {ex.Message}");
+        }
+    }
+
     private async Task UpdateCollectionMetadataAsync()
     {
         if (string.IsNullOrEmpty(_selectedCollection))

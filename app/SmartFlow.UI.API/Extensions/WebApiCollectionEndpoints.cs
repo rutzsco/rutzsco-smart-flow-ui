@@ -17,6 +17,9 @@ internal static class WebApiCollectionEndpoints
         // Create a new collection with metadata
         api.MapPost("", OnCreateCollectionAsync);
 
+        // Delete a collection (remove metadata tag)
+        api.MapDelete("{containerName}", OnDeleteCollectionAsync);
+
         // Update collection metadata
         api.MapPut("{containerName}/metadata", OnUpdateCollectionMetadataAsync);
 
@@ -97,6 +100,38 @@ internal static class WebApiCollectionEndpoints
         {
             logger.LogError(ex, "Error creating managed collection: {ContainerName}", request.Name);
             return Results.Problem("Error creating collection");
+        }
+    }
+
+    private static async Task<IResult> OnDeleteCollectionAsync(
+        HttpContext context,
+        string containerName,
+        [FromServices] DocumentService documentService,
+        [FromServices] ILogger<WebApplication> logger,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            logger.LogInformation("Removing managed collection tag from container: {ContainerName}", containerName);
+
+            var userInfo = await context.GetUserInfoAsync();
+            var success = await documentService.RemoveManagedCollectionTagAsync(containerName, cancellationToken);
+
+            if (success)
+            {
+                logger.LogInformation("Successfully removed managed collection tag from container '{ContainerName}'", containerName);
+                return TypedResults.Ok(new { success = true, message = $"Collection '{containerName}' removed successfully. The container and its files remain intact." });
+            }
+            else
+            {
+                logger.LogWarning("Failed to remove managed collection tag from container '{ContainerName}'", containerName);
+                return Results.NotFound(new { success = false, message = $"Collection '{containerName}' not found" });
+            }
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error removing managed collection tag from container: {ContainerName}", containerName);
+            return Results.Problem("Error removing collection");
         }
     }
 

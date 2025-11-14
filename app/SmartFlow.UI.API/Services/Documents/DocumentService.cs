@@ -151,6 +151,42 @@ public class DocumentService
     }
 
     /// <summary>
+    /// Removes the "managed-collection" metadata tag from the specified container.
+    /// The container and its contents remain intact, it just removes it from the managed collections list.
+    /// </summary>
+    /// <param name="containerName">The name of the container to untag</param>
+    /// <param name="cancellationToken">Cancellation token</param>
+    /// <returns>True if successful, false otherwise</returns>
+    public async Task<bool> RemoveManagedCollectionTagAsync(string containerName, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var containerClient = _blobServiceClient.GetBlobContainerClient(containerName);
+            
+            if (!await containerClient.ExistsAsync(cancellationToken))
+            {
+                return false;
+            }
+
+            // Get current metadata
+            var properties = await containerClient.GetPropertiesAsync(cancellationToken: cancellationToken);
+            var metadata = properties.Value.Metadata ?? new Dictionary<string, string>();
+            
+            // Remove the managed-collection tag and associated metadata
+            metadata.Remove("managedcollection");
+            metadata.Remove("description");
+            metadata.Remove("type");
+            
+            await containerClient.SetMetadataAsync(metadata, cancellationToken: cancellationToken);
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    /// <summary>
     /// Gets metadata for a specific collection
     /// </summary>
     /// <param name="containerName">The name of the container</param>

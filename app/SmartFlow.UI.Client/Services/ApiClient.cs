@@ -52,6 +52,20 @@ public sealed class ApiClient(HttpClient httpClient)
         }
     }
 
+    public async Task<bool> DeleteCollectionAsync(string containerName)
+    {
+        try
+        {
+            var response = await httpClient.DeleteAsync($"api/collections/{containerName}");
+            return response.IsSuccessStatusCode;
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Error deleting collection: {ex.Message}");
+            return false;
+        }
+    }
+
     public async Task<bool> UpdateCollectionMetadataAsync(string containerName, string? description = null, string? type = null)
     {
         try
