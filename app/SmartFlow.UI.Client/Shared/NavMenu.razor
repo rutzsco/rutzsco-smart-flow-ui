@@ -15,12 +15,13 @@
     @if (IsPathEnabled("collections") )
     {
         <MudNavLink Href="collections" aria-label="View document collections." Icon="@Icons.Material.Filled.FileUpload">Collections</MudNavLink>
+        <MudNavLink Href="collection-indexes" aria-label="Manage collection indexes." Icon="@Icons.Material.Filled.Storage">Collection Indexes</MudNavLink>
     }
 
-    @* 	@if (_user != null && _user.Profiles.Where(p => p.SupportsFileUpload).Any())
+    @if (IsPathEnabled("projects") )
     {
-        <MudNavLink Href="collections" aria-label="View user documents." Icon="@Icons.Material.Filled.FileUpload">Collections</MudNavLink>
-    } *@
+        <MudNavLink Href="projects" aria-label="View projects." Icon="@Icons.Material.Filled.FolderSpecial">Projects</MudNavLink>
+    }
 
     @if (IsPathEnabled("history"))
     {

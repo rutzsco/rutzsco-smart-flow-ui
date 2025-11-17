@@ -22,15 +22,21 @@ public class CollectionInfo
     /// </summary>
     public string? Type { get; set; }
 
+    /// <summary>
+    /// Optional Azure AI Search index name associated with this collection
+    /// </summary>
+    public string? IndexName { get; set; }
+
     public CollectionInfo()
     {
     }
 
-    public CollectionInfo(string name, string? description = null, string? type = null)
+    public CollectionInfo(string name, string? description = null, string? type = null, string? indexName = null)
     {
         Name = name;
         Description = description;
         Type = type;
+        IndexName = indexName;
     }
 }
 
@@ -53,4 +59,9 @@ public class CreateCollectionRequest
     /// Optional type/category of the collection
     /// </summary>
     public string? Type { get; set; }
+
+    /// <summary>
+    /// Optional Azure AI Search index name to associate with this collection
+    /// </summary>
+    public string? IndexName { get; set; }
 }

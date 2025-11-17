@@ -1,5 +1,7 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 
+using MinimalApi.Services.Search;
+
 namespace MinimalApi.Extensions;
 
 internal static class WebApiCollectionEndpoints
@@ -38,7 +40,65 @@ internal static class WebApiCollectionEndpoints
         // Delete a file from a container
         api.MapDelete("{containerName}/files/{*fileName}", OnDeleteFileAsync);
 
+        // Get all Azure AI Search indexes
+        api.MapGet("indexes", OnGetSearchIndexesAsync);
+
+        // Get detailed information about a specific index
+        api.MapGet("indexes/{indexName}", OnGetSearchIndexDetailsAsync);
+
         return app;
+    }
+
+    private static async Task<IResult> OnGetSearchIndexesAsync(
+        HttpContext context,
+        [FromServices] AzureSearchService searchService,
+        [FromServices] ILogger<WebApplication> logger,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            logger.LogInformation("Getting search indexes");
+            
+            var userInfo = await context.GetUserInfoAsync();
+            var indexes = await searchService.GetIndexesAsync(cancellationToken);
+
+            return TypedResults.Ok(indexes);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error getting search indexes");
+            return Results.Problem("Error retrieving search indexes");
+        }
+    }
+
+    private static async Task<IResult> OnGetSearchIndexDetailsAsync(
+        HttpContext context,
+        string indexName,
+        [FromServices] AzureSearchService searchService,
+        [FromServices] ILogger<WebApplication> logger,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            logger.LogInformation("Getting index details for: {IndexName}", indexName);
+            
+            var userInfo = await context.GetUserInfoAsync();
+            var indexDetails = await searchService.GetIndexDetailsAsync(indexName, cancellationToken);
+
+            if (indexDetails != null)
+            {
+                return TypedResults.Ok(indexDetails);
+            }
+            else
+            {
+                return Results.NotFound(new { message = $"Index '{indexName}' not found" });
+            }
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error getting index details for: {IndexName}", indexName);
+            return Results.Problem("Error retrieving index details");
+        }
     }
 
     private static async Task<IResult> OnGetCollectionsAsync(
@@ -75,14 +135,15 @@ internal static class WebApiCollectionEndpoints
     {
         try
         {
-            logger.LogInformation("Creating managed collection: {ContainerName} with description: {Description}, type: {Type}", 
-                request.Name, request.Description, request.Type);
+            logger.LogInformation("Creating managed collection: {ContainerName} with description: {Description}, type: {Type}, index: {IndexName}", 
+                request.Name, request.Description, request.Type, request.IndexName);
 
             var userInfo = await context.GetUserInfoAsync();
             var success = await documentService.AddManagedCollectionTagAsync(
                 request.Name, 
                 request.Description, 
-                request.Type, 
+                request.Type,
+                request.IndexName,
                 cancellationToken);
 
             if (success)
@@ -183,7 +244,8 @@ internal static class WebApiCollectionEndpoints
             var success = await documentService.UpdateCollectionMetadataAsync(
                 containerName, 
                 request.Description, 
-                request.Type, 
+                request.Type,
+                request.IndexName,
                 cancellationToken);
 
             if (success)

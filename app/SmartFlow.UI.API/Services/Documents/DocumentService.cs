@@ -41,8 +41,9 @@ public class DocumentService
             {
                 var description = containerItem.Properties.Metadata.TryGetValue("description", out var desc) ? desc : null;
                 var type = containerItem.Properties.Metadata.TryGetValue("type", out var typeValue) ? typeValue : null;
+                var indexName = containerItem.Properties.Metadata.TryGetValue("indexname", out var indexValue) ? indexValue : null;
                 
-                collections.Add(new CollectionInfo(containerItem.Name, description, type));
+                collections.Add(new CollectionInfo(containerItem.Name, description, type, indexName));
             }
         }
 
@@ -56,9 +57,10 @@ public class DocumentService
     /// <param name="containerName">The name of the container to tag</param>
     /// <param name="description">Optional description of the collection</param>
     /// <param name="type">Optional type/category of the collection</param>
+    /// <param name="indexName">Optional Azure AI Search index name to associate</param>
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>True if successful, false otherwise</returns>
-    public async Task<bool> AddManagedCollectionTagAsync(string containerName, string? description = null, string? type = null, CancellationToken cancellationToken = default)
+    public async Task<bool> AddManagedCollectionTagAsync(string containerName, string? description = null, string? type = null, string? indexName = null, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -88,6 +90,16 @@ public class DocumentService
             {
                 metadata["type"] = type;
             }
+
+            // Add or update index name if provided
+            if (!string.IsNullOrWhiteSpace(indexName))
+            {
+                metadata["indexname"] = indexName;
+            }
+            else
+            {
+                metadata.Remove("indexname");
+            }
             
             await containerClient.SetMetadataAsync(metadata, cancellationToken: cancellationToken);
             return true;
@@ -104,9 +116,10 @@ public class DocumentService
     /// <param name="containerName">The name of the container</param>
     /// <param name="description">Optional description of the collection</param>
     /// <param name="type">Optional type/category of the collection</param>
+    /// <param name="indexName">Optional Azure AI Search index name to associate</param>
     /// <param name="cancellationToken">Cancellation token</param>
     /// <returns>True if successful, false otherwise</returns>
-    public async Task<bool> UpdateCollectionMetadataAsync(string containerName, string? description = null, string? type = null, CancellationToken cancellationToken = default)
+    public async Task<bool> UpdateCollectionMetadataAsync(string containerName, string? description = null, string? type = null, string? indexName = null, CancellationToken cancellationToken = default)
     {
         try
         {
@@ -139,6 +152,16 @@ public class DocumentService
             else
             {
                 metadata.Remove("type");
+            }
+
+            // Update index name
+            if (!string.IsNullOrWhiteSpace(indexName))
+            {
+                metadata["indexname"] = indexName;
+            }
+            else
+            {
+                metadata.Remove("indexname");
             }
             
             await containerClient.SetMetadataAsync(metadata, cancellationToken: cancellationToken);
@@ -213,8 +236,9 @@ public class DocumentService
 
             var description = metadata.TryGetValue("description", out var desc) ? desc : null;
             var type = metadata.TryGetValue("type", out var typeValue) ? typeValue : null;
+            var indexName = metadata.TryGetValue("indexname", out var indexValue) ? indexValue : null;
             
-            return new CollectionInfo(containerName, description, type);
+            return new CollectionInfo(containerName, description, type, indexName);
         }
         catch
         {

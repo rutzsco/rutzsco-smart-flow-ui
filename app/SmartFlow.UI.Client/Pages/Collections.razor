@@ -146,6 +146,19 @@
                                   HelperText="Specify the type or category of this collection (e.g., Documents, Images, Reports)"
                                   Class="mb-3" />
                     
+                    <MudSelect T="string" 
+                               @bind-Value="_newCollectionIndexName" 
+                               Label="Search Index (Optional)" 
+                               Variant="Variant.Outlined"
+                               Clearable="true"
+                               HelperText="Associate this collection with an Azure AI Search index"
+                               Class="mb-3">
+                        @foreach (var index in _availableIndexes.OrderBy(i => i.Name))
+                        {
+                            <MudSelectItem T="string" Value="@index.Name">@index.Name</MudSelectItem>
+                        }
+                    </MudSelect>
+                    
                     <MudTextField @bind-Value="_newCollectionDescription" 
                                   Label="Description (Optional)" 
                                   Variant="Variant.Outlined"
@@ -184,6 +197,19 @@
                                   Variant="Variant.Outlined"
                                   HelperText="Specify the type or category of this collection (e.g., Documents, Images, Reports)"
                                   Class="mb-3" />
+                    
+                    <MudSelect T="string" 
+                               @bind-Value="_editCollectionIndexName" 
+                               Label="Search Index (Optional)" 
+                               Variant="Variant.Outlined"
+                               Clearable="true"
+                               HelperText="Associate this collection with an Azure AI Search index"
+                               Class="mb-3">
+                        @foreach (var index in _availableIndexes.OrderBy(i => i.Name))
+                        {
+                            <MudSelectItem T="string" Value="@index.Name">@index.Name</MudSelectItem>
+                        }
+                    </MudSelect>
                     
                     <MudTextField @bind-Value="_editCollectionDescription" 
                                   Label="Description (Optional)" 

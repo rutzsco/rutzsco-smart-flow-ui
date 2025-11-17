@@ -33,6 +33,7 @@ public sealed partial class Collections : IDisposable
 
     // Collection management
     private List<CollectionInfo> _collections = new();
+    private List<SearchIndexInfo> _availableIndexes = new();
     private string _selectedCollection = "";
     private CollectionInfo? _selectedCollectionInfo = null;
     private List<ContainerFileInfo> _collectionFiles = new();
@@ -40,16 +41,34 @@ public sealed partial class Collections : IDisposable
     private string _newCollectionName = "";
     private string _newCollectionDescription = "";
     private string _newCollectionType = "";
+    private string _newCollectionIndexName = "";
 
     // Edit collection metadata
     private bool _showEditMetadataForm = false;
     private string _editCollectionDescription = "";
     private string _editCollectionType = "";
+    private string _editCollectionIndexName = "";
 
     protected override async Task OnInitializedAsync()
     {
-        // Load collections
-        await LoadCollectionsAsync();
+        // Load collections and available indexes
+        await Task.WhenAll(
+            LoadCollectionsAsync(),
+            LoadAvailableIndexesAsync()
+        );
+    }
+
+    private async Task LoadAvailableIndexesAsync()
+    {
+        try
+        {
+            _availableIndexes = await Client.GetSearchIndexesAsync();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error loading available indexes");
+            // Don't show error to user - index field will just be empty
+        }
     }
 
     private async Task LoadCollectionsAsync()
@@ -125,6 +144,7 @@ public sealed partial class Collections : IDisposable
         _newCollectionName = "";
         _newCollectionDescription = "";
         _newCollectionType = "";
+        _newCollectionIndexName = "";
         _createCollectionFormValid = false;
         _showCreateCollectionForm = true;
         _showEditMetadataForm = false;
@@ -136,6 +156,7 @@ public sealed partial class Collections : IDisposable
         _newCollectionName = "";
         _newCollectionDescription = "";
         _newCollectionType = "";
+        _newCollectionIndexName = "";
         _createCollectionFormValid = false;
     }
 
@@ -173,7 +194,8 @@ public sealed partial class Collections : IDisposable
             var success = await Client.CreateCollectionAsync(
                 _newCollectionName, 
                 string.IsNullOrWhiteSpace(_newCollectionDescription) ? null : _newCollectionDescription,
-                string.IsNullOrWhiteSpace(_newCollectionType) ? null : _newCollectionType);
+                string.IsNullOrWhiteSpace(_newCollectionType) ? null : _newCollectionType,
+                string.IsNullOrWhiteSpace(_newCollectionIndexName) ? null : _newCollectionIndexName);
             
             if (success)
             {
@@ -183,6 +205,7 @@ public sealed partial class Collections : IDisposable
                 _newCollectionName = "";
                 _newCollectionDescription = "";
                 _newCollectionType = "";
+                _newCollectionIndexName = "";
                 await LoadCollectionsAsync();
                 // Auto-select the newly created collection
                 await SelectCollectionAsync(createdCollectionName);
@@ -205,6 +228,7 @@ public sealed partial class Collections : IDisposable
         {
             _editCollectionDescription = _selectedCollectionInfo.Description ?? "";
             _editCollectionType = _selectedCollectionInfo.Type ?? "";
+            _editCollectionIndexName = _selectedCollectionInfo.IndexName ?? "";
             _showEditMetadataForm = true;
             _showCreateCollectionForm = false;
             _showUploadSection = false;
@@ -216,6 +240,7 @@ public sealed partial class Collections : IDisposable
         _showEditMetadataForm = false;
         _editCollectionDescription = "";
         _editCollectionType = "";
+        _editCollectionIndexName = "";
     }
 
     private async Task ShowDeleteCollectionDialogAsync()
@@ -290,7 +315,8 @@ public sealed partial class Collections : IDisposable
             var success = await Client.UpdateCollectionMetadataAsync(
                 _selectedCollection,
                 string.IsNullOrWhiteSpace(_editCollectionDescription) ? null : _editCollectionDescription,
-                string.IsNullOrWhiteSpace(_editCollectionType) ? null : _editCollectionType);
+                string.IsNullOrWhiteSpace(_editCollectionType) ? null : _editCollectionType,
+                string.IsNullOrWhiteSpace(_editCollectionIndexName) ? null : _editCollectionIndexName);
 
             if (success)
             {
@@ -306,6 +332,7 @@ public sealed partial class Collections : IDisposable
                 {
                     collectionInList.Description = _selectedCollectionInfo.Description;
                     collectionInList.Type = _selectedCollectionInfo.Type;
+                    collectionInList.IndexName = _selectedCollectionInfo.IndexName;
                 }
                 
                 StateHasChanged();

@@ -29,7 +29,7 @@ public sealed class ApiClient(HttpClient httpClient)
         }
     }
 
-    public async Task<bool> CreateCollectionAsync(string containerName, string? description = null, string? type = null)
+    public async Task<bool> CreateCollectionAsync(string containerName, string? description = null, string? type = null, string? indexName = null)
     {
         try
         {
@@ -37,7 +37,8 @@ public sealed class ApiClient(HttpClient httpClient)
             {
                 Name = containerName,
                 Description = description,
-                Type = type
+                Type = type,
+                IndexName = indexName
             };
             
             var json = System.Text.Json.JsonSerializer.Serialize(request, SerializerOptions.Default);
@@ -66,7 +67,7 @@ public sealed class ApiClient(HttpClient httpClient)
         }
     }
 
-    public async Task<bool> UpdateCollectionMetadataAsync(string containerName, string? description = null, string? type = null)
+    public async Task<bool> UpdateCollectionMetadataAsync(string containerName, string? description = null, string? type = null, string? indexName = null)
     {
         try
         {
@@ -74,7 +75,8 @@ public sealed class ApiClient(HttpClient httpClient)
             {
                 Name = containerName,
                 Description = description,
-                Type = type
+                Type = type,
+                IndexName = indexName
             };
             
             var json = System.Text.Json.JsonSerializer.Serialize(request, SerializerOptions.Default);
@@ -416,6 +418,37 @@ public sealed class ApiClient(HttpClient httpClient)
         {
             Debug.WriteLine($"Error analyzing project file: {ex.Message}");
             return false;
+        }
+    }
+
+    // Search Index APIs
+    public async Task<List<SearchIndexInfo>> GetSearchIndexesAsync()
+    {
+        try
+        {
+            var response = await httpClient.GetAsync("api/collections/indexes");
+            response.EnsureSuccessStatusCode();
+            return await response.Content.ReadFromJsonAsync<List<SearchIndexInfo>>() ?? new List<SearchIndexInfo>();
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Error fetching search indexes: {ex.Message}");
+            return new List<SearchIndexInfo>();
+        }
+    }
+
+    public async Task<SearchIndexInfo?> GetSearchIndexDetailsAsync(string indexName)
+    {
+        try
+        {
+            var response = await httpClient.GetAsync($"api/collections/indexes/{Uri.EscapeDataString(indexName)}");
+            response.EnsureSuccessStatusCode();
+            return await response.Content.ReadFromJsonAsync<SearchIndexInfo>();
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Error fetching search index details: {ex.Message}");
+            return null;
         }
     }
 
