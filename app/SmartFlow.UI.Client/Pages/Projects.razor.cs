@@ -6,7 +6,7 @@ namespace SmartFlow.UI.Client.Pages;
 
 public sealed partial class Projects : IDisposable
 {
-    private const long MaxIndividualFileSize = 1_024 * 1_024 * 10;
+    private const long MaxIndividualFileSize = 1_024 * 1_024 * 50;
 
     private MudForm _form = null!;
     private MudForm _createProjectForm = null!;
