@@ -62,6 +62,7 @@
     <EmbeddedResource Include="Services\Profile\profiles.json" />
     <EmbeddedResource Include="Services\Profile\Prompts\CSVCopilotSystemPrompt.txt" />
     <EmbeddedResource Include="Services\Profile\Prompts\ChatSimpleSystemPrompt.txt" />
+    <EmbeddedResource Include="Services\Profile\Prompts\ProductAdvisorRAGChatSystemPrompt.txt" />
     <EmbeddedResource Include="Services\Profile\Prompts\RAGChatSystemPrompt.txt" />
     <EmbeddedResource Include="Services\Profile\Prompts\ChatSimpleUserPrompt.txt" />
     <EmbeddedResource Include="Services\Profile\Prompts\RAGChatUserPrompt.txt" />

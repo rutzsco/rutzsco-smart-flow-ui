@@ -10,6 +10,7 @@ public class OpenAIClientFacade
 {
     private readonly AppConfiguration _config;
     private readonly string _standardChatGptDeployment;
+    private readonly string? _embeddingsDeploymentKey;
     private readonly string _standardServiceEndpoint;
     private readonly TokenCredential _tokenCredential;
     private readonly IHttpClientFactory _httpClientFactory;
@@ -18,6 +19,7 @@ public class OpenAIClientFacade
     private readonly string _apimKey;
 
     private readonly AzureOpenAIClient _standardChatGptClient;
+    private readonly AzureOpenAIClient _standardEmbeddingsClient;
 
     public OpenAIClientFacade(AppConfiguration configuration, AzureKeyCredential azureKeyCredential, TokenCredential tokenCredential, IHttpClientFactory httpClientFactory, SearchClientFactory searchClientFactory, string apimKey = null)
     {
@@ -27,6 +29,7 @@ public class OpenAIClientFacade
 
         _config = configuration;
         _standardChatGptDeployment = _config.AOAIStandardChatGptDeployment;
+        _embeddingsDeploymentKey = _config.AOAIEmbeddingsDeploymentKey;
         _standardServiceEndpoint = _config.AOAIStandardServiceEndpoint;
 
         _azureKeyCredential = azureKeyCredential;
@@ -35,7 +38,7 @@ public class OpenAIClientFacade
         _searchClientFactory = searchClientFactory;
         _apimKey = apimKey;
 
-        // Create client with APIM key header if provided
+        // Create chat client with APIM key header if provided
         if (!string.IsNullOrEmpty(_apimKey))
         {
             var httpClient = _httpClientFactory.CreateClient();
@@ -58,6 +61,29 @@ public class OpenAIClientFacade
             else
                 _standardChatGptClient = new AzureOpenAIClient(new Uri(_standardServiceEndpoint), _tokenCredential);
         }
+
+        // Create embeddings client if key is configured
+        if (!string.IsNullOrEmpty(_embeddingsDeploymentKey))
+        {
+            var embeddingsKeyCredential = new AzureKeyCredential(_embeddingsDeploymentKey);
+            
+            if (!string.IsNullOrEmpty(_embeddingsDeploymentKey))
+            {
+                var httpClient = _httpClientFactory.CreateClient();
+                httpClient.DefaultRequestHeaders.Add("Ocp-Apim-Subscription-Key", _embeddingsDeploymentKey);
+                
+                var clientOptions = new AzureOpenAIClientOptions
+                {
+                    Transport = new HttpClientPipelineTransport(httpClient)
+                };
+
+                _standardEmbeddingsClient = new AzureOpenAIClient(new Uri(_standardServiceEndpoint), embeddingsKeyCredential, clientOptions);
+            }
+            else
+            {
+                _standardEmbeddingsClient = new AzureOpenAIClient(new Uri(_standardServiceEndpoint), embeddingsKeyCredential);
+            }
+        }
     }
 
     public string GetKernelDeploymentName()
@@ -65,12 +91,22 @@ public class OpenAIClientFacade
         return _standardChatGptDeployment;
     }
 
+    public AzureOpenAIClient GetChatClient()
+    {
+        return _standardChatGptClient;
+    }
+
+    public AzureOpenAIClient GetEmbeddingsClient()
+    {
+        return _standardEmbeddingsClient ?? _standardChatGptClient;
+    }
+
     public Kernel BuildKernel(string toolPackage)
     {
         var kernel = BuildKernelBasedOnIdentity();
         if (toolPackage == "RAG")
         {
-            kernel.ImportPluginFromObject(new RAGRetrivalPlugins(_searchClientFactory, _standardChatGptClient), "RAGChat");
+            kernel.ImportPluginFromObject(new RAGRetrivalPlugins(_searchClientFactory, GetEmbeddingsClient()), "RAGChat");
         }
 
         if(toolPackage == "ImageGen")
