@@ -48,6 +48,10 @@ public sealed partial class Projects : IDisposable
     private string _editProjectDescription = "";
     private string _editProjectType = "";
 
+    // Workflow status tracking
+    private WorkflowStatus? _currentWorkflow = null;
+    private System.Threading.Timer? _workflowTimer = null;
+
     protected override async Task OnInitializedAsync()
     {
         // Load projects
@@ -522,6 +526,12 @@ public sealed partial class Projects : IDisposable
         var successCount = 0;
         var failCount = 0;
 
+        // Start workflow status for the first file (demo purposes)
+        if (pdfFiles.Any())
+        {
+            StartWorkflowDemo(pdfFiles.First().FileName);
+        }
+
         foreach (var file in pdfFiles)
         {
             try
@@ -689,5 +699,68 @@ public sealed partial class Projects : IDisposable
         }
     }
 
-    public void Dispose() => _cancellationTokenSource.Cancel();
+
+    // Workflow status methods (demo implementation)
+    private void StartWorkflowDemo(string fileName)
+    {
+        // Create a workflow for demonstration
+        _currentWorkflow = WorkflowStatus.CreateSample(fileName, WorkflowState.InProgress);
+        
+        // Start a timer to update workflow progress
+        _workflowTimer?.Dispose();
+        _workflowTimer = new System.Threading.Timer(_ =>
+        {
+            UpdateWorkflowProgress();
+        }, null, TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(2));
+
+        StateHasChanged();
+    }
+
+    private void UpdateWorkflowProgress()
+    {
+        if (_currentWorkflow == null || _currentWorkflow.State != WorkflowState.InProgress)
+        {
+            _workflowTimer?.Dispose();
+            _workflowTimer = null;
+            return;
+        }
+
+        // Find the next pending step and move it to in progress or completed
+        var inProgressStep = _currentWorkflow.Steps.FirstOrDefault(s => s.State == StepState.InProgress);
+        if (inProgressStep != null)
+        {
+            // Complete the in-progress step
+            inProgressStep.State = StepState.Completed;
+            inProgressStep.EndTime = DateTime.UtcNow;
+        }
+
+        var nextPendingStep = _currentWorkflow.Steps.FirstOrDefault(s => s.State == StepState.Pending);
+        if (nextPendingStep != null)
+        {
+            // Start the next pending step
+            nextPendingStep.State = StepState.InProgress;
+            nextPendingStep.StartTime = DateTime.UtcNow;
+        }
+        else if (inProgressStep != null)
+        {
+            // All steps completed
+            _currentWorkflow.State = WorkflowState.Completed;
+            _currentWorkflow.EndTime = DateTime.UtcNow;
+            _workflowTimer?.Dispose();
+            _workflowTimer = null;
+        }
+
+        // Update progress percentage
+        var completedSteps = _currentWorkflow.Steps.Count(s => s.State == StepState.Completed);
+        _currentWorkflow.ProgressPercentage = (int)((double)completedSteps / _currentWorkflow.Steps.Count * 100);
+
+        InvokeAsync(StateHasChanged);
+    }
+
+    public void Dispose()
+    {
+        _cancellationTokenSource.Cancel();
+        _workflowTimer?.Dispose();
+    }
 }
+

@@ -289,8 +289,7 @@
                               Elevation="0">
                         <HeaderContent>
                             <MudTh><MudTableSortLabel SortBy="new Func<ContainerFileInfo, object>(x => x.FileName)">File Name</MudTableSortLabel></MudTh>
-                            <MudTh Style="width: 200px;">Processing Files</MudTh>
-                            <MudTh Style="text-align: center; width: 200px;">Actions</MudTh>
+                            <MudTh Style="text-align: center; width: 120px;">Actions</MudTh>
                         </HeaderContent>
                         <RowTemplate>
                             <MudTd DataLabel="Name">
@@ -307,36 +306,6 @@
                                     <MudIcon Icon="@Icons.Material.Filled.InsertDriveFile" Size="Size.Small" />
                                     <MudText>@context.FileName</MudText>
                                 </MudStack>
-                            </MudTd>
-                            <MudTd DataLabel="Processing Files">
-                                @if (context.ProcessingFiles.Any())
-                                {
-                                    <MudStack Spacing="1">
-                                        @foreach (var processingFile in context.ProcessingFiles)
-                                        {
-                                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
-                                                <MudChip T="string" Size="Size.Small" Icon="@Icons.Material.Filled.Description">
-                                                    @Path.GetFileName(processingFile)
-                                                </MudChip>
-                                                @if (CanViewFile(processingFile))
-                                                {
-                                                    <MudTooltip Text="View file">
-                                                        <MudIconButton Icon="@Icons.Material.Filled.Visibility"
-                                                                       Color="Color.Info"
-                                                                       Size="Size.Small"
-                                                                       OnClick="@(async () => await ViewFileAsync(processingFile, true))" />
-                                                    </MudTooltip>
-                                                }
-                                            </MudStack>
-                                        }
-                                    </MudStack>
-                                }
-                                else
-                                {
-                                    <MudText Typo="Typo.body2" Color="Color.Default">
-                                        <em>None</em>
-                                    </MudText>
-                                }
                             </MudTd>
                             <MudTd DataLabel="Actions" Style="text-align: center;">
                                 <MudStack Row="true" Justify="Justify.Center" Spacing="1">
@@ -357,11 +326,11 @@
                                 </MudStack>
                             </MudTd>
                         </RowTemplate>
-                        <PagerContent>
-                            <MudTablePager PageSizeOptions="new int[] { 10, 25, 50, 100 }" />
-                        </PagerContent>
                     </MudTable>
                 </div>
+
+                <!-- Workflow Status Section -->
+                <WorkflowStatusPanel Workflow="@_currentWorkflow" />
             </MudPaper>
         }
     </MudItem>
