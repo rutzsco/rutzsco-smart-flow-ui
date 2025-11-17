@@ -119,28 +119,30 @@
     <MudItem xs="12">
         <MudPaper Elevation="3" Style="border-radius: 4px 4px 0 0;">
             <MudToolBar Dense="true" Style="border-bottom: 1px solid var(--mud-palette-divider);">
-                <MudTextField @bind-Value="_projectFilter" 
-                              Placeholder="Find..." 
-                              Adornment="Adornment.Start"
-                              AdornmentIcon="@Icons.Material.Filled.Search" 
-                              IconSize="Size.Small"
-                              Margin="Margin.Dense"
-                              Immediate="true"
-                              DebounceInterval="300"
-                              Variant="Variant.Outlined"
-                              Style="max-width: 300px;">
-                </MudTextField>
+                <div class="d-flex align-center">
+                    <MudTextField @bind-Value="_projectFilter" 
+                                  Placeholder="Find..." 
+                                  Adornment="Adornment.Start"
+                                  AdornmentIcon="@Icons.Material.Filled.Search" 
+                                  IconSize="Size.Small"
+                                  Margin="Margin.Dense"
+                                  Immediate="true"
+                                  DebounceInterval="300"
+                                  Variant="Variant.Outlined"
+                                  Style="max-width: 300px;">
+                    </MudTextField>
+                    @if (_isLoadingProjects)
+                    {
+                        <MudProgressCircular Indeterminate="true" Size="Size.Small" Class="ml-3" />
+                    }
+                    else
+                    {
+                        <MudChip T="string" Size="Size.Small" Color="Color.Primary" Class="ml-3">
+                            @_projects.Count project@(_projects.Count != 1 ? "s" : "")
+                        </MudChip>
+                    }
+                </div>
                 <MudSpacer />
-                @if (_isLoadingProjects)
-                {
-                    <MudProgressCircular Indeterminate="true" Size="Size.Small" Class="mr-3" />
-                }
-                else
-                {
-                    <MudChip T="string" Size="Size.Small" Color="Color.Primary" Class="mr-3">
-                        @_projects.Count project@(_projects.Count != 1 ? "s" : "")
-                    </MudChip>
-                }
                 
                 @if (!string.IsNullOrEmpty(_selectedProject))
                 {
@@ -179,8 +181,8 @@
                               Filter="OnProjectFilter"
                               SelectedItem="_selectedProjectInfo"
                               SelectedItemChanged="@((CollectionInfo? p) => OnProjectSelectionChangedAsync(p))"
-                              Elevation="0"
-                              Class="project-table">
+                              RowStyleFunc="@((item, _) => item == _selectedProjectInfo ? "background-color: #CCE4F7;" : string.Empty)"
+                              Elevation="0">
                         <HeaderContent>
                             <MudTh Style="width: 40%;"><MudTableSortLabel SortBy="new Func<CollectionInfo, object>(x => x.Name)">Project Name</MudTableSortLabel></MudTh>
                             <MudTh Style="width: 15%;"><MudTableSortLabel SortBy="new Func<CollectionInfo, object>(x => x.Type ?? string.Empty)">Type</MudTableSortLabel></MudTh>
@@ -229,29 +231,20 @@
         {
             <MudPaper Elevation="3" Style="border-radius: 0 0 4px 4px; margin-top: 0; border-top: 2px solid var(--mud-palette-primary);">
                 <MudToolBar Dense="true" Style="background-color: var(--mud-palette-primary); color: white; border-bottom: 1px solid var(--mud-palette-divider);">
-                    <MudTextField @bind-Value="@_filter" 
-                                  Placeholder="Find..." 
-                                  Adornment="Adornment.Start"
-                                  AdornmentIcon="@Icons.Material.Filled.Search" 
-                                  IconSize="Size.Small"
-                                  Margin="Margin.Dense"
-                                  DebounceInterval="300"
-                                  Variant="Variant.Outlined"
-                                  Style="max-width: 300px; background-color: rgba(255,255,255,0.9);">
-                    </MudTextField>
+                    <div class="d-flex align-center">
+                        @if (_selectedProjectInfo != null && !string.IsNullOrWhiteSpace(_selectedProjectInfo.Type))
+                        {
+                            <MudChip T="string" Size="Size.Small" Color="Color.Secondary" Style="text-transform: uppercase;">
+                                @_selectedProjectInfo.Type
+                            </MudChip>
+                        }
                     
-                    <MudSpacer />
-                    
-                    @if (_selectedProjectInfo != null && !string.IsNullOrWhiteSpace(_selectedProjectInfo.Type))
-                    {
-                        <MudChip T="string" Size="Size.Small" Color="Color.Secondary" Style="text-transform: uppercase; margin-right: 8px;">
-                            @_selectedProjectInfo.Type
+                        <MudChip T="string" Size="Size.Small" Style="background-color: rgba(255,255,255,0.2); color: white; margin-left: 8px;">
+                            @_projectFiles.Count file@(_projectFiles.Count != 1 ? "s" : "")
                         </MudChip>
-                    }
-                    
-                    <MudChip T="string" Size="Size.Small" Style="background-color: rgba(255,255,255,0.2); color: white; margin-right: 8px;">
-                        @_projectFiles.Count file@(_projectFiles.Count != 1 ? "s" : "")
-                    </MudChip>
+                    </div>
+
+                    <MudSpacer />
                     
                     <MudButton StartIcon="@Icons.Material.Filled.Upload"
                                Color="Color.Inherit"
@@ -283,7 +276,6 @@
                               Hover="true" 
                               Bordered="true" 
                               FixedHeader="true" 
-                              Filter="OnFileFilter" 
                               Elevation="0">
                         <HeaderContent>
                             <MudTh><MudTableSortLabel SortBy="new Func<ContainerFileInfo, object>(x => x.FileName)">File Name</MudTableSortLabel></MudTh>
@@ -378,11 +370,11 @@
 
 <style>
     .project-table .mud-table-row.mud-selected {
-        background-color: var(--mud-palette-action-default-hover) !important;
+        background-color: var(--mud-palette-primary-lighten) !important;
     }
     
     .project-table .mud-table-row.mud-selected:hover {
-        background-color: var(--mud-palette-action-default-hover) !important;
+        background-color: var(--mud-palette-primary-lighten) !important;
     }
     
     .project-table .mud-table-row {

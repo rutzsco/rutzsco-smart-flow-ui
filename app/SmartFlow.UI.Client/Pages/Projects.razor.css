@@ -1,0 +1,12 @@
+::deep .mud-table-row.selected-project {
+    background-color: var(--mud-palette-primary-lighten) !important;
+}
+
+::deep .mud-table-row.selected-project:hover {
+    background-color: var(--mud-palette-primary-lighten) !important;
+}
+
+::deep .mud-table-row {
+    cursor: pointer;
+}
+
