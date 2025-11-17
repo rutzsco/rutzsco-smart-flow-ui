@@ -397,6 +397,28 @@ public sealed class ApiClient(HttpClient httpClient)
         }
     }
 
+    public async Task<bool> AnalyzeProjectFileAsync(string projectName, string fileName)
+    {
+        try
+        {
+            var request = new
+            {
+                fileName = fileName,
+                blobContainer = "project-files"
+            };
+            
+            var json = System.Text.Json.JsonSerializer.Serialize(request, SerializerOptions.Default);
+            using var content = new StringContent(json, Encoding.UTF8, "application/json");
+            var response = await httpClient.PostAsync($"api/projects/{projectName}/analyze/{fileName}", content);
+            return response.IsSuccessStatusCode;
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Error analyzing project file: {ex.Message}");
+            return false;
+        }
+    }
+
     public async Task<UserInformation> GetUserAsync()
     {
         if (Cache.UserInformation != null)

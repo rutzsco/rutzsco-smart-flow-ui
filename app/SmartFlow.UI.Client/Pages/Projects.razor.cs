@@ -20,8 +20,8 @@ public sealed partial class Projects : IDisposable
     private string _filter = "";
     private string _projectFilter = "";
     private int _filteredProjectCount = 0;
-    private HashSet<string> _processingFiles = new(); // Track files being processed
     private HashSet<string> _deletingFiles = new(); // Track files being deleted
+    private HashSet<string> _analyzingFiles = new(); // Track files being analyzed (project-level)
 
     // Store a cancelation token that will be used to cancel if the user disposes of this component.
     private readonly CancellationTokenSource _cancellationTokenSource = new();
@@ -439,41 +439,136 @@ public sealed partial class Projects : IDisposable
 
     private IList<IBrowserFile> _fileUploads = new List<IBrowserFile>();
 
-    private async Task ProcessDocumentLayoutAsync(string fileName)
+    private async Task AnalyzeProjectFileAsync(string fileName)
     {
         if (string.IsNullOrEmpty(_selectedProject) || string.IsNullOrEmpty(fileName))
             return;
 
-        // Add to processing set
-        _processingFiles.Add(fileName);
+        // Add to analyzing set
+        _analyzingFiles.Add(fileName);
         StateHasChanged();
 
         try
         {
-            Logger.LogInformation("Processing document layout for {FileName} in {Project}", fileName, _selectedProject);
+            Logger.LogInformation("Analyzing file {FileName} in {Project}", fileName, _selectedProject);
             
-            var success = await Client.ProcessProjectDocumentLayoutAsync(_selectedProject, fileName);
+            var success = await Client.AnalyzeProjectFileAsync(_selectedProject, fileName);
             
             if (success)
             {
-                SnackBarMessage($"Document '{fileName}' processing started successfully");
+                SnackBarMessage($"Analysis for '{fileName}' started successfully");
+                // Refresh the file list after a short delay to see any processing files
+                await Task.Delay(2000);
+                await RefreshAsync();
             }
             else
             {
-                SnackBarError($"Failed to start processing for '{fileName}'");
+                SnackBarError($"Failed to start analysis for '{fileName}'");
             }
         }
         catch (Exception ex)
         {
-            Logger.LogError(ex, "Error processing document layout for {FileName}", fileName);
-            SnackBarError($"Error processing document: {ex.Message}");
+            Logger.LogError(ex, "Error analyzing file {FileName}", fileName);
+            SnackBarError($"Error analyzing file: {ex.Message}");
         }
         finally
         {
-            // Remove from processing set
-            _processingFiles.Remove(fileName);
+            // Remove from analyzing set
+            _analyzingFiles.Remove(fileName);
             StateHasChanged();
         }
+    }
+
+    private async Task AnalyzeSelectedProjectAsync()
+    {
+        if (string.IsNullOrEmpty(_selectedProject))
+        {
+            SnackBarError("No project selected");
+            return;
+        }
+
+        if (!_projectFiles.Any())
+        {
+            SnackBarError("No files in project to analyze");
+            return;
+        }
+
+        // Filter to only PDF files
+        var pdfFiles = _projectFiles
+            .Where(f => Path.GetExtension(f.FileName).Equals(".pdf", StringComparison.OrdinalIgnoreCase))
+            .ToList();
+
+        if (!pdfFiles.Any())
+        {
+            SnackBarError("No PDF files found in project to analyze");
+            return;
+        }
+
+        // Show confirmation dialog
+        var parameters = new DialogParameters
+        {
+            { "ContentText", $"Are you sure you want to analyze all {pdfFiles.Count} PDF file(s) in project '{_selectedProject}'? This will trigger markdown extraction for each file." },
+            { "ButtonText", "Analyze All" },
+            { "Color", Color.Primary }
+        };
+
+        var dialog = await DialogService.ShowAsync<ConfirmationDialog>("Confirm Analysis", parameters);
+        var result = await dialog.Result;
+
+        if (result.Canceled)
+            return;
+
+        // Analyze each PDF file
+        var successCount = 0;
+        var failCount = 0;
+
+        foreach (var file in pdfFiles)
+        {
+            try
+            {
+                _analyzingFiles.Add(file.FileName);
+                StateHasChanged();
+
+                var success = await Client.AnalyzeProjectFileAsync(_selectedProject, file.FileName);
+                
+                if (success)
+                {
+                    successCount++;
+                }
+                else
+                {
+                    failCount++;
+                    Logger.LogWarning("Failed to analyze file {FileName}", file.FileName);
+                }
+            }
+            catch (Exception ex)
+            {
+                failCount++;
+                Logger.LogError(ex, "Error analyzing file {FileName}", file.FileName);
+            }
+            finally
+            {
+                _analyzingFiles.Remove(file.FileName);
+            }
+
+            // Small delay between files to avoid overwhelming the API
+            await Task.Delay(500);
+        }
+
+        StateHasChanged();
+
+        if (failCount == 0)
+        {
+            SnackBarMessage($"Successfully started analysis for {successCount} file(s)");
+        }
+        else
+        {
+            SnackBarMessage($"Analysis started for {successCount} file(s), {failCount} failed");
+        }
+
+        // Refresh the file list after analysis
+        await Task.Delay(2000);
+        await RefreshAsync();
     }
 
     private async Task ViewFileAsync(string fileName, bool isProcessingFile = false)

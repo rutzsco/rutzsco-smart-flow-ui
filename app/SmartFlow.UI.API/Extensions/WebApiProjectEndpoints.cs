@@ -37,7 +37,72 @@ internal static class WebApiProjectEndpoints
         // Delete a file from a project
         api.MapDelete("{projectName}/files/{*fileName}", OnDeleteProjectFileAsync);
 
+        // Analyze a file in a project
+        api.MapPost("{projectName}/analyze/{*fileName}", OnAnalyzeProjectFileAsync);
+
         return app;
+    }
+
+    private static async Task<IResult> OnAnalyzeProjectFileAsync(
+        HttpContext context,
+        string projectName,
+        string fileName,
+        [FromServices] ProjectService projectService,
+        [FromServices] IConfiguration configuration,
+        [FromServices] ILogger<WebApplication> logger,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            fileName = Uri.UnescapeDataString(fileName);
+            
+            logger.LogInformation("Analyzing file {FileName} in project: {ProjectName}", fileName, projectName);
+
+            var userInfo = await context.GetUserInfoAsync();
+            
+            // Get the document tools API endpoint and key from configuration
+            var documentToolsEndpoint = configuration["DocumentToolsAPIEndpoint"];
+            var documentToolsApiKey = configuration["DocumentToolsAPIKey"];
+            
+            if (string.IsNullOrEmpty(documentToolsEndpoint) || string.IsNullOrEmpty(documentToolsApiKey))
+            {
+                logger.LogError("Document Tools API endpoint or key not configured");
+                return Results.Problem("Document Tools API not configured");
+            }
+
+            // Call the external document-tools API
+            using var httpClient = new HttpClient();
+            httpClient.DefaultRequestHeaders.Add("X-API-Key", documentToolsApiKey);
+            
+            var requestBody = new
+            {
+                fileName = fileName,
+                blobContainer = "projects"
+            };
+            
+            var jsonContent = System.Text.Json.JsonSerializer.Serialize(requestBody);
+            using var content = new StringContent(jsonContent, System.Text.Encoding.UTF8, "application/json");
+            
+            var response = await httpClient.PostAsync($"{documentToolsEndpoint}/document-tools/markdown-extraction", content, cancellationToken);
+
+            if (response.IsSuccessStatusCode)
+            {
+                logger.LogInformation("Successfully triggered analysis for file '{FileName}' in project '{ProjectName}'", fileName, projectName);
+                return TypedResults.Ok(new { success = true, message = $"Analysis started for file '{fileName}'" });
+            }
+            else
+            {
+                var errorContent = await response.Content.ReadAsStringAsync(cancellationToken);
+                logger.LogError("Failed to trigger analysis for file '{FileName}' in project '{ProjectName}': {StatusCode} - {Error}", 
+                    fileName, projectName, response.StatusCode, errorContent);
+                return Results.Problem($"Failed to start analysis: {response.StatusCode}");
+            }
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error analyzing file {FileName} in project: {ProjectName}", fileName, projectName);
+            return Results.Problem("Error analyzing file");
+        }
     }
 
     private static async Task<IResult> OnGetProjectsAsync(

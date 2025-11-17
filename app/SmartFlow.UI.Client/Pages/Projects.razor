@@ -255,6 +255,16 @@
                         Upload
                     </MudButton>
                     
+                    <MudButton StartIcon="@Icons.Material.Filled.Analytics"
+                               Color="Color.Inherit"
+                               Variant="Variant.Text"
+                               Size="Size.Small"
+                               OnClick="@(async () => await AnalyzeSelectedProjectAsync())"
+                               Disabled="@(!_projectFiles.Any())"
+                               Title="Analyze all PDF files in this project">
+                        Analyze
+                    </MudButton>
+                    
                     <MudIconButton Icon="@Icons.Material.Filled.Refresh" 
                                   OnClick="RefreshAsync" 
                                   Size="Size.Small"
@@ -330,23 +340,12 @@
                             </MudTd>
                             <MudTd DataLabel="Actions" Style="text-align: center;">
                                 <MudStack Row="true" Justify="Justify.Center" Spacing="1">
-                                    @if (_processingFiles.Contains(context.FileName))
-                                    {
-                                        <MudProgressCircular Size="Size.Small" Indeterminate="true" />
-                                    }
-                                    else if (_deletingFiles.Contains(context.FileName))
+                                    @if (_deletingFiles.Contains(context.FileName))
                                     {
                                         <MudProgressCircular Size="Size.Small" Indeterminate="true" Color="Color.Error" />
                                     }
                                     else
                                     {
-                                        <MudTooltip Text="Process document layout">
-                                            <MudIconButton Icon="@Icons.Material.Filled.AutoFixHigh"
-                                                           Color="Color.Primary"
-                                                           Size="Size.Small"
-                                                           OnClick="@(async () => await ProcessDocumentLayoutAsync(context.FileName))"
-                                                           Title="Process Layout" />
-                                        </MudTooltip>
                                         <MudTooltip Text="Delete file">
                                             <MudIconButton Icon="@Icons.Material.Filled.Delete"
                                                            Color="Color.Error"
