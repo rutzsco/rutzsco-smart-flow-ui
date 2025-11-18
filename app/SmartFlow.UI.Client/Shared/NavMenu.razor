@@ -15,6 +15,10 @@
     @if (IsPathEnabled("collections") )
     {
         <MudNavLink Href="collections" aria-label="View document collections." Icon="@Icons.Material.Filled.FileUpload">Collections</MudNavLink>
+    }
+
+    @if (IsPathEnabled("collection-indexes"))
+    {
         <MudNavLink Href="collection-indexes" aria-label="Manage collection indexes." Icon="@Icons.Material.Filled.Storage">Collection Indexes</MudNavLink>
     }
 
