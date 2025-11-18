@@ -762,5 +762,20 @@ public sealed partial class Projects : IDisposable
         _cancellationTokenSource.Cancel();
         _workflowTimer?.Dispose();
     }
+
+    private string GetProjectItemClass(CollectionInfo project)
+    {
+        var baseClass = "project-item";
+        return project.Name == _selectedProject 
+            ? $"{baseClass} project-item-selected" 
+            : baseClass;
+    }
+
+    private string GetProjectTextStyle(CollectionInfo project)
+    {
+        return project.Name == _selectedProject 
+            ? "font-weight: 500;" 
+            : "font-weight: 400;";
+    }
 }
 
