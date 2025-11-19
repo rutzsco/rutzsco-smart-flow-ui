@@ -898,5 +898,9 @@ public sealed partial class Collections : IDisposable
         }
     }
 
-    public void Dispose() => _cancellationTokenSource.Cancel();
+    public void Dispose()
+    {
+        _cancellationTokenSource.Cancel();
+        _cancellationTokenSource.Dispose();
+    }
 }

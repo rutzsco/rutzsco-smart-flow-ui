@@ -117,5 +117,9 @@ public sealed partial class Docs : IDisposable
     }
 
 
-    public void Dispose() => _cancellationTokenSource.Cancel();
+    public void Dispose()
+    {
+        _cancellationTokenSource.Cancel();
+        _cancellationTokenSource.Dispose();
+    }
 }
