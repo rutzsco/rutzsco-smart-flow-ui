@@ -461,7 +461,7 @@ public sealed partial class Projects : IDisposable
         {
             Logger.LogInformation("Analyzing file {FileName} in {Project}", fileName, _selectedProject);
             
-            var success = await Client.AnalyzeProjectFileAsync(_selectedProject, fileName);
+            var success = await Client.AnalyzeProjectAsync(_selectedProject);
             
             if (success)
             {
@@ -500,8 +500,7 @@ public sealed partial class Projects : IDisposable
         {
             Logger.LogInformation("Analyzing project {Project}", _selectedProject);
             
-            // Call the analyze API (fileName parameter is ignored by the backend)
-            var success = await Client.AnalyzeProjectFileAsync(_selectedProject, "all");
+            var success = await Client.AnalyzeProjectAsync(_selectedProject);
             
             if (success)
             {
