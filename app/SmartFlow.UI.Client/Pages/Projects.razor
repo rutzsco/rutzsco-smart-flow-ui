@@ -296,15 +296,16 @@
                     <!-- Workflow Files Section -->
                     <MudStack Spacing="3">
                         @{
-                            var workflowFiles = _projectFiles.SelectMany(f => f.ProcessingFiles).ToList();
+                            // Get all workflow files from the project (they're stored in the first file's ProcessingFiles)
+                            var workflowFiles = _projectFiles.Any() && _projectFiles[0].ProcessingFiles.Any() 
+                                ? _projectFiles[0].ProcessingFiles 
+                                : new List<string>();
                         }
 
-                        <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
-                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
-                                <MudIcon Icon="@Icons.Material.Filled.AccountTree" Size="Size.Medium" />
-                                <MudText Typo="Typo.body1" Style="font-weight: 500;">Workflow Files</MudText>
-                            </MudStack>
-
+                        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                            <MudIcon Icon="@Icons.Material.Filled.AccountTree" Size="Size.Medium" />
+                            <MudText Typo="Typo.body1" Style="font-weight: 500;">Workflow Files</MudText>
+                            
                             @if (workflowFiles.Any())
                             {
                                 <MudIconButton Icon="@Icons.Material.Filled.Delete"
@@ -331,45 +332,26 @@
                             </MudText>
 
                             <MudStack Spacing="1">
-                                @foreach (var file in _projectFiles.Where(f => f.ProcessingFiles.Any()))
+                                @foreach (var processingFile in workflowFiles)
                                 {
-                                    <MudCard Outlined="true" Class="pa-3">
-                                        <MudStack Spacing="2">
-                                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
-                                                <MudIcon Icon="@Icons.Material.Filled.Description" Size="Size.Small" Color="Color.Primary" />
-                                                <MudText Typo="Typo.body1" Style="font-weight: 500;">
-                                                    @file.FileName
+                                    <MudPaper Elevation="0" Class="file-item pa-2" Style="border-radius: 4px; background-color: #f5f5f5;">
+                                        <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+                                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Style="flex: 1; min-width: 0;">
+                                                <MudIcon Icon="@GetFileIcon(processingFile)" Size="Size.Small" Color="Color.Info" />
+                                                @if (CanViewFile(processingFile))
+                                                {
+                                                    <MudIconButton Icon="@Icons.Material.Filled.RemoveRedEye"
+                                                                   Size="Size.Small"
+                                                                   OnClick="@(async () => await ViewFileAsync(processingFile, true))"
+                                                                   Title="View processing file"
+                                                                   Style="color: #1976d2;" />
+                                                }
+                                                <MudText Typo="Typo.body2" Style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                                    @processingFile
                                                 </MudText>
                                             </MudStack>
-
-                                            @if (file.ProcessingFiles.Any())
-                                            {
-                                                <MudStack Spacing="1" Class="pl-6">
-                                                    @foreach (var processingFile in file.ProcessingFiles)
-                                                    {
-                                                        <MudPaper Elevation="0" Class="file-item pa-2" Style="border-radius: 4px; background-color: #f5f5f5;">
-                                                            <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
-                                                                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Style="flex: 1; min-width: 0;">
-                                                                    <MudIcon Icon="@GetFileIcon(processingFile)" Size="Size.Small" Color="Color.Info" />
-                                                                    @if (CanViewFile(processingFile))
-                                                                    {
-                                                                        <MudIconButton Icon="@Icons.Material.Filled.RemoveRedEye"
-                                                                                       Size="Size.Small"
-                                                                                       OnClick="@(async () => await ViewFileAsync(processingFile, true))"
-                                                                                       Title="View processing file"
-                                                                                       Style="color: #1976d2;" />
-                                                                    }
-                                                                    <MudText Typo="Typo.body2" Style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                                                                        @processingFile
-                                                                    </MudText>
-                                                                </MudStack>
-                                                            </MudStack>
-                                                        </MudPaper>
-                                                    }
-                                                </MudStack>
-                                            }
                                         </MudStack>
-                                    </MudCard>
+                                    </MudPaper>
                                 }
                             </MudStack>
                         }

@@ -268,27 +268,34 @@ public class ProjectService
         var extractContainerClient = _blobServiceClient.GetBlobContainerClient(ProjectExtractContainerName);
         var extractContainerExists = await extractContainerClient.ExistsAsync(cancellationToken);
 
+        // Get all project-level processing files first
+        var projectProcessingFiles = new List<string>();
+        if (extractContainerExists)
+        {
+            var projectFolderPrefix = $"{projectName}/";
+            
+            await foreach (var extractBlobItem in extractContainerClient.GetBlobsAsync(prefix: projectFolderPrefix, cancellationToken: cancellationToken))
+            {
+                projectProcessingFiles.Add(extractBlobItem.Name);
+            }
+        }
+
+        // Get all input files for the project
         await foreach (var blobItem in containerClient.GetBlobsAsync(traits: BlobTraits.Metadata, cancellationToken: cancellationToken))
         {
             // Filter by project metadata
             if (blobItem.Metadata?.TryGetValue("project", out var project) == true && project == projectName)
             {
                 var fileInfo = new ContainerFileInfo(blobItem.Name);
-
-                // Get ALL processing files for this project
-                if (extractContainerExists)
-                {
-                    var projectFolderPrefix = $"{projectName}/";
-                    
-                    await foreach (var extractBlobItem in extractContainerClient.GetBlobsAsync(prefix: projectFolderPrefix, cancellationToken: cancellationToken))
-                    {
-                        // Add all processing files found under the project folder
-                        fileInfo.ProcessingFiles.Add(extractBlobItem.Name);
-                    }
-                }
-
                 files.Add(fileInfo);
             }
+        }
+
+        // Add all project-level processing files to the first file entry (if any files exist)
+        // This is a workaround since processing files are project-level, not per-file
+        if (files.Any() && projectProcessingFiles.Any())
+        {
+            files[0].ProcessingFiles.AddRange(projectProcessingFiles);
         }
 
         return files;
