@@ -50,13 +50,14 @@ internal static class WebApiProjectEndpoints
         [FromServices] ProjectService projectService,
         [FromServices] IConfiguration configuration,
         [FromServices] ILogger<WebApplication> logger,
+        [FromServices] BlobServiceClient blobServiceClient,
         CancellationToken cancellationToken)
     {
         try
         {
             fileName = Uri.UnescapeDataString(fileName);
             
-            logger.LogInformation("Analyzing file {FileName} in project: {ProjectName}", fileName, projectName);
+            logger.LogInformation("Analyzing project: {ProjectName}", projectName);
 
             var userInfo = await context.GetUserInfoAsync();
             
@@ -70,41 +71,93 @@ internal static class WebApiProjectEndpoints
                 return Results.Problem("Document Tools API not configured");
             }
 
+            // Get all input files for the project
+            var projectFiles = await projectService.GetProjectFilesAsync(projectName, cancellationToken);
+            
+            if (!projectFiles.Any())
+            {
+                logger.LogWarning("No files found in project '{ProjectName}'", projectName);
+                return Results.BadRequest(new { success = false, message = $"No files found in project '{projectName}'" });
+            }
+
+            // Build file URLs for all input files in the project
+            var storageAccountEndpoint = configuration["AzureStorageAccountEndpoint"];
+            var connectionString = configuration["AzureStorageAccountConnectionString"];
+            
+            // Determine base URL for blob storage
+            string baseUrl;
+            if (!string.IsNullOrEmpty(storageAccountEndpoint))
+            {
+                baseUrl = storageAccountEndpoint.TrimEnd('/');
+            }
+            else if (!string.IsNullOrEmpty(connectionString))
+            {
+                // Parse account name from connection string
+                var accountNameMatch = System.Text.RegularExpressions.Regex.Match(connectionString, @"AccountName=([^;]+)");
+                if (accountNameMatch.Success)
+                {
+                    var accountName = accountNameMatch.Groups[1].Value;
+                    baseUrl = $"https://{accountName}.blob.core.windows.net";
+                }
+                else
+                {
+                    logger.LogError("Could not determine storage account URL");
+                    return Results.Problem("Storage account configuration error");
+                }
+            }
+            else
+            {
+                logger.LogError("Storage account configuration not found");
+                return Results.Problem("Storage account not configured");
+            }
+
+            var fileUrls = projectFiles.Select(f => $"{baseUrl}/{ProjectContainerName}/{f.FileName}").ToList();
+
+            logger.LogInformation("Analyzing {FileCount} files in project '{ProjectName}'", fileUrls.Count, projectName);
+
             // Call the external document-tools API
             using var httpClient = new HttpClient();
             httpClient.DefaultRequestHeaders.Add("X-API-Key", documentToolsApiKey);
             
             var requestBody = new
             {
-                fileName = fileName,
-                blobContainer = ProjectContainerName, // project-files container
-                projectName = projectName, // Pass project name so processing files go to correct folder
-                outputContainer = "project-files-extract", // Explicitly specify output container
-                outputPath = $"{projectName}/" // Processing files should go to projectName folder
+                message = "Please extract the specification summary and explain the key sections.",
+                project_name = projectName,
+                thread_id = "", // Empty thread_id for new analysis
+                files = fileUrls.ToArray()
             };
             
             var jsonContent = System.Text.Json.JsonSerializer.Serialize(requestBody);
             using var content = new StringContent(jsonContent, System.Text.Encoding.UTF8, "application/json");
             
-            var response = await httpClient.PostAsync($"{documentToolsEndpoint}/document-tools/markdown-extraction", content, cancellationToken);
+            // Use the spec-extractor endpoint as shown in the sample
+            var response = await httpClient.PostAsync($"{documentToolsEndpoint}/agent/spec-extractor", content, cancellationToken);
 
             if (response.IsSuccessStatusCode)
             {
-                logger.LogInformation("Successfully triggered analysis for file '{FileName}' in project '{ProjectName}'", fileName, projectName);
-                return TypedResults.Ok(new { success = true, message = $"Analysis started for file '{fileName}'" });
+                var responseContent = await response.Content.ReadAsStringAsync(cancellationToken);
+                logger.LogInformation("Successfully triggered analysis for {FileCount} files in project '{ProjectName}'", fileUrls.Count, projectName);
+                
+                return TypedResults.Ok(new 
+                { 
+                    success = true, 
+                    message = $"Analysis started for {fileUrls.Count} file(s) in project '{projectName}'",
+                    files = fileUrls,
+                    response = responseContent
+                });
             }
             else
             {
                 var errorContent = await response.Content.ReadAsStringAsync(cancellationToken);
-                logger.LogError("Failed to trigger analysis for file '{FileName}' in project '{ProjectName}': {StatusCode} - {Error}", 
-                    fileName, projectName, response.StatusCode, errorContent);
-                return Results.Problem($"Failed to start analysis: {response.StatusCode}");
+                logger.LogError("Failed to trigger analysis for project '{ProjectName}': {StatusCode} - {Error}", 
+                    projectName, response.StatusCode, errorContent);
+                return Results.Problem($"Failed to start analysis: {response.StatusCode} - {errorContent}");
             }
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Error analyzing file {FileName} in project: {ProjectName}", fileName, projectName);
-            return Results.Problem("Error analyzing file");
+            logger.LogError(ex, "Error analyzing project: {ProjectName}", projectName);
+            return Results.Problem($"Error analyzing project: {ex.Message}");
         }
     }
 

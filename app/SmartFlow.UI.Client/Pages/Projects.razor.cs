@@ -48,10 +48,6 @@ public sealed partial class Projects : IDisposable
     private string _editProjectDescription = "";
     private string _editProjectType = "";
 
-    // Workflow status tracking
-    private WorkflowStatus? _currentWorkflow = null;
-    private System.Threading.Timer? _workflowTimer = null;
-
     protected override async Task OnInitializedAsync()
     {
         // Load projects
@@ -491,94 +487,30 @@ public sealed partial class Projects : IDisposable
             return;
         }
 
-        if (!_projectFiles.Any())
+        try
         {
-            SnackBarError("No files in project to analyze");
-            return;
-        }
-
-        // Filter to only PDF files
-        var pdfFiles = _projectFiles
-            .Where(f => Path.GetExtension(f.FileName).Equals(".pdf", StringComparison.OrdinalIgnoreCase))
-            .ToList();
-
-        if (!pdfFiles.Any())
-        {
-            SnackBarError("No PDF files found in project to analyze");
-            return;
-        }
-
-        // Show confirmation dialog
-        var parameters = new DialogParameters
-        {
-            { "ContentText", $"Are you sure you want to analyze all {pdfFiles.Count} PDF file(s) in project '{_selectedProject}'? This will trigger markdown extraction for each file." },
-            { "ButtonText", "Analyze All" },
-            { "Color", Color.Primary }
-        };
-
-        var dialog = await DialogService.ShowAsync<ConfirmationDialog>("Confirm Analysis", parameters);
-        var result = await dialog.Result;
-
-        if (result.Canceled)
-            return;
-
-        // Analyze each PDF file
-        var successCount = 0;
-        var failCount = 0;
-
-        // Start workflow status for the first file (demo purposes)
-        if (pdfFiles.Any())
-        {
-            StartWorkflowDemo(pdfFiles.First().FileName);
-        }
-
-        foreach (var file in pdfFiles)
-        {
-            try
+            Logger.LogInformation("Analyzing project {Project}", _selectedProject);
+            
+            // Call the analyze API (fileName parameter is ignored by the backend)
+            var success = await Client.AnalyzeProjectFileAsync(_selectedProject, "all");
+            
+            if (success)
             {
-                _analyzingFiles.Add(file.FileName);
-                StateHasChanged();
-
-                var success = await Client.AnalyzeProjectFileAsync(_selectedProject, file.FileName);
-                
-                if (success)
-                {
-                    successCount++;
-                }
-                else
-                {
-                    failCount++;
-                    Logger.LogWarning("Failed to analyze file {FileName}", file.FileName);
-                }
+                SnackBarMessage($"Analysis started for project '{_selectedProject}'");
+                // Refresh the file list after a delay to see processing files
+                await Task.Delay(3000);
+                await RefreshAsync();
             }
-            catch (Exception ex)
+            else
             {
-                failCount++;
-                Logger.LogError(ex, "Error analyzing file {FileName}", file.FileName);
+                SnackBarError($"Failed to start analysis for project '{_selectedProject}'");
             }
-            finally
-            {
-                _analyzingFiles.Remove(file.FileName);
-            }
-
-            // Small delay between files to avoid overwhelming the API
-            await Task.Delay(500);
         }
-
-        StateHasChanged();
-
-        if (failCount == 0)
+        catch (Exception ex)
         {
-            SnackBarMessage($"Successfully started analysis for {successCount} file(s)");
+            Logger.LogError(ex, "Error analyzing project {ProjectName}", _selectedProject);
+            SnackBarError($"Error analyzing project: {ex.Message}");
         }
-        else
-        {
-            SnackBarMessage($"Analysis started for {successCount} file(s), {failCount} failed");
-        }
-
-        // Refresh the file list after analysis
-        await Task.Delay(2000);
-        await RefreshAsync();
     }
 
     private async Task ViewFileAsync(string fileName, bool isProcessingFile = false)
@@ -699,68 +631,9 @@ public sealed partial class Projects : IDisposable
         }
     }
 
-
-    // Workflow status methods (demo implementation)
-    private void StartWorkflowDemo(string fileName)
-    {
-        // Create a workflow for demonstration
-        _currentWorkflow = WorkflowStatus.CreateSample(fileName, WorkflowState.InProgress);
-        
-        // Start a timer to update workflow progress
-        _workflowTimer?.Dispose();
-        _workflowTimer = new System.Threading.Timer(_ =>
-        {
-            UpdateWorkflowProgress();
-        }, null, TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(2));
-
-        StateHasChanged();
-    }
-
-    private void UpdateWorkflowProgress()
-    {
-        if (_currentWorkflow == null || _currentWorkflow.State != WorkflowState.InProgress)
-        {
-            _workflowTimer?.Dispose();
-            _workflowTimer = null;
-            return;
-        }
-
-        // Find the next pending step and move it to in progress or completed
-        var inProgressStep = _currentWorkflow.Steps.FirstOrDefault(s => s.State == StepState.InProgress);
-        if (inProgressStep != null)
-        {
-            // Complete the in-progress step
-            inProgressStep.State = StepState.Completed;
-            inProgressStep.EndTime = DateTime.UtcNow;
-        }
-
-        var nextPendingStep = _currentWorkflow.Steps.FirstOrDefault(s => s.State == StepState.Pending);
-        if (nextPendingStep != null)
-        {
-            // Start the next pending step
-            nextPendingStep.State = StepState.InProgress;
-            nextPendingStep.StartTime = DateTime.UtcNow;
-        }
-        else if (inProgressStep != null)
-        {
-            // All steps completed
-            _currentWorkflow.State = WorkflowState.Completed;
-            _currentWorkflow.EndTime = DateTime.UtcNow;
-            _workflowTimer?.Dispose();
-            _workflowTimer = null;
-        }
-
-        // Update progress percentage
-        var completedSteps = _currentWorkflow.Steps.Count(s => s.State == StepState.Completed);
-        _currentWorkflow.ProgressPercentage = (int)((double)completedSteps / _currentWorkflow.Steps.Count * 100);
-
-        InvokeAsync(StateHasChanged);
-    }
-
     public void Dispose()
     {
         _cancellationTokenSource.Cancel();
-        _workflowTimer?.Dispose();
     }
 
     private string GetProjectItemClass(CollectionInfo project)
