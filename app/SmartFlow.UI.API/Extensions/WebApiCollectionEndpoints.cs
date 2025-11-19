@@ -46,6 +46,16 @@ internal static class WebApiCollectionEndpoints
         // Get detailed information about a specific index
         api.MapGet("indexes/{indexName}", OnGetSearchIndexDetailsAsync);
 
+        // Folder management endpoints
+        api.MapGet("{containerName}/folders", OnGetFolderStructureAsync);
+        api.MapPost("{containerName}/folders", OnCreateFolderAsync);
+        api.MapPut("{containerName}/folders/rename", OnRenameFolderAsync);
+        api.MapDelete("{containerName}/folders", OnDeleteFolderAsync);
+
+        // File metadata management
+        api.MapPut("{containerName}/files/metadata/{*fileName}", OnUpdateFileMetadataAsync);
+        api.MapGet("{containerName}/files/metadata/{*fileName}", OnGetFileMetadataAsync);
+
         return app;
     }
 
@@ -58,7 +68,7 @@ internal static class WebApiCollectionEndpoints
         try
         {
             logger.LogInformation("Getting search indexes");
-            
+
             var userInfo = await context.GetUserInfoAsync();
             var indexes = await searchService.GetIndexesAsync(cancellationToken);
 
@@ -81,7 +91,7 @@ internal static class WebApiCollectionEndpoints
         try
         {
             logger.LogInformation("Getting index details for: {IndexName}", indexName);
-            
+
             var userInfo = await context.GetUserInfoAsync();
             var indexDetails = await searchService.GetIndexDetailsAsync(indexName, cancellationToken);
 
@@ -110,7 +120,7 @@ internal static class WebApiCollectionEndpoints
         try
         {
             logger.LogInformation("Getting managed collections");
-            
+
             var userInfo = await context.GetUserInfoAsync();
             var collections = await documentService.GetCollectionsAsync(cancellationToken);
 
@@ -135,13 +145,13 @@ internal static class WebApiCollectionEndpoints
     {
         try
         {
-            logger.LogInformation("Creating managed collection: {ContainerName} with description: {Description}, type: {Type}, index: {IndexName}", 
+            logger.LogInformation("Creating managed collection: {ContainerName} with description: {Description}, type: {Type}, index: {IndexName}",
                 request.Name, request.Description, request.Type, request.IndexName);
 
             var userInfo = await context.GetUserInfoAsync();
             var success = await documentService.AddManagedCollectionTagAsync(
-                request.Name, 
-                request.Description, 
+                request.Name,
+                request.Description,
                 request.Type,
                 request.IndexName,
                 cancellationToken);
@@ -173,26 +183,26 @@ internal static class WebApiCollectionEndpoints
     {
         try
         {
-            logger.LogInformation("Removing managed collection tag from container: {ContainerName}", containerName);
+            logger.LogInformation("Deleting blob container: {ContainerName}", containerName);
 
             var userInfo = await context.GetUserInfoAsync();
-            var success = await documentService.RemoveManagedCollectionTagAsync(containerName, cancellationToken);
+            var success = await documentService.DeleteContainerAsync(containerName, cancellationToken);
 
             if (success)
             {
-                logger.LogInformation("Successfully removed managed collection tag from container '{ContainerName}'", containerName);
-                return TypedResults.Ok(new { success = true, message = $"Collection '{containerName}' removed successfully. The container and its files remain intact." });
+                logger.LogInformation("Successfully deleted container '{ContainerName}' and all its contents", containerName);
+                return TypedResults.Ok(new { success = true, message = $"Collection '{containerName}' and all its files have been deleted successfully." });
             }
             else
             {
-                logger.LogWarning("Failed to remove managed collection tag from container '{ContainerName}'", containerName);
+                logger.LogWarning("Failed to delete container '{ContainerName}' - container may not exist", containerName);
                 return Results.NotFound(new { success = false, message = $"Collection '{containerName}' not found" });
             }
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Error removing managed collection tag from container: {ContainerName}", containerName);
-            return Results.Problem("Error removing collection");
+            logger.LogError(ex, "Error deleting container: {ContainerName}", containerName);
+            return Results.Problem("Error deleting collection");
         }
     }
 
@@ -242,8 +252,8 @@ internal static class WebApiCollectionEndpoints
 
             var userInfo = await context.GetUserInfoAsync();
             var success = await documentService.UpdateCollectionMetadataAsync(
-                containerName, 
-                request.Description, 
+                containerName,
+                request.Description,
                 request.Type,
                 request.IndexName,
                 cancellationToken);
@@ -335,7 +345,7 @@ internal static class WebApiCollectionEndpoints
             logger.LogInformation("Uploading {FileCount} files to container: {ContainerName}", files.Count, containerName);
 
             var userInfo = await context.GetUserInfoAsync();
-            
+
             // Read optional metadata from headers
             var fileMetadataContent = context.Request.Headers["X-FILE-METADATA"];
             Dictionary<string, string>? fileMetadata = null;
@@ -344,11 +354,20 @@ internal static class WebApiCollectionEndpoints
                 fileMetadata = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, string>>(fileMetadataContent);
             }
 
+            // Read file path mapping from headers
+            var filePathMapContent = context.Request.Headers["X-FILE-PATH-MAP"];
+            Dictionary<string, string>? filePathMap = null;
+            if (!string.IsNullOrEmpty(filePathMapContent))
+            {
+                filePathMap = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, string>>(filePathMapContent);
+            }
+
             var response = await documentService.UploadFilesToContainerAsync(
-                userInfo, 
-                files, 
-                containerName, 
-                fileMetadata, 
+                userInfo,
+                files,
+                containerName,
+                fileMetadata,
+                filePathMap,
                 cancellationToken);
 
             logger.LogInformation("Upload to container '{ContainerName}' completed: {Response}", containerName, response);
@@ -374,7 +393,7 @@ internal static class WebApiCollectionEndpoints
         {
             // URL decode the filename since it comes URL-encoded from the client
             fileName = Uri.UnescapeDataString(fileName);
-            
+
             logger.LogInformation("Deleting file {FileName} from container: {ContainerName}", fileName, containerName);
 
             var userInfo = await context.GetUserInfoAsync();
@@ -410,7 +429,7 @@ internal static class WebApiCollectionEndpoints
         {
             // URL decode the filename since it comes URL-encoded from the client
             fileName = Uri.UnescapeDataString(fileName);
-            
+
             logger.LogInformation("Downloading file {FileName} from container: {ContainerName}", fileName, containerName);
 
             var userInfo = await context.GetUserInfoAsync();
@@ -423,7 +442,7 @@ internal static class WebApiCollectionEndpoints
 
             var fileNameOnly = Path.GetFileName(fileName);
             var extension = Path.GetExtension(fileName).ToLowerInvariant();
-            
+
             // Ensure content type is set correctly
             if (string.IsNullOrEmpty(contentType) || contentType == "application/octet-stream")
             {
@@ -436,7 +455,7 @@ internal static class WebApiCollectionEndpoints
                     _ => "application/octet-stream"
                 };
             }
-            
+
             // For PDFs, explicitly set headers for inline viewing
             if (extension == ".pdf")
             {
@@ -444,30 +463,223 @@ internal static class WebApiCollectionEndpoints
                 context.Response.Headers["Content-Disposition"] = $"inline; filename=\"{fileNameOnly}\"";
                 context.Response.Headers["Accept-Ranges"] = "bytes";
                 context.Response.Headers["Cache-Control"] = "public, max-age=3600";
-                
+
                 return Results.Stream(stream, contentType: "application/pdf", enableRangeProcessing: true);
             }
-            
+
             // For Markdown and JSON files, use inline disposition so they can be viewed in browser
             // For other files, use attachment disposition to trigger download
             var enableRangeProcessing = extension == ".pdf";
             var fileDownloadName = (extension == ".pdf" || extension == ".md" || extension == ".json") ? null : fileNameOnly;
-            
+
             if (fileDownloadName == null)
             {
                 context.Response.Headers["Content-Disposition"] = $"inline; filename=\"{fileNameOnly}\"";
             }
-            
+
             return Results.Stream(
-                stream, 
-                contentType: contentType, 
-                fileDownloadName: fileDownloadName, 
+                stream,
+                contentType: contentType,
+                fileDownloadName: fileDownloadName,
                 enableRangeProcessing: enableRangeProcessing);
         }
         catch (Exception ex)
         {
             logger.LogError(ex, "Error downloading file {FileName} from container: {ContainerName}", fileName, containerName);
             return Results.Problem("Error downloading file from container");
+        }
+    }
+
+    private static async Task<IResult> OnGetFolderStructureAsync(
+        HttpContext context,
+        string containerName,
+        [FromServices] DocumentService documentService,
+        [FromServices] ILogger<WebApplication> logger,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            logger.LogInformation("Getting folder structure from container: {ContainerName}", containerName);
+
+            var userInfo = await context.GetUserInfoAsync();
+            var folderStructure = await documentService.GetFolderStructureAsync(containerName, cancellationToken);
+
+            return TypedResults.Ok(folderStructure);
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error getting folder structure from container: {ContainerName}", containerName);
+            return Results.Problem("Error retrieving folder structure");
+        }
+    }
+
+    private static async Task<IResult> OnCreateFolderAsync(
+        HttpContext context,
+        string containerName,
+        [FromBody] CreateFolderRequest request,
+        [FromServices] DocumentService documentService,
+        [FromServices] ILogger<WebApplication> logger,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            logger.LogInformation("Creating folder {FolderPath} in container: {ContainerName}", request.FolderPath, containerName);
+
+            var userInfo = await context.GetUserInfoAsync();
+            var success = await documentService.CreateFolderAsync(containerName, request.FolderPath, cancellationToken);
+
+            if (success)
+            {
+                logger.LogInformation("Successfully created folder '{FolderPath}' in container '{ContainerName}'", request.FolderPath, containerName);
+                return TypedResults.Ok(new { success = true, message = $"Folder '{request.FolderPath}' created successfully" });
+            }
+            else
+            {
+                logger.LogWarning("Failed to create folder '{FolderPath}' in container '{ContainerName}'", request.FolderPath, containerName);
+                return Results.BadRequest(new { success = false, message = $"Failed to create folder '{request.FolderPath}'" });
+            }
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error creating folder {FolderPath} in container: {ContainerName}", request.FolderPath, containerName);
+            return Results.Problem("Error creating folder");
+        }
+    }
+
+    private static async Task<IResult> OnRenameFolderAsync(
+        HttpContext context,
+        string containerName,
+        [FromBody] RenameFolderRequest request,
+        [FromServices] DocumentService documentService,
+        [FromServices] ILogger<WebApplication> logger,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            logger.LogInformation("Renaming folder from {OldPath} to {NewPath} in container: {ContainerName}",
+                request.OldFolderPath, request.NewFolderPath, containerName);
+
+            var userInfo = await context.GetUserInfoAsync();
+            var success = await documentService.RenameFolderAsync(containerName, request.OldFolderPath, request.NewFolderPath, cancellationToken);
+
+            if (success)
+            {
+                logger.LogInformation("Successfully renamed folder from '{OldPath}' to '{NewPath}' in container '{ContainerName}'",
+                    request.OldFolderPath, request.NewFolderPath, containerName);
+                return TypedResults.Ok(new { success = true, message = $"Folder renamed successfully" });
+            }
+            else
+            {
+                logger.LogWarning("Failed to rename folder from '{OldPath}' to '{NewPath}' in container '{ContainerName}'",
+                    request.OldFolderPath, request.NewFolderPath, containerName);
+                return Results.BadRequest(new { success = false, message = $"Failed to rename folder" });
+            }
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error renaming folder from {OldPath} to {NewPath} in container: {ContainerName}",
+                request.OldFolderPath, request.NewFolderPath, containerName);
+            return Results.Problem("Error renaming folder");
+        }
+    }
+
+    private static async Task<IResult> OnDeleteFolderAsync(
+        HttpContext context,
+        string containerName,
+        [FromQuery] string folderPath,
+        [FromServices] DocumentService documentService,
+        [FromServices] ILogger<WebApplication> logger,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            logger.LogInformation("Deleting folder {FolderPath} from container: {ContainerName}", folderPath, containerName);
+
+            var userInfo = await context.GetUserInfoAsync();
+            var success = await documentService.DeleteFolderAsync(containerName, folderPath, cancellationToken);
+
+            if (success)
+            {
+                logger.LogInformation("Successfully deleted folder '{FolderPath}' from container '{ContainerName}'", folderPath, containerName);
+                return TypedResults.Ok(new { success = true, message = $"Folder '{folderPath}' deleted successfully" });
+            }
+            else
+            {
+                logger.LogWarning("Failed to delete folder '{FolderPath}' from container '{ContainerName}'", folderPath, containerName);
+                return Results.NotFound(new { success = false, message = $"Folder '{folderPath}' not found" });
+            }
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error deleting folder {FolderPath} from container: {ContainerName}", folderPath, containerName);
+            return Results.Problem("Error deleting folder");
+        }
+    }
+
+    private static async Task<IResult> OnUpdateFileMetadataAsync(
+        HttpContext context,
+        string containerName,
+        string fileName,
+        [FromBody] FileMetadata metadata,
+        [FromServices] DocumentService documentService,
+        [FromServices] ILogger<WebApplication> logger,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            fileName = Uri.UnescapeDataString(fileName);
+            logger.LogInformation("Updating metadata for file {FileName} in container: {ContainerName}", fileName, containerName);
+
+            var userInfo = await context.GetUserInfoAsync();
+            var success = await documentService.UpdateFileMetadataAsync(containerName, fileName, metadata, cancellationToken);
+
+            if (success)
+            {
+                logger.LogInformation("Successfully updated metadata for file '{FileName}' in container '{ContainerName}'", fileName, containerName);
+                return TypedResults.Ok(new { success = true, message = $"Metadata updated successfully" });
+            }
+            else
+            {
+                logger.LogWarning("Failed to update metadata for file '{FileName}' in container '{ContainerName}'", fileName, containerName);
+                return Results.NotFound(new { success = false, message = $"File '{fileName}' not found" });
+            }
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error updating metadata for file {FileName} in container: {ContainerName}", fileName, containerName);
+            return Results.Problem("Error updating file metadata");
+        }
+    }
+
+    private static async Task<IResult> OnGetFileMetadataAsync(
+        HttpContext context,
+        string containerName,
+        string fileName,
+        [FromServices] DocumentService documentService,
+        [FromServices] ILogger<WebApplication> logger,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            fileName = Uri.UnescapeDataString(fileName);
+            logger.LogInformation("Getting metadata for file {FileName} from container: {ContainerName}", fileName, containerName);
+
+            var userInfo = await context.GetUserInfoAsync();
+            var metadata = await documentService.GetFileMetadataAsync(containerName, fileName, cancellationToken);
+
+            if (metadata != null)
+            {
+                return TypedResults.Ok(metadata);
+            }
+            else
+            {
+                return Results.NotFound(new { message = $"Metadata for file '{fileName}' not found" });
+            }
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error getting metadata for file {FileName} from container: {ContainerName}", fileName, containerName);
+            return Results.Problem("Error retrieving file metadata");
         }
     }
 }

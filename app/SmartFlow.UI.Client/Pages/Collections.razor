@@ -263,8 +263,62 @@
     <br />
 
     <MudGrid>
-        <!-- Collection Files Table - Elevated -->
+        <!-- Folder Tree View -->
         <MudItem xs="12">
+            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="mb-2">
+                @if (!string.IsNullOrEmpty(_currentFolderPath))
+                {
+                    <MudChip T="string" Icon="@Icons.Material.Filled.Folder" Color="Color.Info">
+                        Current: @_currentFolderPath
+                    </MudChip>
+                }
+                <MudIconButton Icon="@Icons.Material.Filled.Refresh" 
+                              Size="Size.Small"
+                              OnClick="LoadFolderStructureAsync"
+                              Title="Refresh folder structure" />
+            </MudStack>
+        </MudItem>
+
+        <MudItem xs="12" md="3">
+            <MudCard Elevation="2">
+                <MudCardHeader>
+                    <CardHeaderContent>
+                        <MudText Typo="Typo.h6">
+                            <MudIcon Icon="@Icons.Material.Filled.FolderOpen" Class="mr-2" />
+                            Folders
+                        </MudText>
+                    </CardHeaderContent>
+                    <CardHeaderActions>
+                        <MudTooltip Text="Create new collection">
+                            <MudIconButton Icon="@Icons.Material.Filled.Add" 
+                                          Color="Color.Primary" 
+                                          Size="Size.Small"
+                                          OnClick="@ShowCreateCollectionForm" />
+                        </MudTooltip>
+                    </CardHeaderActions>
+                </MudCardHeader>
+                <MudCardContent Style="max-height: 600px; overflow-y: auto;">
+                    @if (_folderStructure?.Children?.Any() == true)
+                    {
+                        <FolderTreeView Items="@_folderStructure.Children"
+                                       SelectedNode="@_selectedFolder"
+                                       OnFolderSelected="@OnFolderSelectedAsync"
+                                       OnUploadDocuments="@((folder) => _showUploadSection = true)"
+                                       OnDeleteFolder="@DeleteFolderAsync"
+                                       ShowFolderActions="true" />
+                    }
+                    else
+                    {
+                        <MudText Typo="Typo.body2" Color="Color.Default" Class="pa-4">
+                            <em>No folders yet. Click the "Create Folder" button above to get started.</em>
+                        </MudText>
+                    }
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+
+        <!-- Collection Files Table - Elevated -->
+        <MudItem xs="12" md="9">
             <MudCard Elevation="4">
                 <MudCardContent>
                     <MudTable Items="@_collectionFiles" 
@@ -276,8 +330,10 @@
                               Elevation="0">
                         <HeaderContent>
                             <MudTh>File Name</MudTh>
-                            <MudTh Style="width: 200px;">Processing Files</MudTh>
-                            <MudTh Style="text-align: center; width: 200px;">Actions</MudTh>
+                            <MudTh>Equipment Category</MudTh>
+                            <MudTh>Document Type</MudTh>
+                            <MudTh>Manufacturer</MudTh>
+                            <MudTh Style="text-align: center; width: 250px;">Actions</MudTh>
                         </HeaderContent>
                         <RowTemplate>
                             <MudTd DataLabel="Name">
@@ -295,35 +351,20 @@
                                     <MudText>@context.FileName</MudText>
                                 </MudStack>
                             </MudTd>
-                            <MudTd DataLabel="Processing Files">
-                                @if (context.ProcessingFiles.Any())
-                                {
-                                    <MudStack Spacing="1">
-                                        @foreach (var processingFile in context.ProcessingFiles)
-                                        {
-                                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
-                                                <MudChip T="string" Size="Size.Small" Icon="@Icons.Material.Filled.Description">
-                                                    @Path.GetFileName(processingFile)
-                                                </MudChip>
-                                                @if (CanViewFile(processingFile))
-                                                {
-                                                    <MudTooltip Text="View file">
-                                                        <MudIconButton Icon="@Icons.Material.Filled.Visibility"
-                                                                       Color="Color.Info"
-                                                                       Size="Size.Small"
-                                                                       OnClick="@(async () => await ViewFileAsync(processingFile, true))" />
-                                                    </MudTooltip>
-                                                }
-                                            </MudStack>
-                                        }
-                                    </MudStack>
-                                }
-                                else
-                                {
-                                    <MudText Typo="Typo.body2" Color="Color.Default">
-                                        <em>None</em>
-                                    </MudText>
-                                }
+                            <MudTd DataLabel="Equipment Category">
+                                <MudText Typo="Typo.body2">
+                                    @(context.Metadata?.EquipmentCategory ?? "-")
+                                </MudText>
+                            </MudTd>
+                            <MudTd DataLabel="Document Type">
+                                <MudText Typo="Typo.body2">
+                                    @(context.Metadata?.DocumentType ?? "-")
+                                </MudText>
+                            </MudTd>
+                            <MudTd DataLabel="Manufacturer">
+                                <MudText Typo="Typo.body2">
+                                    @(context.Metadata?.Manufacturer ?? "-")
+                                </MudText>
                             </MudTd>
                             <MudTd DataLabel="Actions" Style="text-align: center;">
                                 <MudStack Row="true" Justify="Justify.Center" Spacing="1">
@@ -337,12 +378,12 @@
                                     }
                                     else
                                     {
-                                        <MudTooltip Text="Process document layout">
-                                            <MudIconButton Icon="@Icons.Material.Filled.AutoFixHigh"
-                                                           Color="Color.Primary"
+                                        <MudTooltip Text="Edit metadata">
+                                            <MudIconButton Icon="@Icons.Material.Filled.Edit"
+                                                           Color="Color.Info"
                                                            Size="Size.Small"
-                                                           OnClick="@(async () => await ProcessDocumentLayoutAsync(context.FileName))"
-                                                           Title="Process Layout" />
+                                                           OnClick="@(async () => await ShowEditFileMetadataDialogAsync(context))"
+                                                           Title="Edit Metadata" />
                                         </MudTooltip>
                                         <MudTooltip Text="Delete file">
                                             <MudIconButton Icon="@Icons.Material.Filled.Delete"

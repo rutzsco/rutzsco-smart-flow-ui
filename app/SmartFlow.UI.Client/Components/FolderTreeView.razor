@@ -1,0 +1,101 @@
+@using global::Shared.Models
+
+@if (Items != null && Items.Any())
+{
+    <MudList T="string" Dense="true">
+        @foreach (var folder in Items)
+        {
+            <MudListItem T="string" @onclick="@(() => HandleFolderClick(folder))" 
+                        Icon="@(folder.IsExpanded ? Icons.Material.Filled.FolderOpen : Icons.Material.Filled.Folder)"
+                        IconColor="Color.Warning"
+                        @key="folder.Path">
+                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                    @if (folder.Children.Any())
+                    {
+                        <MudIconButton Icon="@(folder.IsExpanded ? Icons.Material.Filled.ExpandMore : Icons.Material.Filled.ChevronRight)" 
+                                      Size="Size.Small"
+                                      OnClick="@(() => ToggleExpand(folder))"
+                                      OnClick:stopPropagation="true" />
+                    }
+                    else
+                    {
+                        <div style="width: 40px;"></div>
+                    }
+                    <MudText Typo="Typo.body2" Style="@GetSelectedStyle(folder)">@folder.Name</MudText>
+                    @if (folder.FileCount > 0)
+                    {
+                        <MudChip T="string" Size="Size.Small" Color="Color.Info" Variant="Variant.Text">@folder.FileCount</MudChip>
+                    }
+                    @if (IsSelected(folder) && ShowFolderActions)
+                    {
+                        <MudIconButton Icon="@Icons.Material.Filled.Upload" 
+                                      Color="Color.Primary"
+                                      Size="Size.Small" 
+                                      OnClick="@(() => OnUploadDocuments.InvokeAsync(folder))"
+                                      OnClick:stopPropagation="true"
+                                      Title="Upload documents" />
+                        <MudIconButton Icon="@Icons.Material.Filled.Delete" 
+                                      Color="Color.Error"
+                                      Size="Size.Small" 
+                                      OnClick="@(() => OnDeleteFolder.InvokeAsync(folder))"
+                                      OnClick:stopPropagation="true"
+                                      Title="Delete folder" />
+                    }
+                </MudStack>
+            </MudListItem>
+            @if (folder.IsExpanded && folder.Children.Any())
+            {
+                <div style="padding-left: 40px;">
+                    <FolderTreeView Items="@folder.Children" 
+                                   SelectedNode="@SelectedNode"
+                                   OnFolderSelected="@OnFolderSelected"
+                                   OnUploadDocuments="@OnUploadDocuments"
+                                   OnDeleteFolder="@OnDeleteFolder"
+                                   ShowFolderActions="@ShowFolderActions" />
+                </div>
+            }
+        }
+    </MudList>
+}
+
+@code {
+    [Parameter]
+    public List<FolderNode> Items { get; set; } = new();
+
+    [Parameter]
+    public FolderNode? SelectedNode { get; set; }
+
+    [Parameter]
+    public EventCallback<FolderNode> OnFolderSelected { get; set; }
+
+    [Parameter]
+    public EventCallback<FolderNode> OnUploadDocuments { get; set; }
+
+    [Parameter]
+    public EventCallback<FolderNode> OnDeleteFolder { get; set; }
+
+    [Parameter]
+    public bool ShowFolderActions { get; set; } = true;
+
+    private async Task HandleFolderClick(FolderNode folder)
+    {
+        SelectedNode = folder;
+        await OnFolderSelected.InvokeAsync(folder);
+    }
+
+    private void ToggleExpand(FolderNode folder)
+    {
+        folder.IsExpanded = !folder.IsExpanded;
+        StateHasChanged();
+    }
+
+    private bool IsSelected(FolderNode folder)
+    {
+        return SelectedNode != null && SelectedNode.Path == folder.Path;
+    }
+
+    private string GetSelectedStyle(FolderNode folder)
+    {
+        return IsSelected(folder) ? "font-weight: bold; color: var(--mud-palette-primary);" : "";
+    }
+}

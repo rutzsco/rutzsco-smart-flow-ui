@@ -12,7 +12,7 @@ public sealed class ApiClient(HttpClient httpClient)
         using var body = new StringContent(json, Encoding.UTF8, "application/json");
         var response = await httpClient.PostAsync("api/ingestion/trigger", body);
     }
-    
+
     // Collection Management APIs
     public async Task<List<CollectionInfo>> GetCollectionsAsync()
     {
@@ -40,7 +40,7 @@ public sealed class ApiClient(HttpClient httpClient)
                 Type = type,
                 IndexName = indexName
             };
-            
+
             var json = System.Text.Json.JsonSerializer.Serialize(request, SerializerOptions.Default);
             using var content = new StringContent(json, Encoding.UTF8, "application/json");
             var response = await httpClient.PostAsync("api/collections", content);
@@ -78,7 +78,7 @@ public sealed class ApiClient(HttpClient httpClient)
                 Type = type,
                 IndexName = indexName
             };
-            
+
             var json = System.Text.Json.JsonSerializer.Serialize(request, SerializerOptions.Default);
             using var content = new StringContent(json, Encoding.UTF8, "application/json");
             var response = await httpClient.PutAsync($"api/collections/{containerName}/metadata", content);
@@ -170,6 +170,34 @@ public sealed class ApiClient(HttpClient httpClient)
         {
             using var content = new MultipartFormDataContent();
 
+            // Extract folder path from metadata if present
+            string folderPrefix = "";
+            if (metadata != null)
+            {
+                Console.WriteLine($"[CLIENT DEBUG] Metadata contains {metadata.Count} keys:");
+                foreach (var kvp in metadata)
+                {
+                    Console.WriteLine($"[CLIENT DEBUG]   {kvp.Key} = '{kvp.Value}'");
+                }
+
+                if (metadata.TryGetValue("folderPath", out var folderPath))
+                {
+                    folderPrefix = folderPath.ToString().TrimEnd('/') + "/";
+                    Console.WriteLine($"[CLIENT DEBUG] Extracted folderPrefix = '{folderPrefix}'");
+                }
+                else
+                {
+                    Console.WriteLine($"[CLIENT DEBUG] No 'folderPath' key found in metadata");
+                }
+            }
+            else
+            {
+                Console.WriteLine($"[CLIENT DEBUG] Metadata is null");
+            }
+
+            // Create a mapping of original filename to full path for metadata
+            var filePathMap = new Dictionary<string, string>();
+
             foreach (var file in files)
             {
 #pragma warning disable CA2000 // Dispose objects before losing scope
@@ -177,7 +205,14 @@ public sealed class ApiClient(HttpClient httpClient)
 #pragma warning restore CA2000 // Dispose objects before losing scope
                 fileContent.Headers.ContentType = new MediaTypeHeaderValue(file.ContentType);
 
-                content.Add(fileContent, file.Name, file.Name);
+                // Prepend folder path to filename if specified
+                var fullPath = folderPrefix + file.Name;
+                filePathMap[file.Name] = fullPath;
+
+                Console.WriteLine($"[CLIENT DEBUG] Creating path map: '{file.Name}' -> '{fullPath}'");
+
+                // Note: ASP.NET Core will strip path from filename for security, but we'll send full path in metadata
+                content.Add(fileContent, "files", file.Name);
             }
 
             var tokenResponse = await httpClient.GetAsync("api/token/csrf");
@@ -192,6 +227,13 @@ public sealed class ApiClient(HttpClient httpClient)
             {
                 string serializedHeaders = System.Text.Json.JsonSerializer.Serialize(metadata);
                 content.Headers.Add("X-FILE-METADATA", serializedHeaders);
+            }
+
+            // Send file path mapping so server knows the intended full paths
+            if (filePathMap.Count > 0)
+            {
+                string serializedPathMap = System.Text.Json.JsonSerializer.Serialize(filePathMap);
+                content.Headers.Add("X-FILE-PATH-MAP", serializedPathMap);
             }
 
             var response = await httpClient.PostAsync($"api/collections/{containerName}/upload", content);
@@ -232,7 +274,7 @@ public sealed class ApiClient(HttpClient httpClient)
                 Description = description,
                 Type = type
             };
-            
+
             var json = System.Text.Json.JsonSerializer.Serialize(request, SerializerOptions.Default);
             using var content = new StringContent(json, Encoding.UTF8, "application/json");
             var response = await httpClient.PostAsync("api/projects", content);
@@ -269,7 +311,7 @@ public sealed class ApiClient(HttpClient httpClient)
                 Description = description,
                 Type = type
             };
-            
+
             var json = System.Text.Json.JsonSerializer.Serialize(request, SerializerOptions.Default);
             using var content = new StringContent(json, Encoding.UTF8, "application/json");
             var response = await httpClient.PutAsync($"api/projects/{projectName}/metadata", content);
@@ -362,12 +404,46 @@ public sealed class ApiClient(HttpClient httpClient)
         {
             using var content = new MultipartFormDataContent();
 
+            // Extract folder path from metadata if present
+            string folderPrefix = "";
+            if (metadata != null)
+            {
+                Console.WriteLine($"[CLIENT DEBUG PROJECT] Metadata contains {metadata.Count} keys:");
+                foreach (var kvp in metadata)
+                {
+                    Console.WriteLine($"[CLIENT DEBUG PROJECT]   {kvp.Key} = '{kvp.Value}'");
+                }
+
+                if (metadata.TryGetValue("folderPath", out var folderPath))
+                {
+                    folderPrefix = folderPath.ToString().TrimEnd('/') + "/";
+                    Console.WriteLine($"[CLIENT DEBUG PROJECT] Extracted folderPrefix = '{folderPrefix}'");
+                }
+                else
+                {
+                    Console.WriteLine($"[CLIENT DEBUG PROJECT] No 'folderPath' key found in metadata");
+                }
+            }
+            else
+            {
+                Console.WriteLine($"[CLIENT DEBUG PROJECT] Metadata is null");
+            }
+
+            // Create a mapping of original filename to full path for metadata
+            var filePathMap = new Dictionary<string, string>();
+
             foreach (var file in files)
             {
 #pragma warning disable CA2000 // Dispose objects before losing scope
                 var fileContent = new StreamContent(file.OpenReadStream(maxAllowedSize));
 #pragma warning restore CA2000 // Dispose objects before losing scope
                 fileContent.Headers.ContentType = new MediaTypeHeaderValue(file.ContentType);
+
+                // Prepend folder path to filename if specified
+                var fullPath = folderPrefix + file.Name;
+                filePathMap[file.Name] = fullPath;
+
+                Console.WriteLine($"[CLIENT DEBUG] Creating path map for project: '{file.Name}' -> '{fullPath}'");
 
                 content.Add(fileContent, file.Name, file.Name);
             }
@@ -386,6 +462,14 @@ public sealed class ApiClient(HttpClient httpClient)
 
             string serializedHeaders = System.Text.Json.JsonSerializer.Serialize(fileMetadata);
             content.Headers.Add("X-FILE-METADATA", serializedHeaders);
+
+            // Send file path mapping so server knows the intended full paths
+            if (filePathMap.Count > 0)
+            {
+                string serializedPathMap = System.Text.Json.JsonSerializer.Serialize(filePathMap);
+                content.Headers.Add("X-FILE-PATH-MAP", serializedPathMap);
+                Console.WriteLine($"[CLIENT DEBUG] Sending file path map header for project with {filePathMap.Count} entries");
+            }
 
             var response = await httpClient.PostAsync($"api/projects/{projectName}/upload", content);
             response.EnsureSuccessStatusCode();
@@ -408,7 +492,7 @@ public sealed class ApiClient(HttpClient httpClient)
                 fileName = fileName,
                 blobContainer = "project-files"
             };
-            
+
             var json = System.Text.Json.JsonSerializer.Serialize(request, SerializerOptions.Default);
             using var content = new StringContent(json, Encoding.UTF8, "application/json");
             var response = await httpClient.PostAsync($"api/projects/{projectName}/analyze/{fileName}", content);
@@ -735,6 +819,116 @@ public sealed class ApiClient(HttpClient httpClient)
             if (chunk == null)
                 continue;
             yield return chunk;
+        }
+    }
+
+    // Folder Management APIs
+    public async Task<FolderNode> GetFolderStructureAsync(string containerName)
+    {
+        try
+        {
+            var response = await httpClient.GetAsync($"api/collections/{containerName}/folders");
+            response.EnsureSuccessStatusCode();
+            return await response.Content.ReadFromJsonAsync<FolderNode>() ?? new FolderNode();
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Error fetching folder structure: {ex.Message}");
+            return new FolderNode();
+        }
+    }
+
+    public async Task<bool> CreateFolderAsync(string containerName, string folderPath)
+    {
+        try
+        {
+            var request = new CreateFolderRequest
+            {
+                CollectionName = containerName,
+                FolderPath = folderPath
+            };
+
+            var json = System.Text.Json.JsonSerializer.Serialize(request, SerializerOptions.Default);
+            using var content = new StringContent(json, Encoding.UTF8, "application/json");
+            var response = await httpClient.PostAsync($"api/collections/{containerName}/folders", content);
+            return response.IsSuccessStatusCode;
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Error creating folder: {ex.Message}");
+            return false;
+        }
+    }
+
+    public async Task<bool> RenameFolderAsync(string containerName, string oldFolderPath, string newFolderPath)
+    {
+        try
+        {
+            var request = new RenameFolderRequest
+            {
+                CollectionName = containerName,
+                OldFolderPath = oldFolderPath,
+                NewFolderPath = newFolderPath
+            };
+
+            var json = System.Text.Json.JsonSerializer.Serialize(request, SerializerOptions.Default);
+            using var content = new StringContent(json, Encoding.UTF8, "application/json");
+            var response = await httpClient.PutAsync($"api/collections/{containerName}/folders/rename", content);
+            return response.IsSuccessStatusCode;
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Error renaming folder: {ex.Message}");
+            return false;
+        }
+    }
+
+    public async Task<bool> DeleteFolderAsync(string containerName, string folderPath)
+    {
+        try
+        {
+            var encodedPath = Uri.EscapeDataString(folderPath);
+            var response = await httpClient.DeleteAsync($"api/collections/{containerName}/folders?folderPath={encodedPath}");
+            return response.IsSuccessStatusCode;
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Error deleting folder: {ex.Message}");
+            return false;
+        }
+    }
+
+    // File Metadata Management APIs
+    public async Task<bool> UpdateFileMetadataAsync(string containerName, string fileName, FileMetadata metadata)
+    {
+        try
+        {
+            var encodedFileName = Uri.EscapeDataString(fileName);
+            var json = System.Text.Json.JsonSerializer.Serialize(metadata, SerializerOptions.Default);
+            using var content = new StringContent(json, Encoding.UTF8, "application/json");
+            var response = await httpClient.PutAsync($"api/collections/{containerName}/files/metadata/{encodedFileName}", content);
+            return response.IsSuccessStatusCode;
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Error updating file metadata: {ex.Message}");
+            return false;
+        }
+    }
+
+    public async Task<FileMetadata?> GetFileMetadataAsync(string containerName, string fileName)
+    {
+        try
+        {
+            var encodedFileName = Uri.EscapeDataString(fileName);
+            var response = await httpClient.GetAsync($"api/collections/{containerName}/files/metadata/{encodedFileName}");
+            response.EnsureSuccessStatusCode();
+            return await response.Content.ReadFromJsonAsync<FileMetadata>();
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Error fetching file metadata: {ex.Message}");
+            return null;
         }
     }
 }
