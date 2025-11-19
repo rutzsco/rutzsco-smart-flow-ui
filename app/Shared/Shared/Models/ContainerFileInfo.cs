@@ -31,14 +31,16 @@ public class ContainerFileInfo
     {
     }
 
-    public ContainerFileInfo(string fileName)
+    public ContainerFileInfo(string fileName, string? description = null)
     {
         FileName = fileName;
+        Description = description;
     }
 
-    public ContainerFileInfo(string fileName, List<string> processingFiles)
+    public ContainerFileInfo(string fileName, string? description, List<string> processingFiles)
     {
         FileName = fileName;
+        Description = description;
         ProcessingFiles = processingFiles;
     }
 

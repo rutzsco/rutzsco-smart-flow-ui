@@ -22,6 +22,8 @@ public sealed partial class Projects : IDisposable
     private int _filteredProjectCount = 0;
     private HashSet<string> _deletingFiles = new(); // Track files being deleted
     private HashSet<string> _analyzingFiles = new(); // Track files being analyzed (project-level)
+    private HashSet<string> _editingFileDescriptions = new(); // Track files being edited
+    private Dictionary<string, string> _editingDescriptions = new(); // Track temporary description values during editing
 
     // Store a cancelation token that will be used to cancel if the user disposes of this component.
     private readonly CancellationTokenSource _cancellationTokenSource = new();
@@ -47,10 +49,6 @@ public sealed partial class Projects : IDisposable
     private bool _showEditMetadataForm = false;
     private string _editProjectDescription = "";
     private string _editProjectType = "";
-
-    // Workflow status tracking
-    private WorkflowStatus? _currentWorkflow = null;
-    private System.Threading.Timer? _workflowTimer = null;
 
     protected override async Task OnInitializedAsync()
     {
@@ -396,6 +394,13 @@ public sealed partial class Projects : IDisposable
         try
         {
             var metadata = new Dictionary<string, string>();
+            
+            // Add description to metadata if provided
+            if (!string.IsNullOrWhiteSpace(_fileDescription))
+            {
+                metadata["description"] = _fileDescription;
+            }
+            
             var result = await Client.UploadFilesToProjectAsync(
                 _fileUploads.ToArray(), 
                 MaxIndividualFileSize, 
@@ -408,6 +413,7 @@ public sealed partial class Projects : IDisposable
             {
                 SnackBarMessage($"Uploaded {result.UploadedFiles.Length} document(s) to '{_selectedProject}'");
                 _fileUploads.Clear();
+                _fileDescription = string.Empty; // Clear description after successful upload
                 _showUploadSection = false; // Hide upload section after successful upload
             }
             else
@@ -442,6 +448,7 @@ public sealed partial class Projects : IDisposable
     }
 
     private IList<IBrowserFile> _fileUploads = new List<IBrowserFile>();
+    private string _fileDescription = string.Empty;
 
     private async Task AnalyzeProjectFileAsync(string fileName)
     {
@@ -456,7 +463,7 @@ public sealed partial class Projects : IDisposable
         {
             Logger.LogInformation("Analyzing file {FileName} in {Project}", fileName, _selectedProject);
             
-            var success = await Client.AnalyzeProjectFileAsync(_selectedProject, fileName);
+            var success = await Client.AnalyzeProjectAsync(_selectedProject);
             
             if (success)
             {
@@ -491,94 +498,29 @@ public sealed partial class Projects : IDisposable
             return;
         }
 
-        if (!_projectFiles.Any())
+        try
         {
-            SnackBarError("No files in project to analyze");
-            return;
-        }
-
-        // Filter to only PDF files
-        var pdfFiles = _projectFiles
-            .Where(f => Path.GetExtension(f.FileName).Equals(".pdf", StringComparison.OrdinalIgnoreCase))
-            .ToList();
-
-        if (!pdfFiles.Any())
-        {
-            SnackBarError("No PDF files found in project to analyze");
-            return;
-        }
-
-        // Show confirmation dialog
-        var parameters = new DialogParameters
-        {
-            { "ContentText", $"Are you sure you want to analyze all {pdfFiles.Count} PDF file(s) in project '{_selectedProject}'? This will trigger markdown extraction for each file." },
-            { "ButtonText", "Analyze All" },
-            { "Color", Color.Primary }
-        };
-
-        var dialog = await DialogService.ShowAsync<ConfirmationDialog>("Confirm Analysis", parameters);
-        var result = await dialog.Result;
-
-        if (result.Canceled)
-            return;
-
-        // Analyze each PDF file
-        var successCount = 0;
-        var failCount = 0;
-
-        // Start workflow status for the first file (demo purposes)
-        if (pdfFiles.Any())
-        {
-            StartWorkflowDemo(pdfFiles.First().FileName);
-        }
-
-        foreach (var file in pdfFiles)
-        {
-            try
+            Logger.LogInformation("Analyzing project {Project}", _selectedProject);
+            
+            var success = await Client.AnalyzeProjectAsync(_selectedProject);
+            
+            if (success)
             {
-                _analyzingFiles.Add(file.FileName);
-                StateHasChanged();
-
-                var success = await Client.AnalyzeProjectFileAsync(_selectedProject, file.FileName);
-                
-                if (success)
-                {
-                    successCount++;
-                }
-                else
-                {
-                    failCount++;
-                    Logger.LogWarning("Failed to analyze file {FileName}", file.FileName);
-                }
+                SnackBarMessage($"Analysis started for project '{_selectedProject}'");
+                // Refresh the file list after a delay to see processing files
+                await Task.Delay(3000);
+                await RefreshAsync();
             }
-            catch (Exception ex)
+            else
             {
-                failCount++;
-                Logger.LogError(ex, "Error analyzing file {FileName}", file.FileName);
+                SnackBarError($"Failed to start analysis for project '{_selectedProject}'");
             }
-            finally
-            {
-                _analyzingFiles.Remove(file.FileName);
-            }
-
-            // Small delay between files to avoid overwhelming the API
-            await Task.Delay(500);
         }
-
-        StateHasChanged();
-
-        if (failCount == 0)
+        catch (Exception ex)
         {
-            SnackBarMessage($"Successfully started analysis for {successCount} file(s)");
+            Logger.LogError(ex, "Error analyzing project {ProjectName}", _selectedProject);
+            SnackBarError($"Error analyzing project: {ex.Message}");
         }
-        else
-        {
-            SnackBarMessage($"Analysis started for {successCount} file(s), {failCount} failed");
-        }
-
-        // Refresh the file list after analysis
-        await Task.Delay(2000);
-        await RefreshAsync();
     }
 
     private async Task ViewFileAsync(string fileName, bool isProcessingFile = false)
@@ -699,68 +641,65 @@ public sealed partial class Projects : IDisposable
         }
     }
 
-
-    // Workflow status methods (demo implementation)
-    private void StartWorkflowDemo(string fileName)
+    private async Task ShowDeleteWorkflowDialogAsync()
     {
-        // Create a workflow for demonstration
-        _currentWorkflow = WorkflowStatus.CreateSample(fileName, WorkflowState.InProgress);
-        
-        // Start a timer to update workflow progress
-        _workflowTimer?.Dispose();
-        _workflowTimer = new System.Threading.Timer(_ =>
+        if (string.IsNullOrEmpty(_selectedProject))
         {
-            UpdateWorkflowProgress();
-        }, null, TimeSpan.FromSeconds(2), TimeSpan.FromSeconds(2));
-
-        StateHasChanged();
-    }
-
-    private void UpdateWorkflowProgress()
-    {
-        if (_currentWorkflow == null || _currentWorkflow.State != WorkflowState.InProgress)
-        {
-            _workflowTimer?.Dispose();
-            _workflowTimer = null;
+            SnackBarError("No project selected");
             return;
         }
 
-        // Find the next pending step and move it to in progress or completed
-        var inProgressStep = _currentWorkflow.Steps.FirstOrDefault(s => s.State == StepState.InProgress);
-        if (inProgressStep != null)
+        // Show confirmation dialog
+        var parameters = new DialogParameters
         {
-            // Complete the in-progress step
-            inProgressStep.State = StepState.Completed;
-            inProgressStep.EndTime = DateTime.UtcNow;
+            { "ContentText", $"Are you sure you want to delete ALL workflow files for project '{_selectedProject}'? This action cannot be undone. All processing files will be permanently deleted." },
+            { "ButtonText", "Delete All Workflow Files" },
+            { "Color", Color.Error }
+        };
+
+        var dialog = await DialogService.ShowAsync<ConfirmationDialog>("Confirm Workflow Deletion", parameters);
+        var result = await dialog.Result;
+
+        if (result.Canceled)
+            return;
+
+        await DeleteProjectWorkflowAsync();
+    }
+
+    private async Task DeleteProjectWorkflowAsync()
+    {
+        if (string.IsNullOrEmpty(_selectedProject))
+        {
+            SnackBarError("No project selected");
+            return;
         }
 
-        var nextPendingStep = _currentWorkflow.Steps.FirstOrDefault(s => s.State == StepState.Pending);
-        if (nextPendingStep != null)
+        try
         {
-            // Start the next pending step
-            nextPendingStep.State = StepState.InProgress;
-            nextPendingStep.StartTime = DateTime.UtcNow;
+            Logger.LogInformation("Deleting workflow files for project {Project}", _selectedProject);
+            
+            var success = await Client.DeleteProjectWorkflowAsync(_selectedProject);
+            
+            if (success)
+            {
+                SnackBarMessage($"Workflow files for project '{_selectedProject}' deleted successfully");
+                await RefreshAsync();
+            }
+            else
+            {
+                SnackBarError($"Failed to delete workflow files for project '{_selectedProject}'");
+            }
         }
-        else if (inProgressStep != null)
+        catch (Exception ex)
         {
-            // All steps completed
-            _currentWorkflow.State = WorkflowState.Completed;
-            _currentWorkflow.EndTime = DateTime.UtcNow;
-            _workflowTimer?.Dispose();
-            _workflowTimer = null;
+            Logger.LogError(ex, "Error deleting workflow files for project {ProjectName}", _selectedProject);
+            SnackBarError($"Error deleting workflow files: {ex.Message}");
         }
-
-        // Update progress percentage
-        var completedSteps = _currentWorkflow.Steps.Count(s => s.State == StepState.Completed);
-        _currentWorkflow.ProgressPercentage = (int)((double)completedSteps / _currentWorkflow.Steps.Count * 100);
-
-        InvokeAsync(StateHasChanged);
     }
 
     public void Dispose()
     {
         _cancellationTokenSource.Cancel();
-        _workflowTimer?.Dispose();
     }
 
     private string GetProjectItemClass(CollectionInfo project)
@@ -776,6 +715,69 @@ public sealed partial class Projects : IDisposable
         return project.Name == _selectedProject 
             ? "font-weight: 500;" 
             : "font-weight: 400;";
+    }
+
+    private string GetFileIcon(string fileName)
+    {
+        var extension = Path.GetExtension(fileName).ToLowerInvariant();
+        return extension switch
+        {
+            ".md" => Icons.Material.Filled.Description,
+            ".json" => Icons.Material.Filled.DataObject,
+            ".pdf" => Icons.Custom.FileFormats.FilePdf,
+            ".txt" => Icons.Material.Filled.TextSnippet,
+            _ => Icons.Material.Filled.InsertDriveFile
+        };
+    }
+
+    private void StartEditingDescription(ContainerFileInfo file)
+    {
+        _editingFileDescriptions.Add(file.FileName);
+        _editingDescriptions[file.FileName] = file.Description ?? string.Empty;
+        StateHasChanged();
+    }
+
+    private void CancelEditingDescription(string fileName)
+    {
+        _editingFileDescriptions.Remove(fileName);
+        _editingDescriptions.Remove(fileName);
+        StateHasChanged();
+    }
+
+    private async Task SaveFileDescriptionAsync(ContainerFileInfo file)
+    {
+        if (!_editingDescriptions.TryGetValue(file.FileName, out var newDescription))
+            return;
+
+        try
+        {
+            Logger.LogInformation("Saving description for file {FileName}: '{Description}'", file.FileName, newDescription);
+            
+            var success = await Client.UpdateFileDescriptionAsync(_selectedProject, file.FileName, string.IsNullOrWhiteSpace(newDescription) ? null : newDescription);
+            
+            if (success)
+            {
+                // Update the local file object immediately for UI responsiveness
+                file.Description = string.IsNullOrWhiteSpace(newDescription) ? null : newDescription;
+                _editingFileDescriptions.Remove(file.FileName);
+                _editingDescriptions.Remove(file.FileName);
+                
+                SnackBarMessage("File description updated successfully");
+                
+                // Reload files from server to ensure we have the latest persisted data
+                await LoadProjectFilesAsync();
+            }
+            else
+            {
+                SnackBarError("Failed to update file description");
+                Logger.LogWarning("UpdateFileDescriptionAsync returned false for {FileName}", file.FileName);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error updating file description for {FileName}", file.FileName);
+            SnackBarError($"Error updating description: {ex.Message}");
+        }
     }
 }
 

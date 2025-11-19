@@ -101,6 +101,12 @@
     public EventCallback<string> FolderPathChanged { get; set; }
 
     [Parameter]
+    public string Description { get; set; } = string.Empty;
+
+    [Parameter]
+    public EventCallback<string> DescriptionChanged { get; set; }
+
+    [Parameter]
     public EventCallback OnClose { get; set; }
 
     [Parameter]
@@ -128,6 +134,8 @@
     private void OnClearAll()
     {
         SelectedFiles.Clear();
+        Description = string.Empty;
+        DescriptionChanged.InvokeAsync(Description);
         StateHasChanged();
     }
 
