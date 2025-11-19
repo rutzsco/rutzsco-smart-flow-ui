@@ -43,7 +43,165 @@ internal static class WebApiProjectEndpoints
         // Delete workflow files for a project
         api.MapDelete("{projectName}/workflow", OnDeleteProjectWorkflowAsync);
 
+        // Check connectivity to Document Tools API
+        api.MapGet("status/document-tools", OnCheckDocumentToolsStatusAsync);
+
         return app;
+    }
+
+    private static async Task<IResult> OnCheckDocumentToolsStatusAsync(
+        HttpContext context,
+        [FromServices] IConfiguration configuration,
+        [FromServices] ILogger<WebApplication> logger,
+        CancellationToken cancellationToken)
+    {
+        var diagnostics = new Dictionary<string, object>();
+        var isHealthy = false;
+        string? errorMessage = null;
+
+        try
+        {
+            var documentToolsEndpoint = configuration["DocumentToolsAPIEndpoint"];
+            var documentToolsApiKey = configuration["DocumentToolsAPIKey"];
+
+            diagnostics["configured_endpoint"] = documentToolsEndpoint ?? "Not configured";
+            diagnostics["api_key_configured"] = !string.IsNullOrEmpty(documentToolsApiKey);
+            diagnostics["timestamp"] = DateTime.UtcNow;
+
+            if (string.IsNullOrEmpty(documentToolsEndpoint))
+            {
+                errorMessage = "DocumentToolsAPIEndpoint is not configured";
+                logger.LogWarning("Document Tools API endpoint is not configured");
+                
+                return TypedResults.Ok(new
+                {
+                    status = "unhealthy",
+                    service = "Document Tools API",
+                    error = errorMessage,
+                    diagnostics = diagnostics
+                });
+            }
+
+            if (string.IsNullOrEmpty(documentToolsApiKey))
+            {
+                logger.LogWarning("Document Tools API key is not configured");
+                diagnostics["warning"] = "API key is not configured - authentication may fail";
+            }
+
+            // Test connectivity to the liveness endpoint
+            using var httpClient = new HttpClient();
+            httpClient.Timeout = TimeSpan.FromSeconds(10);
+            
+            if (!string.IsNullOrEmpty(documentToolsApiKey))
+            {
+                httpClient.DefaultRequestHeaders.Add("X-API-Key", documentToolsApiKey);
+            }
+
+            var livenessUrl = $"{documentToolsEndpoint.TrimEnd('/')}/healthz/live";
+            diagnostics["test_url"] = livenessUrl;
+
+            var startTime = DateTime.UtcNow;
+            var response = await httpClient.GetAsync(livenessUrl, cancellationToken);
+            var duration = DateTime.UtcNow - startTime;
+
+            diagnostics["response_time_ms"] = duration.TotalMilliseconds;
+            diagnostics["status_code"] = (int)response.StatusCode;
+            diagnostics["status_code_name"] = response.StatusCode.ToString();
+
+            if (response.IsSuccessStatusCode)
+            {
+                var responseContent = await response.Content.ReadAsStringAsync(cancellationToken);
+                diagnostics["response_body"] = responseContent;
+                isHealthy = true;
+
+                logger.LogInformation(
+                    "Document Tools API is healthy. Endpoint: {Endpoint}, Response time: {Duration}ms",
+                    documentToolsEndpoint,
+                    duration.TotalMilliseconds);
+
+                return TypedResults.Ok(new
+                {
+                    status = "healthy",
+                    service = "Document Tools API",
+                    message = "Successfully connected to Document Tools API",
+                    diagnostics = diagnostics
+                });
+            }
+            else
+            {
+                var errorContent = await response.Content.ReadAsStringAsync(cancellationToken);
+                diagnostics["response_body"] = errorContent;
+                errorMessage = $"HTTP {response.StatusCode}: {response.ReasonPhrase}";
+
+                logger.LogWarning(
+                    "Document Tools API returned non-success status. Endpoint: {Endpoint}, Status: {Status}, Body: {Body}",
+                    documentToolsEndpoint,
+                    response.StatusCode,
+                    errorContent);
+
+                return TypedResults.Ok(new
+                {
+                    status = "unhealthy",
+                    service = "Document Tools API",
+                    error = errorMessage,
+                    diagnostics = diagnostics
+                });
+            }
+        }
+        catch (HttpRequestException ex)
+        {
+            errorMessage = $"HTTP request failed: {ex.Message}";
+            diagnostics["exception_type"] = ex.GetType().Name;
+            diagnostics["exception_message"] = ex.Message;
+            
+            if (ex.InnerException != null)
+            {
+                diagnostics["inner_exception"] = ex.InnerException.Message;
+            }
+
+            logger.LogError(ex, "Failed to connect to Document Tools API");
+
+            return TypedResults.Ok(new
+            {
+                status = "unhealthy",
+                service = "Document Tools API",
+                error = errorMessage,
+                diagnostics = diagnostics
+            });
+        }
+        catch (TaskCanceledException ex)
+        {
+            errorMessage = "Request timed out after 10 seconds";
+            diagnostics["exception_type"] = "Timeout";
+            diagnostics["exception_message"] = ex.Message;
+
+            logger.LogError(ex, "Document Tools API health check timed out");
+
+            return TypedResults.Ok(new
+            {
+                status = "unhealthy",
+                service = "Document Tools API",
+                error = errorMessage,
+                diagnostics = diagnostics
+            });
+        }
+        catch (Exception ex)
+        {
+            errorMessage = $"Unexpected error: {ex.Message}";
+            diagnostics["exception_type"] = ex.GetType().Name;
+            diagnostics["exception_message"] = ex.Message;
+            diagnostics["stack_trace"] = ex.StackTrace;
+
+            logger.LogError(ex, "Unexpected error during Document Tools API health check");
+
+            return TypedResults.Ok(new
+            {
+                status = "unhealthy",
+                service = "Document Tools API",
+                error = errorMessage,
+                diagnostics = diagnostics
+            });
+        }
     }
 
     private static async Task<IResult> OnDeleteProjectWorkflowAsync(
