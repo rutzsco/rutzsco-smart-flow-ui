@@ -421,6 +421,20 @@ public sealed class ApiClient(HttpClient httpClient)
         }
     }
 
+    public async Task<bool> DeleteProjectWorkflowAsync(string projectName)
+    {
+        try
+        {
+            var response = await httpClient.DeleteAsync($"api/projects/{projectName}/workflow");
+            return response.IsSuccessStatusCode;
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Error deleting project workflow: {ex.Message}");
+            return false;
+        }
+    }
+
     // Search Index APIs
     public async Task<List<SearchIndexInfo>> GetSearchIndexesAsync()
     {

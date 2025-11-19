@@ -213,7 +213,6 @@
                                            OnClick="RefreshAsync"
                                            Title="Refresh" />
                         </MudStack>
-                        <MudText Typo="Typo.body2" Color="Color.Secondary">Project Details</MudText>
                     </MudStack>
 
                     <MudDivider />
@@ -295,14 +294,25 @@
 
                     <!-- Workflow Files Section -->
                     <MudStack Spacing="3">
-                        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
-                            <MudIcon Icon="@Icons.Material.Filled.AccountTree" Size="Size.Medium" />
-                            <MudText Typo="Typo.body1" Style="font-weight: 500;">Workflow Files</MudText>
-                        </MudStack>
-
                         @{
                             var workflowFiles = _projectFiles.SelectMany(f => f.ProcessingFiles).ToList();
                         }
+
+                        <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                                <MudIcon Icon="@Icons.Material.Filled.AccountTree" Size="Size.Medium" />
+                                <MudText Typo="Typo.body1" Style="font-weight: 500;">Workflow Files</MudText>
+                            </MudStack>
+
+                            @if (workflowFiles.Any())
+                            {
+                                <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                               Size="Size.Small"
+                                               Color="Color.Default"
+                                               OnClick="@(async () => await ShowDeleteWorkflowDialogAsync())"
+                                               Title="Delete All Workflow Files" />
+                            }
+                        </MudStack>
 
                         @if (!workflowFiles.Any())
                         {

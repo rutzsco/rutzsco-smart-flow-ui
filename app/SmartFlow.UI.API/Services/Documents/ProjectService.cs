@@ -221,6 +221,38 @@ public class ProjectService
     }
 
     /// <summary>
+    /// Deletes all workflow processing files for a project (entire project folder in extract container)
+    /// </summary>
+    public async Task<bool> DeleteProjectWorkflowAsync(string projectName, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var extractContainerClient = _blobServiceClient.GetBlobContainerClient(ProjectExtractContainerName);
+            if (!await extractContainerClient.ExistsAsync(cancellationToken))
+            {
+                return false;
+            }
+
+            // Delete all blobs in the project folder
+            var projectFolderPrefix = $"{projectName}/";
+            var deletedCount = 0;
+
+            await foreach (var blobItem in extractContainerClient.GetBlobsAsync(prefix: projectFolderPrefix, cancellationToken: cancellationToken))
+            {
+                var blobClient = extractContainerClient.GetBlobClient(blobItem.Name);
+                await blobClient.DeleteIfExistsAsync(cancellationToken: cancellationToken);
+                deletedCount++;
+            }
+
+            return deletedCount > 0;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    /// <summary>
     /// Gets all files for a specific project
     /// </summary>
     public async Task<List<ContainerFileInfo>> GetProjectFilesAsync(string projectName, CancellationToken cancellationToken = default)

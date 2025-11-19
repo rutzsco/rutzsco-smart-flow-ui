@@ -40,7 +40,42 @@ internal static class WebApiProjectEndpoints
         // Analyze a file in a project
         api.MapPost("{projectName}/analyze/{*fileName}", OnAnalyzeProjectFileAsync);
 
+        // Delete workflow files for a project
+        api.MapDelete("{projectName}/workflow", OnDeleteProjectWorkflowAsync);
+
         return app;
+    }
+
+    private static async Task<IResult> OnDeleteProjectWorkflowAsync(
+        HttpContext context,
+        string projectName,
+        [FromServices] ProjectService projectService,
+        [FromServices] ILogger<WebApplication> logger,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            logger.LogInformation("Deleting workflow files for project: {ProjectName}", projectName);
+
+            var userInfo = await context.GetUserInfoAsync();
+            var success = await projectService.DeleteProjectWorkflowAsync(projectName, cancellationToken);
+
+            if (success)
+            {
+                logger.LogInformation("Successfully deleted workflow files for project '{ProjectName}'", projectName);
+                return TypedResults.Ok(new { success = true, message = $"Workflow files for project '{projectName}' deleted successfully" });
+            }
+            else
+            {
+                logger.LogWarning("Failed to delete workflow files for project '{ProjectName}'", projectName);
+                return Results.NotFound(new { success = false, message = $"Workflow files for project '{projectName}' not found" });
+            }
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error deleting workflow files for project: {ProjectName}", projectName);
+            return Results.Problem("Error deleting workflow files");
+        }
     }
 
     private static async Task<IResult> OnAnalyzeProjectFileAsync(

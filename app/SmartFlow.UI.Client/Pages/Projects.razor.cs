@@ -631,6 +631,62 @@ public sealed partial class Projects : IDisposable
         }
     }
 
+    private async Task ShowDeleteWorkflowDialogAsync()
+    {
+        if (string.IsNullOrEmpty(_selectedProject))
+        {
+            SnackBarError("No project selected");
+            return;
+        }
+
+        // Show confirmation dialog
+        var parameters = new DialogParameters
+        {
+            { "ContentText", $"Are you sure you want to delete ALL workflow files for project '{_selectedProject}'? This action cannot be undone. All processing files will be permanently deleted." },
+            { "ButtonText", "Delete All Workflow Files" },
+            { "Color", Color.Error }
+        };
+
+        var dialog = await DialogService.ShowAsync<ConfirmationDialog>("Confirm Workflow Deletion", parameters);
+        var result = await dialog.Result;
+
+        if (result.Canceled)
+            return;
+
+        await DeleteProjectWorkflowAsync();
+    }
+
+    private async Task DeleteProjectWorkflowAsync()
+    {
+        if (string.IsNullOrEmpty(_selectedProject))
+        {
+            SnackBarError("No project selected");
+            return;
+        }
+
+        try
+        {
+            Logger.LogInformation("Deleting workflow files for project {Project}", _selectedProject);
+            
+            var success = await Client.DeleteProjectWorkflowAsync(_selectedProject);
+            
+            if (success)
+            {
+                SnackBarMessage($"Workflow files for project '{_selectedProject}' deleted successfully");
+                await RefreshAsync();
+            }
+            else
+            {
+                SnackBarError($"Failed to delete workflow files for project '{_selectedProject}'");
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error deleting workflow files for project {ProjectName}", _selectedProject);
+            SnackBarError($"Error deleting workflow files: {ex.Message}");
+        }
+    }
+
     public void Dispose()
     {
         _cancellationTokenSource.Cancel();
