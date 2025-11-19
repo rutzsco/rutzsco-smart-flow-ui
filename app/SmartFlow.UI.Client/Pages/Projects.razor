@@ -293,25 +293,74 @@
 
                     <MudDivider />
 
-                    <!-- Workflow Status Section -->
+                    <!-- Workflow Files Section -->
                     <MudStack Spacing="3">
                         <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
-                            <MudIcon Icon="@Icons.Material.Filled.DonutLarge" Size="Size.Medium" />
-                            <MudText Typo="Typo.body1" Style="font-weight: 500;">Workflow Status</MudText>
+                            <MudIcon Icon="@Icons.Material.Filled.AccountTree" Size="Size.Medium" />
+                            <MudText Typo="Typo.body1" Style="font-weight: 500;">Workflow Files</MudText>
                         </MudStack>
 
-                        @if (_currentWorkflow == null)
+                        @{
+                            var workflowFiles = _projectFiles.SelectMany(f => f.ProcessingFiles).ToList();
+                        }
+
+                        @if (!workflowFiles.Any())
                         {
                             <MudStack Spacing="1" Class="py-2">
-                                <MudText Typo="Typo.body1" Style="font-weight: 500;">No active workflow</MudText>
+                                <MudText Typo="Typo.body1" Style="font-weight: 500;">No workflow files</MudText>
                                 <MudText Typo="Typo.body2" Color="Color.Secondary">
-                                    Upload and analyze documents to begin processing.
+                                    Analyze documents to generate workflow processing files.
                                 </MudText>
                             </MudStack>
                         }
                         else
                         {
-                            <WorkflowStatusPanel Workflow="@_currentWorkflow" />
+                            <MudText Typo="Typo.body2" Color="Color.Secondary" Class="pb-2">
+                                @workflowFiles.Count processing file(s) generated
+                            </MudText>
+
+                            <MudStack Spacing="1">
+                                @foreach (var file in _projectFiles.Where(f => f.ProcessingFiles.Any()))
+                                {
+                                    <MudCard Outlined="true" Class="pa-3">
+                                        <MudStack Spacing="2">
+                                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                                                <MudIcon Icon="@Icons.Material.Filled.Description" Size="Size.Small" Color="Color.Primary" />
+                                                <MudText Typo="Typo.body1" Style="font-weight: 500;">
+                                                    @file.FileName
+                                                </MudText>
+                                            </MudStack>
+
+                                            @if (file.ProcessingFiles.Any())
+                                            {
+                                                <MudStack Spacing="1" Class="pl-6">
+                                                    @foreach (var processingFile in file.ProcessingFiles)
+                                                    {
+                                                        <MudPaper Elevation="0" Class="file-item pa-2" Style="border-radius: 4px; background-color: #f5f5f5;">
+                                                            <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+                                                                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Style="flex: 1; min-width: 0;">
+                                                                    <MudIcon Icon="@GetFileIcon(processingFile)" Size="Size.Small" Color="Color.Info" />
+                                                                    @if (CanViewFile(processingFile))
+                                                                    {
+                                                                        <MudIconButton Icon="@Icons.Material.Filled.RemoveRedEye"
+                                                                                       Size="Size.Small"
+                                                                                       OnClick="@(async () => await ViewFileAsync(processingFile, true))"
+                                                                                       Title="View processing file"
+                                                                                       Style="color: #1976d2;" />
+                                                                    }
+                                                                    <MudText Typo="Typo.body2" Style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                                                        @processingFile
+                                                                    </MudText>
+                                                                </MudStack>
+                                                            </MudStack>
+                                                        </MudPaper>
+                                                    }
+                                                </MudStack>
+                                            }
+                                        </MudStack>
+                                    </MudCard>
+                                }
+                            </MudStack>
                         }
                     </MudStack>
                 </MudStack>

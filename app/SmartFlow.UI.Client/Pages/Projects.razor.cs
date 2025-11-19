@@ -777,5 +777,18 @@ public sealed partial class Projects : IDisposable
             ? "font-weight: 500;" 
             : "font-weight: 400;";
     }
+
+    private string GetFileIcon(string fileName)
+    {
+        var extension = Path.GetExtension(fileName).ToLowerInvariant();
+        return extension switch
+        {
+            ".md" => Icons.Material.Filled.Description,
+            ".json" => Icons.Material.Filled.DataObject,
+            ".pdf" => Icons.Custom.FileFormats.FilePdf,
+            ".txt" => Icons.Material.Filled.TextSnippet,
+            _ => Icons.Material.Filled.InsertDriveFile
+        };
+    }
 }
 

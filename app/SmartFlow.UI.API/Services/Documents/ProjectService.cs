@@ -119,17 +119,16 @@ public class ProjectService
                 }
             }
 
-            // Delete all processing files for this project
+            // Delete all processing files in the project folder (project-files-extract/{projectName}/*)
             var extractContainerClient = _blobServiceClient.GetBlobContainerClient(ProjectExtractContainerName);
             if (await extractContainerClient.ExistsAsync(cancellationToken))
             {
-                await foreach (var blobItem in extractContainerClient.GetBlobsAsync(traits: BlobTraits.Metadata, cancellationToken: cancellationToken))
+                // Delete all blobs in the project folder
+                var projectFolderPrefix = $"{projectName}/";
+                await foreach (var blobItem in extractContainerClient.GetBlobsAsync(prefix: projectFolderPrefix, cancellationToken: cancellationToken))
                 {
-                    if (blobItem.Metadata?.TryGetValue("project", out var project) == true && project == projectName)
-                    {
-                        var blobClient = extractContainerClient.GetBlobClient(blobItem.Name);
-                        await blobClient.DeleteIfExistsAsync(cancellationToken: cancellationToken);
-                    }
+                    var blobClient = extractContainerClient.GetBlobClient(blobItem.Name);
+                    await blobClient.DeleteIfExistsAsync(cancellationToken: cancellationToken);
                 }
             }
 
@@ -244,19 +243,15 @@ public class ProjectService
             {
                 var fileInfo = new ContainerFileInfo(blobItem.Name);
 
-                // Check for processing files
+                // Get ALL processing files for this project
                 if (extractContainerExists)
                 {
-                    var baseNameWithoutExtension = Path.GetFileNameWithoutExtension(blobItem.Name);
+                    var projectFolderPrefix = $"{projectName}/";
                     
-                    await foreach (var extractBlobItem in extractContainerClient.GetBlobsAsync(traits: BlobTraits.Metadata, cancellationToken: cancellationToken))
+                    await foreach (var extractBlobItem in extractContainerClient.GetBlobsAsync(prefix: projectFolderPrefix, cancellationToken: cancellationToken))
                     {
-                        if (extractBlobItem.Metadata?.TryGetValue("project", out var extractProject) == true && 
-                            extractProject == projectName &&
-                            extractBlobItem.Name.StartsWith(baseNameWithoutExtension, StringComparison.OrdinalIgnoreCase))
-                        {
-                            fileInfo.ProcessingFiles.Add(extractBlobItem.Name);
-                        }
+                        // Add all processing files found under the project folder
+                        fileInfo.ProcessingFiles.Add(extractBlobItem.Name);
                     }
                 }
 
@@ -315,19 +310,20 @@ public class ProjectService
             // Delete the main file
             await blobClient.DeleteAsync(cancellationToken: cancellationToken);
 
-            // Delete associated processing files
+            // Delete associated processing files in the project folder (searches all subfolders)
             var extractContainerClient = _blobServiceClient.GetBlobContainerClient(ProjectExtractContainerName);
             var extractContainerExists = await extractContainerClient.ExistsAsync(cancellationToken);
 
             if (extractContainerExists)
             {
                 var baseNameWithoutExtension = Path.GetFileNameWithoutExtension(fileName);
+                // Search entire project folder for processing files matching the base name
+                var projectFolderPrefix = $"{projectName}/";
 
-                await foreach (var extractBlobItem in extractContainerClient.GetBlobsAsync(traits: BlobTraits.Metadata, cancellationToken: cancellationToken))
+                await foreach (var extractBlobItem in extractContainerClient.GetBlobsAsync(prefix: projectFolderPrefix, cancellationToken: cancellationToken))
                 {
-                    if (extractBlobItem.Metadata?.TryGetValue("project", out var extractProject) == true && 
-                        extractProject == projectName &&
-                        extractBlobItem.Name.StartsWith(baseNameWithoutExtension, StringComparison.OrdinalIgnoreCase))
+                    var processingFileName = Path.GetFileNameWithoutExtension(extractBlobItem.Name);
+                    if (processingFileName.Contains(baseNameWithoutExtension, StringComparison.OrdinalIgnoreCase))
                     {
                         var extractBlobClient = extractContainerClient.GetBlobClient(extractBlobItem.Name);
                         await extractBlobClient.DeleteIfExistsAsync(cancellationToken: cancellationToken);
@@ -362,6 +358,7 @@ public class ProjectService
                 return (null, string.Empty);
             }
 
+            // For processing files, the fileName already includes the project folder path
             var blobClient = containerClient.GetBlobClient(fileName);
             
             if (!await blobClient.ExistsAsync(cancellationToken))
@@ -369,15 +366,25 @@ public class ProjectService
                 return (null, string.Empty);
             }
 
-            // Verify the blob belongs to this project
-            var properties = await blobClient.GetPropertiesAsync(cancellationToken: cancellationToken);
-            if (properties.Value.Metadata?.TryGetValue("project", out var project) != true || project != projectName)
+            // For processing files in extract container, verify they're in the correct project folder
+            if (isProcessingFile && !fileName.StartsWith($"{projectName}/", StringComparison.OrdinalIgnoreCase))
             {
                 return (null, string.Empty);
             }
 
+            // For input files, verify the blob belongs to this project via metadata
+            if (!isProcessingFile)
+            {
+                var properties = await blobClient.GetPropertiesAsync(cancellationToken: cancellationToken);
+                if (properties.Value.Metadata?.TryGetValue("project", out var project) != true || project != projectName)
+                {
+                    return (null, string.Empty);
+                }
+            }
+
             var download = await blobClient.DownloadAsync(cancellationToken);
-            var contentType = properties.Value.ContentType;
+            var blobProperties = await blobClient.GetPropertiesAsync(cancellationToken: cancellationToken);
+            var contentType = blobProperties.Value.ContentType;
             
             if (string.IsNullOrEmpty(contentType))
             {

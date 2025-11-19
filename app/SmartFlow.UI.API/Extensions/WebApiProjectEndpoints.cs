@@ -77,7 +77,10 @@ internal static class WebApiProjectEndpoints
             var requestBody = new
             {
                 fileName = fileName,
-                blobContainer = "projects"
+                blobContainer = ProjectContainerName, // project-files container
+                projectName = projectName, // Pass project name so processing files go to correct folder
+                outputContainer = "project-files-extract", // Explicitly specify output container
+                outputPath = $"{projectName}/" // Processing files should go to projectName folder
             };
             
             var jsonContent = System.Text.Json.JsonSerializer.Serialize(requestBody);
