@@ -258,7 +258,7 @@ internal static class WebApiProjectEndpoints
             var documentToolsEndpoint = configuration["DocumentToolsAPIEndpoint"];
             var documentToolsApiKey = configuration["DocumentToolsAPIKey"];
             
-            if (string.IsNullOrEmpty(documentToolsEndpoint) || string.IsNullOrEmpty(documentToolsApiKey))
+            if (string.IsNullOrEmpty(documentToolsEndpoint))
             {
                 logger.LogError("Document Tools API endpoint or key not configured");
                 return Results.Problem("Document Tools API not configured");
