@@ -5,6 +5,17 @@ namespace MinimalApi.Extensions;
 internal static class WebApiProjectEndpoints
 {
     private const string ProjectContainerName = "project-files";
+    private const string DocumentToolsServiceName = "Document Tools API";
+    private const string HealthCheckLivenessPath = "/healthz/live";
+    private const string SpecExtractorPath = "/agent/spec-extractor";
+    private const string DefaultAnalysisMessage = "Please extract the specification summary and explain the key sections.";
+    private const int HttpClientTimeoutSeconds = 10;
+
+    // Configuration keys
+    private const string DocumentToolsEndpointKey = "DocumentToolsAPIEndpoint";
+    private const string DocumentToolsApiKeyKey = "DocumentToolsAPIKey";
+    private const string StorageEndpointKey = "AzureStorageAccountEndpoint";
+    private const string StorageConnectionStringKey = "AzureStorageAccountConnectionString";
 
     internal static WebApplication MapProjectApi(this WebApplication app)
     {
@@ -38,7 +49,7 @@ internal static class WebApiProjectEndpoints
         api.MapDelete("{projectName}/files/{*fileName}", OnDeleteProjectFileAsync);
 
         // Analyze a file in a project
-        api.MapPost("{projectName}/analyze/{*fileName}", OnAnalyzeProjectFileAsync);
+        api.MapPost("{projectName}/analyze", OnAnalyzeProjectFileAsync);
 
         // Delete workflow files for a project
         api.MapDelete("{projectName}/workflow", OnDeleteProjectWorkflowAsync);
@@ -53,16 +64,16 @@ internal static class WebApiProjectEndpoints
         HttpContext context,
         [FromServices] IConfiguration configuration,
         [FromServices] ILogger<WebApplication> logger,
+        [FromServices] IHttpClientFactory httpClientFactory,
         CancellationToken cancellationToken)
     {
         var diagnostics = new Dictionary<string, object>();
-        var isHealthy = false;
         string? errorMessage = null;
 
         try
         {
-            var documentToolsEndpoint = configuration["DocumentToolsAPIEndpoint"];
-            var documentToolsApiKey = configuration["DocumentToolsAPIKey"];
+            var documentToolsEndpoint = configuration[DocumentToolsEndpointKey];
+            var documentToolsApiKey = configuration[DocumentToolsApiKeyKey];
 
             diagnostics["configured_endpoint"] = documentToolsEndpoint ?? "Not configured";
             diagnostics["api_key_configured"] = !string.IsNullOrEmpty(documentToolsApiKey);
@@ -70,34 +81,28 @@ internal static class WebApiProjectEndpoints
 
             if (string.IsNullOrEmpty(documentToolsEndpoint))
             {
-                errorMessage = "DocumentToolsAPIEndpoint is not configured";
-                logger.LogWarning("Document Tools API endpoint is not configured");
+                errorMessage = $"{DocumentToolsEndpointKey} is not configured";
+                logger.LogWarning("{Service} endpoint is not configured", DocumentToolsServiceName);
                 
-                return TypedResults.Ok(new
-                {
-                    status = "unhealthy",
-                    service = "Document Tools API",
-                    error = errorMessage,
-                    diagnostics = diagnostics
-                });
+                return CreateUnhealthyResponse(errorMessage, diagnostics);
             }
 
             if (string.IsNullOrEmpty(documentToolsApiKey))
             {
-                logger.LogWarning("Document Tools API key is not configured");
+                logger.LogWarning("{Service} API key is not configured", DocumentToolsServiceName);
                 diagnostics["warning"] = "API key is not configured - authentication may fail";
             }
 
             // Test connectivity to the liveness endpoint
-            using var httpClient = new HttpClient();
-            httpClient.Timeout = TimeSpan.FromSeconds(10);
+            using var httpClient = httpClientFactory.CreateClient();
+            httpClient.Timeout = TimeSpan.FromSeconds(HttpClientTimeoutSeconds);
             
             if (!string.IsNullOrEmpty(documentToolsApiKey))
             {
                 httpClient.DefaultRequestHeaders.Add("X-API-Key", documentToolsApiKey);
             }
 
-            var livenessUrl = $"{documentToolsEndpoint.TrimEnd('/')}/healthz/live";
+            var livenessUrl = $"{documentToolsEndpoint.TrimEnd('/')}{HealthCheckLivenessPath}";
             diagnostics["test_url"] = livenessUrl;
 
             var startTime = DateTime.UtcNow;
@@ -112,18 +117,18 @@ internal static class WebApiProjectEndpoints
             {
                 var responseContent = await response.Content.ReadAsStringAsync(cancellationToken);
                 diagnostics["response_body"] = responseContent;
-                isHealthy = true;
 
                 logger.LogInformation(
-                    "Document Tools API is healthy. Endpoint: {Endpoint}, Response time: {Duration}ms",
+                    "{Service} is healthy. Endpoint: {Endpoint}, Response time: {Duration}ms",
+                    DocumentToolsServiceName,
                     documentToolsEndpoint,
                     duration.TotalMilliseconds);
 
                 return TypedResults.Ok(new
                 {
                     status = "healthy",
-                    service = "Document Tools API",
-                    message = "Successfully connected to Document Tools API",
+                    service = DocumentToolsServiceName,
+                    message = $"Successfully connected to {DocumentToolsServiceName}",
                     diagnostics = diagnostics
                 });
             }
@@ -134,18 +139,13 @@ internal static class WebApiProjectEndpoints
                 errorMessage = $"HTTP {response.StatusCode}: {response.ReasonPhrase}";
 
                 logger.LogWarning(
-                    "Document Tools API returned non-success status. Endpoint: {Endpoint}, Status: {Status}, Body: {Body}",
+                    "{Service} returned non-success status. Endpoint: {Endpoint}, Status: {Status}, Body: {Body}",
+                    DocumentToolsServiceName,
                     documentToolsEndpoint,
                     response.StatusCode,
                     errorContent);
 
-                return TypedResults.Ok(new
-                {
-                    status = "unhealthy",
-                    service = "Document Tools API",
-                    error = errorMessage,
-                    diagnostics = diagnostics
-                });
+                return CreateUnhealthyResponse(errorMessage, diagnostics);
             }
         }
         catch (HttpRequestException ex)
@@ -159,31 +159,17 @@ internal static class WebApiProjectEndpoints
                 diagnostics["inner_exception"] = ex.InnerException.Message;
             }
 
-            logger.LogError(ex, "Failed to connect to Document Tools API");
-
-            return TypedResults.Ok(new
-            {
-                status = "unhealthy",
-                service = "Document Tools API",
-                error = errorMessage,
-                diagnostics = diagnostics
-            });
+            logger.LogError(ex, "Failed to connect to {Service}", DocumentToolsServiceName);
+            return CreateUnhealthyResponse(errorMessage, diagnostics);
         }
         catch (TaskCanceledException ex)
         {
-            errorMessage = "Request timed out after 10 seconds";
+            errorMessage = $"Request timed out after {HttpClientTimeoutSeconds} seconds";
             diagnostics["exception_type"] = "Timeout";
             diagnostics["exception_message"] = ex.Message;
 
-            logger.LogError(ex, "Document Tools API health check timed out");
-
-            return TypedResults.Ok(new
-            {
-                status = "unhealthy",
-                service = "Document Tools API",
-                error = errorMessage,
-                diagnostics = diagnostics
-            });
+            logger.LogError(ex, "{Service} health check timed out", DocumentToolsServiceName);
+            return CreateUnhealthyResponse(errorMessage, diagnostics);
         }
         catch (Exception ex)
         {
@@ -192,16 +178,20 @@ internal static class WebApiProjectEndpoints
             diagnostics["exception_message"] = ex.Message;
             diagnostics["stack_trace"] = ex.StackTrace;
 
-            logger.LogError(ex, "Unexpected error during Document Tools API health check");
-
-            return TypedResults.Ok(new
-            {
-                status = "unhealthy",
-                service = "Document Tools API",
-                error = errorMessage,
-                diagnostics = diagnostics
-            });
+            logger.LogError(ex, "Unexpected error during {Service} health check", DocumentToolsServiceName);
+            return CreateUnhealthyResponse(errorMessage, diagnostics);
         }
+    }
+
+    private static IResult CreateUnhealthyResponse(string errorMessage, Dictionary<string, object> diagnostics)
+    {
+        return TypedResults.Ok(new
+        {
+            status = "unhealthy",
+            service = DocumentToolsServiceName,
+            error = errorMessage,
+            diagnostics = diagnostics
+        });
     }
 
     private static async Task<IResult> OnDeleteProjectWorkflowAsync(
@@ -239,29 +229,26 @@ internal static class WebApiProjectEndpoints
     private static async Task<IResult> OnAnalyzeProjectFileAsync(
         HttpContext context,
         string projectName,
-        string fileName,
         [FromServices] ProjectService projectService,
         [FromServices] IConfiguration configuration,
         [FromServices] ILogger<WebApplication> logger,
-        [FromServices] BlobServiceClient blobServiceClient,
+        [FromServices] IHttpClientFactory httpClientFactory,
         CancellationToken cancellationToken)
     {
         try
         {
-            fileName = Uri.UnescapeDataString(fileName);
-            
             logger.LogInformation("Analyzing project: {ProjectName}", projectName);
 
             var userInfo = await context.GetUserInfoAsync();
             
             // Get the document tools API endpoint and key from configuration
-            var documentToolsEndpoint = configuration["DocumentToolsAPIEndpoint"];
-            var documentToolsApiKey = configuration["DocumentToolsAPIKey"];
+            var documentToolsEndpoint = configuration[DocumentToolsEndpointKey];
+            var documentToolsApiKey = configuration[DocumentToolsApiKeyKey];
             
             if (string.IsNullOrEmpty(documentToolsEndpoint))
             {
-                logger.LogError("Document Tools API endpoint or key not configured");
-                return Results.Problem("Document Tools API not configured");
+                logger.LogError("{Service} endpoint not configured", DocumentToolsServiceName);
+                return Results.Problem($"{DocumentToolsServiceName} not configured");
             }
 
             // Get all input files for the project
@@ -274,33 +261,9 @@ internal static class WebApiProjectEndpoints
             }
 
             // Build file URLs for all input files in the project
-            var storageAccountEndpoint = configuration["AzureStorageAccountEndpoint"];
-            var connectionString = configuration["AzureStorageAccountConnectionString"];
-            
-            // Determine base URL for blob storage
-            string baseUrl;
-            if (!string.IsNullOrEmpty(storageAccountEndpoint))
+            var baseUrl = GetStorageBaseUrl(configuration, logger);
+            if (baseUrl == null)
             {
-                baseUrl = storageAccountEndpoint.TrimEnd('/');
-            }
-            else if (!string.IsNullOrEmpty(connectionString))
-            {
-                // Parse account name from connection string
-                var accountNameMatch = System.Text.RegularExpressions.Regex.Match(connectionString, @"AccountName=([^;]+)");
-                if (accountNameMatch.Success)
-                {
-                    var accountName = accountNameMatch.Groups[1].Value;
-                    baseUrl = $"https://{accountName}.blob.core.windows.net";
-                }
-                else
-                {
-                    logger.LogError("Could not determine storage account URL");
-                    return Results.Problem("Storage account configuration error");
-                }
-            }
-            else
-            {
-                logger.LogError("Storage account configuration not found");
                 return Results.Problem("Storage account not configured");
             }
 
@@ -309,12 +272,15 @@ internal static class WebApiProjectEndpoints
             logger.LogInformation("Analyzing {FileCount} files in project '{ProjectName}'", fileUrls.Count, projectName);
 
             // Call the external document-tools API
-            using var httpClient = new HttpClient();
-            httpClient.DefaultRequestHeaders.Add("X-API-Key", documentToolsApiKey);
+            using var httpClient = httpClientFactory.CreateClient();
+            if (!string.IsNullOrEmpty(documentToolsApiKey))
+            {
+                httpClient.DefaultRequestHeaders.Add("X-API-Key", documentToolsApiKey);
+            }
             
             var requestBody = new
             {
-                message = "Please extract the specification summary and explain the key sections.",
+                message = DefaultAnalysisMessage,
                 project_name = projectName,
                 thread_id = "", // Empty thread_id for new analysis
                 files = fileUrls.ToArray()
@@ -323,8 +289,8 @@ internal static class WebApiProjectEndpoints
             var jsonContent = System.Text.Json.JsonSerializer.Serialize(requestBody);
             using var content = new StringContent(jsonContent, System.Text.Encoding.UTF8, "application/json");
             
-            // Use the spec-extractor endpoint as shown in the sample
-            var response = await httpClient.PostAsync($"{documentToolsEndpoint}/agent/spec-extractor", content, cancellationToken);
+            // Use the spec-extractor endpoint
+            var response = await httpClient.PostAsync($"{documentToolsEndpoint}{SpecExtractorPath}", content, cancellationToken);
 
             if (response.IsSuccessStatusCode)
             {
@@ -351,6 +317,37 @@ internal static class WebApiProjectEndpoints
         {
             logger.LogError(ex, "Error analyzing project: {ProjectName}", projectName);
             return Results.Problem($"Error analyzing project: {ex.Message}");
+        }
+    }
+
+    private static string? GetStorageBaseUrl(IConfiguration configuration, ILogger logger)
+    {
+        var storageAccountEndpoint = configuration[StorageEndpointKey];
+        var connectionString = configuration[StorageConnectionStringKey];
+
+        if (!string.IsNullOrEmpty(storageAccountEndpoint))
+        {
+            return storageAccountEndpoint.TrimEnd('/');
+        }
+        else if (!string.IsNullOrEmpty(connectionString))
+        {
+            // Parse account name from connection string
+            var accountNameMatch = System.Text.RegularExpressions.Regex.Match(connectionString, @"AccountName=([^;]+)");
+            if (accountNameMatch.Success)
+            {
+                var accountName = accountNameMatch.Groups[1].Value;
+                return $"https://{accountName}.blob.core.windows.net";
+            }
+            else
+            {
+                logger.LogError("Could not determine storage account URL");
+                return null;
+            }
+        }
+        else
+        {
+            logger.LogError("Storage account configuration not found");
+            return null;
         }
     }
 
@@ -595,8 +592,6 @@ internal static class WebApiProjectEndpoints
     {
         try
         {
-            fileName = Uri.UnescapeDataString(fileName);
-            
             logger.LogInformation("Deleting file {FileName} from project: {ProjectName}", fileName, projectName);
 
             var userInfo = await context.GetUserInfoAsync();
