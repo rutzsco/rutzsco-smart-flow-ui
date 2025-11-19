@@ -22,6 +22,8 @@ public sealed partial class Projects : IDisposable
     private int _filteredProjectCount = 0;
     private HashSet<string> _deletingFiles = new(); // Track files being deleted
     private HashSet<string> _analyzingFiles = new(); // Track files being analyzed (project-level)
+    private HashSet<string> _editingFileDescriptions = new(); // Track files being edited
+    private Dictionary<string, string> _editingDescriptions = new(); // Track temporary description values during editing
 
     // Store a cancelation token that will be used to cancel if the user disposes of this component.
     private readonly CancellationTokenSource _cancellationTokenSource = new();
@@ -726,6 +728,56 @@ public sealed partial class Projects : IDisposable
             ".txt" => Icons.Material.Filled.TextSnippet,
             _ => Icons.Material.Filled.InsertDriveFile
         };
+    }
+
+    private void StartEditingDescription(ContainerFileInfo file)
+    {
+        _editingFileDescriptions.Add(file.FileName);
+        _editingDescriptions[file.FileName] = file.Description ?? string.Empty;
+        StateHasChanged();
+    }
+
+    private void CancelEditingDescription(string fileName)
+    {
+        _editingFileDescriptions.Remove(fileName);
+        _editingDescriptions.Remove(fileName);
+        StateHasChanged();
+    }
+
+    private async Task SaveFileDescriptionAsync(ContainerFileInfo file)
+    {
+        if (!_editingDescriptions.TryGetValue(file.FileName, out var newDescription))
+            return;
+
+        try
+        {
+            Logger.LogInformation("Saving description for file {FileName}: '{Description}'", file.FileName, newDescription);
+            
+            var success = await Client.UpdateFileDescriptionAsync(_selectedProject, file.FileName, string.IsNullOrWhiteSpace(newDescription) ? null : newDescription);
+            
+            if (success)
+            {
+                // Update the local file object immediately for UI responsiveness
+                file.Description = string.IsNullOrWhiteSpace(newDescription) ? null : newDescription;
+                _editingFileDescriptions.Remove(file.FileName);
+                _editingDescriptions.Remove(file.FileName);
+                
+                SnackBarMessage("File description updated successfully");
+                
+                // Reload files from server to ensure we have the latest persisted data
+                await LoadProjectFilesAsync();
+            }
+            else
+            {
+                SnackBarError("Failed to update file description");
+                Logger.LogWarning("UpdateFileDescriptionAsync returned false for {FileName}", file.FileName);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error updating file description for {FileName}", file.FileName);
+            SnackBarError($"Error updating description: {ex.Message}");
+        }
     }
 }
 

@@ -427,6 +427,24 @@ public sealed class ApiClient(HttpClient httpClient)
         }
     }
 
+    public async Task<bool> UpdateFileDescriptionAsync(string projectName, string fileName, string? description)
+    {
+        try
+        {
+            var encodedFileName = Uri.EscapeDataString(fileName);
+            var request = new { Description = description };
+            var json = System.Text.Json.JsonSerializer.Serialize(request, SerializerOptions.Default);
+            using var content = new StringContent(json, Encoding.UTF8, "application/json");
+            var response = await httpClient.PutAsync($"api/projects/{projectName}/files/description?fileName={encodedFileName}", content);
+            return response.IsSuccessStatusCode;
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Error updating file description: {ex.Message}");
+            return false;
+        }
+    }
+
     // Search Index APIs
     public async Task<List<SearchIndexInfo>> GetSearchIndexesAsync()
     {

@@ -286,7 +286,9 @@ public class ProjectService
             // Filter by project metadata
             if (blobItem.Metadata?.TryGetValue("project", out var project) == true && project == projectName)
             {
-                var fileInfo = new ContainerFileInfo(blobItem.Name);
+                // Get description from metadata if it exists
+                var description = blobItem.Metadata?.TryGetValue("description", out var desc) == true ? desc : null;
+                var fileInfo = new ContainerFileInfo(blobItem.Name, description);
                 files.Add(fileInfo);
             }
         }
@@ -442,6 +444,55 @@ public class ProjectService
         catch
         {
             return (null, string.Empty);
+        }
+    }
+
+    /// <summary>
+    /// Updates the description metadata for a specific file in a project
+    /// </summary>
+    public async Task<bool> UpdateFileDescriptionAsync(string projectName, string fileName, string? description, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var containerClient = _blobServiceClient.GetBlobContainerClient(ProjectContainerName);
+            
+            if (!await containerClient.ExistsAsync(cancellationToken))
+            {
+                return false;
+            }
+
+            var blobClient = containerClient.GetBlobClient(fileName);
+            
+            if (!await blobClient.ExistsAsync(cancellationToken))
+            {
+                return false;
+            }
+
+            // Verify the blob belongs to this project
+            var properties = await blobClient.GetPropertiesAsync(cancellationToken: cancellationToken);
+            if (properties.Value.Metadata?.TryGetValue("project", out var project) != true || project != projectName)
+            {
+                return false;
+            }
+
+            // Get current metadata and update description
+            var metadata = new Dictionary<string, string>(properties.Value.Metadata);
+            
+            if (!string.IsNullOrWhiteSpace(description))
+            {
+                metadata["description"] = description;
+            }
+            else
+            {
+                metadata.Remove("description");
+            }
+
+            await blobClient.SetMetadataAsync(metadata, cancellationToken: cancellationToken);
+            return true;
+        }
+        catch
+        {
+            return false;
         }
     }
 }

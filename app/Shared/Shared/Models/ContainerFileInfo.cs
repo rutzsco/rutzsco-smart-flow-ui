@@ -13,6 +13,11 @@ public class ContainerFileInfo
     public string FileName { get; set; } = string.Empty;
 
     /// <summary>
+    /// Optional description of the file
+    /// </summary>
+    public string? Description { get; set; }
+
+    /// <summary>
     /// Collection of processing files associated with the main file from the extract container
     /// </summary>
     public List<string> ProcessingFiles { get; set; } = new();
@@ -21,14 +26,16 @@ public class ContainerFileInfo
     {
     }
 
-    public ContainerFileInfo(string fileName)
+    public ContainerFileInfo(string fileName, string? description = null)
     {
         FileName = fileName;
+        Description = description;
     }
 
-    public ContainerFileInfo(string fileName, List<string> processingFiles)
+    public ContainerFileInfo(string fileName, string? description, List<string> processingFiles)
     {
         FileName = fileName;
+        Description = description;
         ProcessingFiles = processingFiles;
     }
 }

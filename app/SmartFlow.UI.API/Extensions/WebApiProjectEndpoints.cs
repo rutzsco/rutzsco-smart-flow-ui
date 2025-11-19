@@ -48,6 +48,9 @@ internal static class WebApiProjectEndpoints
         // Delete a file from a project
         api.MapDelete("{projectName}/files/{*fileName}", OnDeleteProjectFileAsync);
 
+        // Update file description (using query parameter for description)
+        api.MapPut("{projectName}/files/description", OnUpdateFileDescriptionAsync);
+
         // Analyze a file in a project
         api.MapPost("{projectName}/analyze", OnAnalyzeProjectFileAsync);
 
@@ -233,6 +236,7 @@ internal static class WebApiProjectEndpoints
         [FromServices] IConfiguration configuration,
         [FromServices] ILogger<WebApplication> logger,
         [FromServices] IHttpClientFactory httpClientFactory,
+        [FromServices] BlobServiceClient blobServiceClient,
         CancellationToken cancellationToken)
     {
         try
@@ -267,9 +271,34 @@ internal static class WebApiProjectEndpoints
                 return Results.Problem("Storage account not configured");
             }
 
-            var fileUrls = projectFiles.Select(f => $"{baseUrl}/{ProjectContainerName}/{f.FileName}").ToList();
+            // Get blob container client to read metadata
+            var containerClient = blobServiceClient.GetBlobContainerClient(ProjectContainerName);
+            
+            // Create file objects with url, filename, and description from metadata
+            var filesList = new List<object>();
+            foreach (var file in projectFiles)
+            {
+                var blobClient = containerClient.GetBlobClient(file.FileName);
+                var properties = await blobClient.GetPropertiesAsync(cancellationToken: cancellationToken);
+                
+                // Try to get description from metadata, otherwise leave it empty
+                var description = string.Empty;
+                if (properties.Value.Metadata?.TryGetValue("description", out var desc) == true && !string.IsNullOrWhiteSpace(desc))
+                {
+                    description = desc;
+                }
+                
+                filesList.Add(new
+                {
+                    url = $"{baseUrl}/{ProjectContainerName}/{file.FileName}",
+                    filename = Path.GetFileName(file.FileName),
+                    description = description
+                });
+            }
+            
+            var files = filesList.ToArray();
 
-            logger.LogInformation("Analyzing {FileCount} files in project '{ProjectName}'", fileUrls.Count, projectName);
+            logger.LogInformation("Analyzing {FileCount} files in project '{ProjectName}'", files.Length, projectName);
 
             // Call the external document-tools API
             using var httpClient = httpClientFactory.CreateClient();
@@ -282,8 +311,7 @@ internal static class WebApiProjectEndpoints
             {
                 message = DefaultAnalysisMessage,
                 project_name = projectName,
-                thread_id = "", // Empty thread_id for new analysis
-                files = fileUrls.ToArray()
+                files = files
             };
             
             var jsonContent = System.Text.Json.JsonSerializer.Serialize(requestBody);
@@ -295,13 +323,13 @@ internal static class WebApiProjectEndpoints
             if (response.IsSuccessStatusCode)
             {
                 var responseContent = await response.Content.ReadAsStringAsync(cancellationToken);
-                logger.LogInformation("Successfully triggered analysis for {FileCount} files in project '{ProjectName}'", fileUrls.Count, projectName);
+                logger.LogInformation("Successfully triggered analysis for {FileCount} files in project '{ProjectName}'", files.Length, projectName);
                 
                 return TypedResults.Ok(new 
                 { 
                     success = true, 
-                    message = $"Analysis started for {fileUrls.Count} file(s) in project '{projectName}'",
-                    files = fileUrls,
+                    message = $"Analysis started for {files.Length} file(s) in project '{projectName}'",
+                    files = files,
                     response = responseContent
                 });
             }
@@ -684,4 +712,50 @@ internal static class WebApiProjectEndpoints
             return Results.Problem("Error downloading file from project");
         }
     }
+
+    private static async Task<IResult> OnUpdateFileDescriptionAsync(
+        HttpContext context,
+        string projectName,
+        [FromServices] ProjectService projectService,
+        [FromServices] ILogger<WebApplication> logger,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            // Read fileName from query parameter
+            if (!context.Request.Query.TryGetValue("fileName", out var fileNameValue) || string.IsNullOrEmpty(fileNameValue))
+            {
+                return Results.BadRequest(new { success = false, message = "fileName query parameter is required" });
+            }
+            
+            var fileName = Uri.UnescapeDataString(fileNameValue.ToString());
+            
+            // Read description from request body
+            var requestBody = await new StreamReader(context.Request.Body).ReadToEndAsync(cancellationToken);
+            var request = System.Text.Json.JsonSerializer.Deserialize<UpdateFileDescriptionRequest>(requestBody);
+            
+            logger.LogInformation("Updating description for file {FileName} in project: {ProjectName}", fileName, projectName);
+
+            var userInfo = await context.GetUserInfoAsync();
+            var success = await projectService.UpdateFileDescriptionAsync(projectName, fileName, request?.Description, cancellationToken);
+
+            if (success)
+            {
+                logger.LogInformation("Successfully updated description for file '{FileName}' in project '{ProjectName}'", fileName, projectName);
+                return TypedResults.Ok(new { success = true, message = $"File description updated successfully" });
+            }
+            else
+            {
+                logger.LogWarning("Failed to update description for file '{FileName}' in project '{ProjectName}'", fileName, projectName);
+                return Results.NotFound(new { success = false, message = $"File '{fileName}' not found" });
+            }
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error updating description for file in project: {ProjectName}", projectName);
+            return Results.Problem("Error updating file description");
+        }
+    }
 }
+
+public record UpdateFileDescriptionRequest(string? Description);
