@@ -130,6 +130,7 @@
                          MaxIndividualFileSize="MaxIndividualFileSize"
                          SelectedFiles="_fileUploads"
                          IsUploading="_isUploadingDocuments"
+                         @bind-Description="_fileDescription"
                          OnClose="@(() => _showUploadSection = false)"
                          OnUpload="SubmitFilesForUploadAsync" />
     }

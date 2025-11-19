@@ -10,6 +10,13 @@
                        Title="Close upload section" />
     </MudStack>
     
+    <MudTextField @bind-Value="Description"
+                  Label="Description (Optional)"
+                  Variant="Variant.Outlined"
+                  Lines="2"
+                  Class="mb-3"
+                  HelperText="Provide a description for the uploaded file(s)" />
+    
     <MudFileUpload T="IReadOnlyList<IBrowserFile>" 
                    Accept=".pdf,.png,.jpg,.jpeg" 
                    MaximumFileCount="10" 
@@ -93,6 +100,9 @@
     public bool IsUploading { get; set; }
 
     [Parameter]
+    public string Description { get; set; } = string.Empty;
+
+    [Parameter]
     public EventCallback OnClose { get; set; }
 
     [Parameter]
@@ -120,6 +130,7 @@
     private void OnClearAll()
     {
         SelectedFiles.Clear();
+        Description = string.Empty;
         StateHasChanged();
     }
 }

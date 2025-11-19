@@ -392,6 +392,13 @@ public sealed partial class Projects : IDisposable
         try
         {
             var metadata = new Dictionary<string, string>();
+            
+            // Add description to metadata if provided
+            if (!string.IsNullOrWhiteSpace(_fileDescription))
+            {
+                metadata["description"] = _fileDescription;
+            }
+            
             var result = await Client.UploadFilesToProjectAsync(
                 _fileUploads.ToArray(), 
                 MaxIndividualFileSize, 
@@ -404,6 +411,7 @@ public sealed partial class Projects : IDisposable
             {
                 SnackBarMessage($"Uploaded {result.UploadedFiles.Length} document(s) to '{_selectedProject}'");
                 _fileUploads.Clear();
+                _fileDescription = string.Empty; // Clear description after successful upload
                 _showUploadSection = false; // Hide upload section after successful upload
             }
             else
@@ -438,6 +446,7 @@ public sealed partial class Projects : IDisposable
     }
 
     private IList<IBrowserFile> _fileUploads = new List<IBrowserFile>();
+    private string _fileDescription = string.Empty;
 
     private async Task AnalyzeProjectFileAsync(string fileName)
     {
