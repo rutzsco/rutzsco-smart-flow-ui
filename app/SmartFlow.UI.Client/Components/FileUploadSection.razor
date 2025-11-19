@@ -10,7 +10,8 @@
                        Title="Close upload section" />
     </MudStack>
     
-    <MudTextField @bind-Value="Description"
+    <MudTextField Value="@Description"
+                  ValueChanged="@(async (string value) => { Description = value; await DescriptionChanged.InvokeAsync(value); })"
                   Label="Description (Optional)"
                   Variant="Variant.Outlined"
                   Lines="2"
@@ -103,6 +104,9 @@
     public string Description { get; set; } = string.Empty;
 
     [Parameter]
+    public EventCallback<string> DescriptionChanged { get; set; }
+
+    [Parameter]
     public EventCallback OnClose { get; set; }
 
     [Parameter]
@@ -131,6 +135,7 @@
     {
         SelectedFiles.Clear();
         Description = string.Empty;
+        DescriptionChanged.InvokeAsync(Description);
         StateHasChanged();
     }
 }
