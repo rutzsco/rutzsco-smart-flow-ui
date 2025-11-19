@@ -716,6 +716,7 @@ internal static class WebApiProjectEndpoints
     private static async Task<IResult> OnUpdateFileDescriptionAsync(
         HttpContext context,
         string projectName,
+        [FromBody] UpdateFileDescriptionRequest request,
         [FromServices] ProjectService projectService,
         [FromServices] ILogger<WebApplication> logger,
         CancellationToken cancellationToken)
@@ -725,16 +726,14 @@ internal static class WebApiProjectEndpoints
             // Read fileName from query parameter
             if (!context.Request.Query.TryGetValue("fileName", out var fileNameValue) || string.IsNullOrEmpty(fileNameValue))
             {
+                logger.LogWarning("UpdateFileDescription called without fileName parameter");
                 return Results.BadRequest(new { success = false, message = "fileName query parameter is required" });
             }
             
             var fileName = Uri.UnescapeDataString(fileNameValue.ToString());
             
-            // Read description from request body
-            var requestBody = await new StreamReader(context.Request.Body).ReadToEndAsync(cancellationToken);
-            var request = System.Text.Json.JsonSerializer.Deserialize<UpdateFileDescriptionRequest>(requestBody);
-            
-            logger.LogInformation("Updating description for file {FileName} in project: {ProjectName}", fileName, projectName);
+            logger.LogInformation("Updating description for file '{FileName}' in project '{ProjectName}' to '{Description}'", 
+                fileName, projectName, request?.Description ?? "(null)");
 
             var userInfo = await context.GetUserInfoAsync();
             var success = await projectService.UpdateFileDescriptionAsync(projectName, fileName, request?.Description, cancellationToken);
