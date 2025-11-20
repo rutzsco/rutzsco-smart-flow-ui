@@ -22,10 +22,6 @@
                         <div style="width: 40px;"></div>
                     }
                     <MudText Typo="Typo.body2" Style="@GetSelectedStyle(folder)">@folder.Name</MudText>
-                    @if (folder.FileCount > 0)
-                    {
-                        <MudChip T="string" Size="Size.Small" Color="Color.Info" Variant="Variant.Text">@folder.FileCount</MudChip>
-                    }
                     @if (IsSelected(folder) && ShowFolderActions)
                     {
                         <MudIconButton Icon="@Icons.Material.Filled.Upload" 
@@ -34,12 +30,6 @@
                                       OnClick="@(() => OnUploadDocuments.InvokeAsync(folder))"
                                       OnClick:stopPropagation="true"
                                       Title="Upload documents" />
-                        <MudIconButton Icon="@Icons.Material.Filled.Delete" 
-                                      Color="Color.Error"
-                                      Size="Size.Small" 
-                                      OnClick="@(() => OnDeleteFolder.InvokeAsync(folder))"
-                                      OnClick:stopPropagation="true"
-                                      Title="Delete folder" />
                     }
                 </MudStack>
             </MudListItem>

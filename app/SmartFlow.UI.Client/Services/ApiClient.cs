@@ -931,4 +931,19 @@ public sealed class ApiClient(HttpClient httpClient)
             return null;
         }
     }
+
+    public async Task<MetadataConfiguration?> GetMetadataConfigurationAsync()
+    {
+        try
+        {
+            var response = await httpClient.GetAsync("api/collections/metadata-configuration");
+            response.EnsureSuccessStatusCode();
+            return await response.Content.ReadFromJsonAsync<MetadataConfiguration>();
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Error fetching metadata configuration: {ex.Message}");
+            return null;
+        }
+    }
 }

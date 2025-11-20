@@ -236,10 +236,11 @@
 
         @if (_showUploadSection)
         {
-            <FileUploadSection TargetName="@_selectedCollection"
+            <FileUploadSection TargetName="@GetUploadTargetName()"
                              MaxIndividualFileSize="MaxIndividualFileSize"
                              SelectedFiles="_fileUploads"
                              IsUploading="_isUploadingDocuments"
+                             FolderPath="@_currentFolderPath"
                              OnClose="@(() => _showUploadSection = false)"
                              OnUpload="SubmitFilesForUploadAsync" />
         }
@@ -289,11 +290,12 @@
                         </MudText>
                     </CardHeaderContent>
                     <CardHeaderActions>
-                        <MudTooltip Text="Create new collection">
-                            <MudIconButton Icon="@Icons.Material.Filled.Add" 
+                        <MudTooltip Text="Create new subfolder">
+                            <MudIconButton Icon="@Icons.Material.Filled.CreateNewFolder" 
                                           Color="Color.Primary" 
                                           Size="Size.Small"
-                                          OnClick="@ShowCreateCollectionForm" />
+                                          OnClick="@(() => ShowCreateFolderDialogAsync(_selectedFolder))"
+                                          Disabled="@(string.IsNullOrEmpty(_selectedCollection))" />
                         </MudTooltip>
                     </CardHeaderActions>
                 </MudCardHeader>
@@ -321,7 +323,7 @@
         <MudItem xs="12" md="9">
             <MudCard Elevation="4">
                 <MudCardContent>
-                    <MudTable Items="@_collectionFiles" 
+                    <MudTable Items="@GetFilteredFiles()" 
                               Dense="true" 
                               Hover="true" 
                               Bordered="true" 
@@ -378,19 +380,19 @@
                                     }
                                     else
                                     {
+                                        <MudTooltip Text="Index document">
+                                            <MudIconButton Icon="@Icons.Material.Filled.CloudSync"
+                                                           Color="Color.Primary"
+                                                           Size="Size.Small"
+                                                           OnClick="@(async () => await ProcessDocumentLayoutAsync(context.FileName))"
+                                                           Title="Index Document" />
+                                        </MudTooltip>
                                         <MudTooltip Text="Edit metadata">
                                             <MudIconButton Icon="@Icons.Material.Filled.Edit"
                                                            Color="Color.Info"
                                                            Size="Size.Small"
                                                            OnClick="@(async () => await ShowEditFileMetadataDialogAsync(context))"
                                                            Title="Edit Metadata" />
-                                        </MudTooltip>
-                                        <MudTooltip Text="Delete file">
-                                            <MudIconButton Icon="@Icons.Material.Filled.Delete"
-                                                           Color="Color.Error"
-                                                           Size="Size.Small"
-                                                           OnClick="@(async () => await DeleteFileAsync(context.FileName))"
-                                                           Title="Delete File" />
                                         </MudTooltip>
                                     }
                                 </MudStack>

@@ -142,6 +142,21 @@ public sealed partial class Collections : IDisposable
         }
     }
 
+    private IEnumerable<ContainerFileInfo> GetFilteredFiles()
+    {
+        if (_collectionFiles == null || !_collectionFiles.Any())
+            return Enumerable.Empty<ContainerFileInfo>();
+
+        // If no folder is selected or we're at the collection root, show all files at root level (no folder path)
+        if (string.IsNullOrEmpty(_currentFolderPath) || _currentFolderPath == _selectedCollection)
+        {
+            return _collectionFiles.Where(f => string.IsNullOrEmpty(f.FolderPath));
+        }
+
+        // Show only files in the selected folder (not in subfolders)
+        return _collectionFiles.Where(f => f.FolderPath == _currentFolderPath);
+    }
+
     private void ShowCreateCollectionForm()
     {
         _newCollectionName = "";
@@ -438,9 +453,13 @@ public sealed partial class Collections : IDisposable
 
             if (result.IsSuccessful)
             {
-                SnackBarMessage($"Uploaded {result.UploadedFiles.Length} document(s) to '{_selectedCollection}'");
+                var uploadLocation = !string.IsNullOrEmpty(targetFolder) ? $"'{_selectedCollection}/{targetFolder}'" : $"'{_selectedCollection}'";
+                SnackBarMessage($"Uploaded {result.UploadedFiles.Length} document(s) to {uploadLocation}");
                 _fileUploads.Clear();
                 _uploadFolderPath = ""; // Clear the folder path input
+
+                // Delay closing to prevent JSInterop errors with file reading
+                await Task.Delay(100);
                 _showUploadSection = false; // Hide upload section after successful upload
             }
             else
@@ -651,6 +670,15 @@ public sealed partial class Collections : IDisposable
     private FolderNode? _selectedFolder = null;
     private string _currentFolderPath = "";
     private string _uploadFolderPath = "";
+
+    private string GetUploadTargetName()
+    {
+        if (!string.IsNullOrEmpty(_currentFolderPath) && _currentFolderPath != _selectedCollection)
+        {
+            return $"{_selectedCollection}/{_currentFolderPath}";
+        }
+        return _selectedCollection;
+    }
     private bool _showFolderView = true;
 
     private async Task LoadFolderStructureAsync()
@@ -662,11 +690,27 @@ public sealed partial class Collections : IDisposable
 
             foreach (var collection in _collections)
             {
-                var collectionNode = new FolderNode(collection.Name, collection.Name);
+                // Get the folder structure from the API (includes empty folders)
+                var collectionNode = await Client.GetFolderStructureAsync(collection.Name);
+
+                // Set collection properties
+                collectionNode.Name = collection.Name;
+                collectionNode.Path = collection.Name;
+                collectionNode.IsExpanded = true;  // Expand collections by default to show all folders
+
+                Logger.LogInformation($"Collection: {collection.Name}, Children: {collectionNode.Children.Count}");
+
+                // Recursively expand all folders in the tree
+                ExpandAllFolders(collectionNode);
+
+                LogTreeStructure(collectionNode, 1);
+
                 rootNode.Children.Add(collectionNode);
             }
 
             _folderStructure = rootNode;
+            Logger.LogInformation($"=== COMPLETE TREE STRUCTURE ===");
+            Logger.LogInformation($"Root has {rootNode.Children.Count} collections");
             StateHasChanged();
         }
         catch (Exception ex)
@@ -677,16 +721,35 @@ public sealed partial class Collections : IDisposable
         }
     }
 
+    private void ExpandAllFolders(FolderNode node)
+    {
+        node.IsExpanded = true;
+        foreach (var child in node.Children)
+        {
+            ExpandAllFolders(child);
+        }
+    }
+
+    private void LogTreeStructure(FolderNode node, int level)
+    {
+        var indent = new string(' ', level * 2);
+        Logger.LogInformation($"{indent}- {node.Name} (Children: {node.Children.Count}, IsExpanded: {node.IsExpanded}, Files: {node.FileCount})");
+        foreach (var child in node.Children)
+        {
+            LogTreeStructure(child, level + 1);
+        }
+    }
+
     private async Task OnFolderSelectedAsync(FolderNode folder)
     {
         _selectedFolder = folder;
-        _currentFolderPath = folder.Path;
 
         // Check if this is a root-level folder (collection/container)
         // Root folders have paths that don't contain slashes
         if (!folder.Path.Contains('/') && !string.IsNullOrEmpty(folder.Path))
         {
             // This is a collection - select it
+            _currentFolderPath = folder.Path;
             await SelectCollectionAsync(folder.Path);
         }
         else
@@ -694,6 +757,14 @@ public sealed partial class Collections : IDisposable
             // This is a subfolder within a collection
             // Extract the collection name (first part of path before /)
             var collectionName = folder.Path.Split('/')[0];
+
+            // Remove the collection name prefix to get the actual folder path
+            // E.g., "collection1/folder1/subfolder" -> "folder1/subfolder"
+            var folderPath = folder.Path.Substring(collectionName.Length).TrimStart('/');
+            _currentFolderPath = folderPath;
+
+            Logger.LogInformation($"Selected folder: {folder.Path}, Extracted folder path: {folderPath}");
+
             if (_selectedCollection != collectionName)
             {
                 _selectedCollection = collectionName;
@@ -705,29 +776,52 @@ public sealed partial class Collections : IDisposable
 
     private async Task ShowCreateFolderDialogAsync(FolderNode? parentFolder = null)
     {
-        var parameters = new DialogParameters
+        var parameters = new DialogParameters<TextInputDialog>
         {
-            { "ContentText", parentFolder != null
+            { x => x.ContentText, parentFolder != null
                 ? $"Enter name for new subfolder in '{parentFolder.Name}'"
                 : "Enter name for new folder" },
-            { "ButtonText", "Create" },
-            { "Color", Color.Primary }
+            { x => x.Label, "Folder Name" },
+            { x => x.ButtonText, "CREATE" },
+            { x => x.CancelText, "CANCEL" },
+            { x => x.ButtonColor, Color.Primary },
+            { x => x.HelperText, "Use any characters except ending with . / \\ or consecutive dots. Max 1,024 characters." },
+            { x => x.MaxLength, 1024 },
+            { x => x.ValidationFunc, new Func<string, string?>(ValidateFolderName) }
         };
 
-        // You'll need to create a simple text input dialog
-        var result = await DialogService.ShowMessageBox(
-            "Create Folder",
-            parentFolder != null
-                ? $"Enter name for new subfolder in '{parentFolder.Name}'"
-                : "Enter name for new folder",
-            yesText: "Create",
-            cancelText: "Cancel");
+        var options = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Small, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<TextInputDialog>("Create Folder", parameters, options);
+        var result = await dialog.Result;
 
-        if (result == true)
+        if (!result.Canceled && result.Data is string folderName && !string.IsNullOrWhiteSpace(folderName))
         {
-            // This is simplified - you'd want to get the actual folder name from a proper input dialog
-            await CreateFolderAsync("new-folder", parentFolder);
+            await CreateFolderAsync(folderName, parentFolder);
         }
+    }
+
+    private string? ValidateFolderName(string name)
+    {
+        if (string.IsNullOrWhiteSpace(name))
+            return "Folder name is required";
+
+        if (name.Length < 1 || name.Length > 1024)
+            return "Folder name must be between 1 and 1,024 characters";
+
+        // Check for invalid endings
+        if (name.EndsWith('.') || name.EndsWith('/') || name.EndsWith('\\'))
+            return "Folder name cannot end with . / or \\";
+
+        // Check for consecutive dots
+        if (name.Contains(".."))
+            return "Folder name cannot contain consecutive dots";
+
+        // Check for path segments ending with dot
+        var segments = name.Split(new[] { '/', '\\' }, StringSplitOptions.None);
+        if (segments.Any(s => s.EndsWith('.') && s != "."))
+            return "Path segments cannot end with a dot";
+
+        return null;
     }
 
     private async Task CreateFolderAsync(string folderName, FolderNode? parentFolder = null)
@@ -735,9 +829,23 @@ public sealed partial class Collections : IDisposable
         if (string.IsNullOrEmpty(_selectedCollection) || string.IsNullOrWhiteSpace(folderName))
             return;
 
-        var folderPath = parentFolder != null
-            ? $"{parentFolder.Path}/{folderName}".TrimStart('/')
-            : folderName;
+        string folderPath;
+
+        if (parentFolder != null && parentFolder.Path != _selectedCollection)
+        {
+            // Remove collection name from parent path to get the actual folder path
+            var parentPath = parentFolder.Path.StartsWith(_selectedCollection + "/")
+                ? parentFolder.Path.Substring(_selectedCollection.Length + 1)
+                : parentFolder.Path;
+            folderPath = $"{parentPath}/{folderName}";
+        }
+        else
+        {
+            // Creating at root level of collection
+            folderPath = folderName;
+        }
+
+        Logger.LogInformation($"Creating folder: Collection='{_selectedCollection}', FolderPath='{folderPath}'");
 
         try
         {
@@ -745,7 +853,7 @@ public sealed partial class Collections : IDisposable
 
             if (success)
             {
-                SnackBarMessage($"Folder '{folderName}' created successfully");
+                SnackBarMessage($"Folder '{folderPath}' created in '{_selectedCollection}'");
                 await LoadFolderStructureAsync();
             }
             else
@@ -822,7 +930,14 @@ public sealed partial class Collections : IDisposable
 
         try
         {
-            var success = await Client.DeleteFolderAsync(_selectedCollection, folder.Path);
+            // Extract folder path without collection name prefix
+            var folderPath = folder.Path.StartsWith(_selectedCollection + "/")
+                ? folder.Path.Substring(_selectedCollection.Length + 1)
+                : folder.Path;
+
+            Logger.LogInformation($"Deleting folder: Collection='{_selectedCollection}', FolderPath='{folderPath}'");
+
+            var success = await Client.DeleteFolderAsync(_selectedCollection, folderPath);
 
             if (success)
             {
