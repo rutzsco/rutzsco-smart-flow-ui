@@ -9,7 +9,7 @@ public class ProjectService
     private const string ProjectContainerName = "project-files";
     private const string ProjectExtractContainerName = "project-files-extract";
     private const string ProjectMetadataContainerName = "project-metadata";
-    
+
     private readonly AzureBlobStorageService _blobStorageService;
     private readonly BlobServiceClient _blobServiceClient;
 
@@ -38,7 +38,7 @@ public class ProjectService
             var projectName = Path.GetFileNameWithoutExtension(blobItem.Name);
             var description = blobItem.Metadata?.TryGetValue("description", out var desc) == true ? desc : null;
             var type = blobItem.Metadata?.TryGetValue("type", out var typeValue) == true ? typeValue : null;
-            
+
             projects.Add(new CollectionInfo(projectName, description, type));
         }
 
@@ -73,7 +73,7 @@ public class ProjectService
 
             var projectInfo = new { name = projectName, description, type, createdDate = DateTime.UtcNow };
             var json = System.Text.Json.JsonSerializer.Serialize(projectInfo);
-            
+
             using var stream = new MemoryStream(System.Text.Encoding.UTF8.GetBytes(json));
             await blobClient.UploadAsync(stream, new BlobHttpHeaders { ContentType = "application/json" }, metadata, cancellationToken: cancellationToken);
 
@@ -173,7 +173,7 @@ public class ProjectService
             // Update blob content
             var projectInfo = new { name = projectName, description, type, updatedDate = DateTime.UtcNow };
             var json = System.Text.Json.JsonSerializer.Serialize(projectInfo);
-            
+
             using var stream = new MemoryStream(System.Text.Encoding.UTF8.GetBytes(json));
             await blobClient.UploadAsync(stream, overwrite: true, cancellationToken: cancellationToken);
 
@@ -286,9 +286,47 @@ public class ProjectService
             // Filter by project metadata
             if (blobItem.Metadata?.TryGetValue("project", out var project) == true && project == projectName)
             {
-                // Get description from metadata if it exists
-                var description = blobItem.Metadata?.TryGetValue("description", out var desc) == true ? desc : null;
-                var fileInfo = new ContainerFileInfo(blobItem.Name, description);
+                // Extract metadata from blob properties
+                FileMetadata? metadata = null;
+                if (blobItem.Metadata != null && blobItem.Metadata.Count > 0)
+                {
+                    metadata = new FileMetadata
+                    {
+                        FileName = blobItem.Metadata.TryGetValue("filename", out var fn) ? fn : Path.GetFileName(blobItem.Name),
+                        BlobPath = blobItem.Metadata.TryGetValue("blobpath", out var bp) ? bp : blobItem.Name,
+                        EquipmentCategory = blobItem.Metadata.TryGetValue("equipmentcategory", out var ec) ? ec : "",
+                        EquipmentSubcategory = blobItem.Metadata.TryGetValue("equipmentsubcategory", out var es) ? es : "",
+                        EquipmentPart = blobItem.Metadata.TryGetValue("equipmentpart", out var ep) ? ep : "",
+                        EquipmentPartSubcategory = blobItem.Metadata.TryGetValue("equipmentpartsubcategory", out var eps) ? eps : "",
+                        Product = blobItem.Metadata.TryGetValue("product", out var p) ? p : "",
+                        Manufacturer = blobItem.Metadata.TryGetValue("manufacturer", out var m) ? m : "",
+                        DocumentType = blobItem.Metadata.TryGetValue("documenttype", out var dt) ? dt : "",
+                        IsRequiredForCde = blobItem.Metadata.TryGetValue("isrequiredforcde", out var irc) ? irc : "No",
+                        AddedToIndex = blobItem.Metadata.TryGetValue("addedtoindex", out var ati) ? ati : "No"
+                    };
+                }
+
+                var fileInfo = new ContainerFileInfo(blobItem.Name)
+                {
+                    Metadata = metadata
+                };
+
+                // Check for processing files
+                if (extractContainerExists)
+                {
+                    var baseNameWithoutExtension = Path.GetFileNameWithoutExtension(blobItem.Name);
+
+                    await foreach (var extractBlobItem in extractContainerClient.GetBlobsAsync(traits: BlobTraits.Metadata, cancellationToken: cancellationToken))
+                    {
+                        if (extractBlobItem.Metadata?.TryGetValue("project", out var extractProject) == true &&
+                            extractProject == projectName &&
+                            extractBlobItem.Name.StartsWith(baseNameWithoutExtension, StringComparison.OrdinalIgnoreCase))
+                        {
+                            fileInfo.ProcessingFiles.Add(extractBlobItem.Name);
+                        }
+                    }
+                }
+
                 files.Add(fileInfo);
             }
         }
@@ -307,16 +345,17 @@ public class ProjectService
     /// Uploads files to a project with project metadata tag
     /// </summary>
     public async Task<UploadDocumentsResponse> UploadFilesToProjectAsync(
-        UserInformation userInfo, 
-        IFormFileCollection files, 
+        UserInformation userInfo,
+        IFormFileCollection files,
         string projectName,
         Dictionary<string, string>? metadata = null,
+        Dictionary<string, string>? filePathMap = null,
         CancellationToken cancellationToken = default)
     {
         var fileMetadata = metadata ?? new Dictionary<string, string>();
         fileMetadata["project"] = projectName;
-        
-        var response = await _blobStorageService.UploadFilesAsync(userInfo, files, ProjectContainerName, fileMetadata, cancellationToken);
+
+        var response = await _blobStorageService.UploadFilesAsync(userInfo, files, ProjectContainerName, fileMetadata, filePathMap, cancellationToken);
         return response;
     }
 
@@ -328,14 +367,14 @@ public class ProjectService
         try
         {
             var containerClient = _blobServiceClient.GetBlobContainerClient(ProjectContainerName);
-            
+
             if (!await containerClient.ExistsAsync(cancellationToken))
             {
                 return false;
             }
 
             var blobClient = containerClient.GetBlobClient(fileName);
-            
+
             if (!await blobClient.ExistsAsync(cancellationToken))
             {
                 return false;
@@ -363,8 +402,9 @@ public class ProjectService
 
                 await foreach (var extractBlobItem in extractContainerClient.GetBlobsAsync(prefix: projectFolderPrefix, cancellationToken: cancellationToken))
                 {
-                    var processingFileName = Path.GetFileNameWithoutExtension(extractBlobItem.Name);
-                    if (processingFileName.Contains(baseNameWithoutExtension, StringComparison.OrdinalIgnoreCase))
+                    if (extractBlobItem.Metadata?.TryGetValue("project", out var extractProject) == true &&
+                        extractProject == projectName &&
+                        extractBlobItem.Name.StartsWith(baseNameWithoutExtension, StringComparison.OrdinalIgnoreCase))
                     {
                         var extractBlobClient = extractContainerClient.GetBlobClient(extractBlobItem.Name);
                         await extractBlobClient.DeleteIfExistsAsync(cancellationToken: cancellationToken);
@@ -384,8 +424,8 @@ public class ProjectService
     /// Downloads a file from a project
     /// </summary>
     public async Task<(Stream? stream, string contentType)> DownloadFileAsync(
-        string projectName, 
-        string fileName, 
+        string projectName,
+        string fileName,
         bool isProcessingFile = false,
         CancellationToken cancellationToken = default)
     {
@@ -393,7 +433,7 @@ public class ProjectService
         {
             var containerName = isProcessingFile ? ProjectExtractContainerName : ProjectContainerName;
             var containerClient = _blobServiceClient.GetBlobContainerClient(containerName);
-            
+
             if (!await containerClient.ExistsAsync(cancellationToken))
             {
                 return (null, string.Empty);
@@ -401,7 +441,7 @@ public class ProjectService
 
             // For processing files, the fileName already includes the project folder path
             var blobClient = containerClient.GetBlobClient(fileName);
-            
+
             if (!await blobClient.ExistsAsync(cancellationToken))
             {
                 return (null, string.Empty);
@@ -424,9 +464,8 @@ public class ProjectService
             }
 
             var download = await blobClient.DownloadAsync(cancellationToken);
-            var blobProperties = await blobClient.GetPropertiesAsync(cancellationToken: cancellationToken);
-            var contentType = blobProperties.Value.ContentType;
-            
+            var contentType = properties.Value.ContentType;
+
             if (string.IsNullOrEmpty(contentType))
             {
                 contentType = Path.GetExtension(fileName).ToLowerInvariant() switch

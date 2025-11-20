@@ -241,42 +241,17 @@ internal static class WebApiProjectEndpoints
     {
         try
         {
-            logger.LogInformation("Analyzing project: {ProjectName}", projectName);
+            fileName = Uri.UnescapeDataString(fileName);
+
+            logger.LogInformation("Analyzing file {FileName} in project: {ProjectName}", fileName, projectName);
 
             var userInfo = await context.GetUserInfoAsync();
-            
+
             // Get the document tools API endpoint and key from configuration
-            var documentToolsEndpoint = configuration[DocumentToolsEndpointKey];
-            var documentToolsApiKey = configuration[DocumentToolsApiKeyKey];
-            
-            if (string.IsNullOrEmpty(documentToolsEndpoint))
-            {
-                logger.LogError("{Service} endpoint not configured", DocumentToolsServiceName);
-                return Results.Problem($"{DocumentToolsServiceName} not configured");
-            }
+            var documentToolsEndpoint = configuration["DocumentToolsAPIEndpoint"];
+            var documentToolsApiKey = configuration["DocumentToolsAPIKey"];
 
-            // Get all input files for the project
-            var projectFiles = await projectService.GetProjectFilesAsync(projectName, cancellationToken);
-            
-            if (!projectFiles.Any())
-            {
-                logger.LogWarning("No files found in project '{ProjectName}'", projectName);
-                return Results.BadRequest(new { success = false, message = $"No files found in project '{projectName}'" });
-            }
-
-            // Build file URLs for all input files in the project
-            var baseUrl = GetStorageBaseUrl(configuration, logger);
-            if (baseUrl == null)
-            {
-                return Results.Problem("Storage account not configured");
-            }
-
-            // Get blob container client to read metadata
-            var containerClient = blobServiceClient.GetBlobContainerClient(ProjectContainerName);
-            
-            // Create file objects with url, filename, and description from metadata
-            var filesList = new List<object>();
-            foreach (var file in projectFiles)
+            if (string.IsNullOrEmpty(documentToolsEndpoint) || string.IsNullOrEmpty(documentToolsApiKey))
             {
                 var blobClient = containerClient.GetBlobClient(file.FileName);
                 var properties = await blobClient.GetPropertiesAsync(cancellationToken: cancellationToken);
@@ -301,24 +276,20 @@ internal static class WebApiProjectEndpoints
             logger.LogInformation("Analyzing {FileCount} files in project '{ProjectName}'", files.Length, projectName);
 
             // Call the external document-tools API
-            using var httpClient = httpClientFactory.CreateClient();
-            if (!string.IsNullOrEmpty(documentToolsApiKey))
-            {
-                httpClient.DefaultRequestHeaders.Add("X-API-Key", documentToolsApiKey);
-            }
-            
+            using var httpClient = new HttpClient();
+            httpClient.DefaultRequestHeaders.Add("X-API-Key", documentToolsApiKey);
+
             var requestBody = new
             {
                 message = DefaultAnalysisMessage,
                 project_name = projectName,
                 files = files
             };
-            
+
             var jsonContent = System.Text.Json.JsonSerializer.Serialize(requestBody);
             using var content = new StringContent(jsonContent, System.Text.Encoding.UTF8, "application/json");
-            
-            // Use the spec-extractor endpoint
-            var response = await httpClient.PostAsync($"{documentToolsEndpoint}{SpecExtractorPath}", content, cancellationToken);
+
+            var response = await httpClient.PostAsync($"{documentToolsEndpoint}/document-tools/markdown-extraction", content, cancellationToken);
 
             if (response.IsSuccessStatusCode)
             {
@@ -336,9 +307,9 @@ internal static class WebApiProjectEndpoints
             else
             {
                 var errorContent = await response.Content.ReadAsStringAsync(cancellationToken);
-                logger.LogError("Failed to trigger analysis for project '{ProjectName}': {StatusCode} - {Error}", 
-                    projectName, response.StatusCode, errorContent);
-                return Results.Problem($"Failed to start analysis: {response.StatusCode} - {errorContent}");
+                logger.LogError("Failed to trigger analysis for file '{FileName}' in project '{ProjectName}': {StatusCode} - {Error}",
+                    fileName, projectName, response.StatusCode, errorContent);
+                return Results.Problem($"Failed to start analysis: {response.StatusCode}");
             }
         }
         catch (Exception ex)
@@ -388,7 +359,7 @@ internal static class WebApiProjectEndpoints
         try
         {
             logger.LogInformation("Getting projects");
-            
+
             var userInfo = await context.GetUserInfoAsync();
             var projects = await projectService.GetProjectsAsync(cancellationToken);
 
@@ -413,14 +384,14 @@ internal static class WebApiProjectEndpoints
     {
         try
         {
-            logger.LogInformation("Creating project: {ProjectName} with description: {Description}, type: {Type}", 
+            logger.LogInformation("Creating project: {ProjectName} with description: {Description}, type: {Type}",
                 request.Name, request.Description, request.Type);
 
             var userInfo = await context.GetUserInfoAsync();
             var success = await projectService.CreateProjectAsync(
-                request.Name, 
-                request.Description, 
-                request.Type, 
+                request.Name,
+                request.Description,
+                request.Type,
                 cancellationToken);
 
             if (success)
@@ -487,9 +458,9 @@ internal static class WebApiProjectEndpoints
 
             var userInfo = await context.GetUserInfoAsync();
             var success = await projectService.UpdateProjectMetadataAsync(
-                projectName, 
-                request.Description, 
-                request.Type, 
+                projectName,
+                request.Description,
+                request.Type,
                 cancellationToken);
 
             if (success)
@@ -579,7 +550,7 @@ internal static class WebApiProjectEndpoints
             logger.LogInformation("Uploading {FileCount} files to project: {ProjectName}", files.Count, projectName);
 
             var userInfo = await context.GetUserInfoAsync();
-            
+
             // Read optional metadata from headers
             var fileMetadataContent = context.Request.Headers["X-FILE-METADATA"];
             Dictionary<string, string>? fileMetadata = null;
@@ -588,15 +559,24 @@ internal static class WebApiProjectEndpoints
                 fileMetadata = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, string>>(fileMetadataContent);
             }
 
+            // Read file path mapping from headers
+            var filePathMapContent = context.Request.Headers["X-FILE-PATH-MAP"];
+            Dictionary<string, string>? filePathMap = null;
+            if (!string.IsNullOrEmpty(filePathMapContent))
+            {
+                filePathMap = System.Text.Json.JsonSerializer.Deserialize<Dictionary<string, string>>(filePathMapContent);
+            }
+
             // Ensure project tag is set
             fileMetadata ??= new Dictionary<string, string>();
             fileMetadata["project"] = projectName;
 
             var response = await projectService.UploadFilesToProjectAsync(
-                userInfo, 
-                files, 
+                userInfo,
+                files,
                 projectName,
-                fileMetadata, 
+                fileMetadata,
+                filePathMap,
                 cancellationToken);
 
             logger.LogInformation("Upload to project '{ProjectName}' completed: {Response}", projectName, response);
@@ -620,6 +600,8 @@ internal static class WebApiProjectEndpoints
     {
         try
         {
+            fileName = Uri.UnescapeDataString(fileName);
+
             logger.LogInformation("Deleting file {FileName} from project: {ProjectName}", fileName, projectName);
 
             var userInfo = await context.GetUserInfoAsync();
@@ -655,8 +637,8 @@ internal static class WebApiProjectEndpoints
         {
             fileName = Uri.UnescapeDataString(fileName);
             var isProcessingFile = context.Request.Query.ContainsKey("processing");
-            
-            logger.LogInformation("Downloading file {FileName} from project: {ProjectName} (processing: {IsProcessing})", 
+
+            logger.LogInformation("Downloading file {FileName} from project: {ProjectName} (processing: {IsProcessing})",
                 fileName, projectName, isProcessingFile);
 
             var userInfo = await context.GetUserInfoAsync();
@@ -669,7 +651,7 @@ internal static class WebApiProjectEndpoints
 
             var fileNameOnly = Path.GetFileName(fileName);
             var extension = Path.GetExtension(fileName).ToLowerInvariant();
-            
+
             if (string.IsNullOrEmpty(contentType) || contentType == "application/octet-stream")
             {
                 contentType = extension switch
@@ -681,29 +663,29 @@ internal static class WebApiProjectEndpoints
                     _ => "application/octet-stream"
                 };
             }
-            
+
             if (extension == ".pdf")
             {
                 context.Response.Headers["Content-Type"] = "application/pdf";
                 context.Response.Headers["Content-Disposition"] = $"inline; filename=\"{fileNameOnly}\"";
                 context.Response.Headers["Accept-Ranges"] = "bytes";
                 context.Response.Headers["Cache-Control"] = "public, max-age=3600";
-                
+
                 return Results.Stream(stream, contentType: "application/pdf", enableRangeProcessing: true);
             }
-            
+
             var enableRangeProcessing = extension == ".pdf";
             var fileDownloadName = (extension == ".pdf" || extension == ".md" || extension == ".json") ? null : fileNameOnly;
-            
+
             if (fileDownloadName == null)
             {
                 context.Response.Headers["Content-Disposition"] = $"inline; filename=\"{fileNameOnly}\"";
             }
-            
+
             return Results.Stream(
-                stream, 
-                contentType: contentType, 
-                fileDownloadName: fileDownloadName, 
+                stream,
+                contentType: contentType,
+                fileDownloadName: fileDownloadName,
                 enableRangeProcessing: enableRangeProcessing);
         }
         catch (Exception ex)

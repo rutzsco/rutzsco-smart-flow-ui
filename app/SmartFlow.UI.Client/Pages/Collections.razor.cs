@@ -6,7 +6,7 @@ namespace SmartFlow.UI.Client.Pages;
 
 public sealed partial class Collections : IDisposable
 {
-    private const long MaxIndividualFileSize = 1_024 * 1_024 * 10;
+    private const long MaxIndividualFileSize = 1_024 * 1_024 * 500; // 500MB
 
     private MudForm _form = null!;
     private MudForm _createCollectionForm = null!;
@@ -113,7 +113,10 @@ public sealed partial class Collections : IDisposable
             _showCreateCollectionForm = false; // Hide create form when selecting a collection
             _showUploadSection = false; // Hide upload section when switching collections
             _showEditMetadataForm = false; // Hide edit metadata form when switching collections
-            await LoadCollectionFilesAsync();
+            await Task.WhenAll(
+                LoadCollectionFilesAsync(),
+                LoadFolderStructureAsync()
+            );
         }
     }
 
@@ -192,11 +195,11 @@ public sealed partial class Collections : IDisposable
         try
         {
             var success = await Client.CreateCollectionAsync(
-                _newCollectionName, 
+                _newCollectionName,
                 string.IsNullOrWhiteSpace(_newCollectionDescription) ? null : _newCollectionDescription,
                 string.IsNullOrWhiteSpace(_newCollectionType) ? null : _newCollectionType,
                 string.IsNullOrWhiteSpace(_newCollectionIndexName) ? null : _newCollectionIndexName);
-            
+
             if (success)
             {
                 SnackBarMessage($"Collection '{_newCollectionName}' created successfully");
@@ -322,10 +325,10 @@ public sealed partial class Collections : IDisposable
             {
                 SnackBarMessage($"Collection '{_selectedCollection}' metadata updated successfully");
                 _showEditMetadataForm = false;
-                
+
                 // Refresh the collection info
                 _selectedCollectionInfo = await Client.GetCollectionMetadataAsync(_selectedCollection);
-                
+
                 // Update the collection in the list
                 var collectionInList = _collections.FirstOrDefault(c => c.Name == _selectedCollection);
                 if (collectionInList != null && _selectedCollectionInfo != null)
@@ -334,7 +337,7 @@ public sealed partial class Collections : IDisposable
                     collectionInList.Type = _selectedCollectionInfo.Type;
                     collectionInList.IndexName = _selectedCollectionInfo.IndexName;
                 }
-                
+
                 StateHasChanged();
             }
             else
@@ -349,7 +352,7 @@ public sealed partial class Collections : IDisposable
         }
     }
 
-    private bool OnFileFilter(ContainerFileInfo fileInfo) => 
+    private bool OnFileFilter(ContainerFileInfo fileInfo) =>
         string.IsNullOrWhiteSpace(_filter) || fileInfo.FileName.Contains(_filter, StringComparison.OrdinalIgnoreCase);
 
     private async Task RefreshAsync()
@@ -376,10 +379,59 @@ public sealed partial class Collections : IDisposable
         try
         {
             var metadata = new Dictionary<string, string>();
+
+            // Try multiple ways to detect the current folder
+            string? targetFolder = null;
+
+            Logger.LogInformation("[CLIENT] _uploadFolderPath = '{UploadFolderPath}'", _uploadFolderPath ?? "NULL");
+            Logger.LogInformation("[CLIENT] _currentFolderPath = '{CurrentFolderPath}'", _currentFolderPath ?? "NULL");
+            Logger.LogInformation("[CLIENT] _selectedCollection = '{SelectedCollection}'", _selectedCollection ?? "NULL");
+
+            // 1. Check if user manually entered a folder path in the upload form
+            if (!string.IsNullOrEmpty(_uploadFolderPath))
+            {
+                targetFolder = _uploadFolderPath;
+                Logger.LogInformation("[CLIENT] Using manually entered folder path: {FolderPath}", targetFolder);
+            }
+            // 2. Check if there's a folder selected in the tree
+            else if (!string.IsNullOrEmpty(_currentFolderPath))
+            {
+                // If the current folder path equals the selected collection name,
+                // we're at the root of the collection (container), so don't add a folder prefix
+                if (_currentFolderPath == _selectedCollection)
+                {
+                    Logger.LogInformation("[CLIENT] Current folder is collection root, uploading to container root (no subfolder)");
+                    targetFolder = null; // Upload to container root
+                }
+                else
+                {
+                    targetFolder = _currentFolderPath;
+                    Logger.LogInformation("[CLIENT] Using selected folder from tree: {FolderPath}", targetFolder);
+                }
+            }
+            // Note: Do not auto-detect folders from existing files since collections are blob containers
+
+            if (!string.IsNullOrEmpty(targetFolder))
+            {
+                var normalizedFolder = targetFolder.Replace("\\", "/").Trim('/');
+                if (!string.IsNullOrEmpty(normalizedFolder))
+                {
+                    metadata["folderPath"] = normalizedFolder;
+                    Logger.LogInformation("[CLIENT] Uploading to folder: {FolderPath}", normalizedFolder);
+                }
+                else
+                {
+                    Logger.LogInformation("[CLIENT] Folder resolved to root after normalization");
+                }
+            }
+            else
+            {
+                Logger.LogInformation("[CLIENT] No folder detected, uploading to root");
+            }
             var result = await Client.UploadFilesToCollectionAsync(
-                _fileUploads.ToArray(), 
-                MaxIndividualFileSize, 
-                _selectedCollection, 
+                _fileUploads.ToArray(),
+                MaxIndividualFileSize,
+                _selectedCollection,
                 metadata);
 
             Logger.LogInformation("Upload result: {Result}", result);
@@ -388,6 +440,7 @@ public sealed partial class Collections : IDisposable
             {
                 SnackBarMessage($"Uploaded {result.UploadedFiles.Length} document(s) to '{_selectedCollection}'");
                 _fileUploads.Clear();
+                _uploadFolderPath = ""; // Clear the folder path input
                 _showUploadSection = false; // Hide upload section after successful upload
             }
             else
@@ -422,7 +475,7 @@ public sealed partial class Collections : IDisposable
     }
 
     private IList<IBrowserFile> _fileUploads = new List<IBrowserFile>();
-    
+
     private void UploadFiles(IReadOnlyList<IBrowserFile> files)
     {
         foreach (var file in files)
@@ -449,9 +502,9 @@ public sealed partial class Collections : IDisposable
         try
         {
             Logger.LogInformation("Processing document layout for {FileName} in {Collection}", fileName, _selectedCollection);
-            
+
             var success = await Client.ProcessDocumentLayoutAsync(_selectedCollection, fileName);
-            
+
             if (success)
             {
                 SnackBarMessage($"Document '{fileName}' processing started successfully");
@@ -483,11 +536,11 @@ public sealed partial class Collections : IDisposable
         {
             var containerName = isProcessingFile ? $"{_selectedCollection}-extract" : _selectedCollection;
             var fileUrl = await Client.GetFileUrlAsync(containerName, fileName);
-            
+
             if (!string.IsNullOrEmpty(fileUrl))
             {
                 var extension = Path.GetExtension(fileName).ToLowerInvariant();
-                
+
                 if (extension == ".pdf")
                 {
                     var parameters = new DialogParameters<CollectionPdfViewerDialog>
@@ -557,7 +610,7 @@ public sealed partial class Collections : IDisposable
         var dialog = await DialogService.ShowAsync<ConfirmationDialog>("Confirm Deletion", parameters);
         var result = await dialog.Result;
 
-        if (result.Canceled)
+        if (result?.Canceled ?? true)
             return;
 
         // Add to deleting set
@@ -567,9 +620,9 @@ public sealed partial class Collections : IDisposable
         try
         {
             Logger.LogInformation("Deleting file {FileName} from {Collection}", fileName, _selectedCollection);
-            
+
             var success = await Client.DeleteFileFromCollectionAsync(_selectedCollection, fileName);
-            
+
             if (success)
             {
                 SnackBarMessage($"File '{fileName}' deleted successfully");
@@ -593,5 +646,261 @@ public sealed partial class Collections : IDisposable
         }
     }
 
-    public void Dispose() => _cancellationTokenSource.Cancel();
+    // Folder management
+    private FolderNode _folderStructure = new();
+    private FolderNode? _selectedFolder = null;
+    private string _currentFolderPath = "";
+    private string _uploadFolderPath = "";
+    private bool _showFolderView = true;
+
+    private async Task LoadFolderStructureAsync()
+    {
+        try
+        {
+            // Create root node with all collections as children (containers are the root folders)
+            var rootNode = new FolderNode("root", "");
+
+            foreach (var collection in _collections)
+            {
+                var collectionNode = new FolderNode(collection.Name, collection.Name);
+                rootNode.Children.Add(collectionNode);
+            }
+
+            _folderStructure = rootNode;
+            StateHasChanged();
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error loading folder structure");
+            SnackBarError("Failed to load folder structure");
+            _folderStructure = new FolderNode("root", "");
+        }
+    }
+
+    private async Task OnFolderSelectedAsync(FolderNode folder)
+    {
+        _selectedFolder = folder;
+        _currentFolderPath = folder.Path;
+
+        // Check if this is a root-level folder (collection/container)
+        // Root folders have paths that don't contain slashes
+        if (!folder.Path.Contains('/') && !string.IsNullOrEmpty(folder.Path))
+        {
+            // This is a collection - select it
+            await SelectCollectionAsync(folder.Path);
+        }
+        else
+        {
+            // This is a subfolder within a collection
+            // Extract the collection name (first part of path before /)
+            var collectionName = folder.Path.Split('/')[0];
+            if (_selectedCollection != collectionName)
+            {
+                _selectedCollection = collectionName;
+                _selectedCollectionInfo = _collections.FirstOrDefault(c => c.Name == collectionName);
+            }
+            await LoadCollectionFilesAsync();
+        }
+    }
+
+    private async Task ShowCreateFolderDialogAsync(FolderNode? parentFolder = null)
+    {
+        var parameters = new DialogParameters
+        {
+            { "ContentText", parentFolder != null
+                ? $"Enter name for new subfolder in '{parentFolder.Name}'"
+                : "Enter name for new folder" },
+            { "ButtonText", "Create" },
+            { "Color", Color.Primary }
+        };
+
+        // You'll need to create a simple text input dialog
+        var result = await DialogService.ShowMessageBox(
+            "Create Folder",
+            parentFolder != null
+                ? $"Enter name for new subfolder in '{parentFolder.Name}'"
+                : "Enter name for new folder",
+            yesText: "Create",
+            cancelText: "Cancel");
+
+        if (result == true)
+        {
+            // This is simplified - you'd want to get the actual folder name from a proper input dialog
+            await CreateFolderAsync("new-folder", parentFolder);
+        }
+    }
+
+    private async Task CreateFolderAsync(string folderName, FolderNode? parentFolder = null)
+    {
+        if (string.IsNullOrEmpty(_selectedCollection) || string.IsNullOrWhiteSpace(folderName))
+            return;
+
+        var folderPath = parentFolder != null
+            ? $"{parentFolder.Path}/{folderName}".TrimStart('/')
+            : folderName;
+
+        try
+        {
+            var success = await Client.CreateFolderAsync(_selectedCollection, folderPath);
+
+            if (success)
+            {
+                SnackBarMessage($"Folder '{folderName}' created successfully");
+                await LoadFolderStructureAsync();
+            }
+            else
+            {
+                SnackBarError($"Failed to create folder '{folderName}'");
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error creating folder {FolderName}", folderName);
+            SnackBarError($"Error creating folder: {ex.Message}");
+        }
+    }
+
+    private async Task RenameFolderAsync(FolderNode folder)
+    {
+        if (string.IsNullOrEmpty(_selectedCollection) || folder == null)
+            return;
+
+        // Show input dialog for new name
+        var result = await DialogService.ShowMessageBox(
+            "Rename Folder",
+            $"Enter new name for folder '{folder.Name}'",
+            yesText: "Rename",
+            cancelText: "Cancel");
+
+        if (result == true)
+        {
+            // This is simplified - you'd want to get the actual new name from a proper input dialog
+            var newFolderName = "renamed-folder";
+            var pathParts = folder.Path.Split('/');
+            pathParts[pathParts.Length - 1] = newFolderName;
+            var newFolderPath = string.Join("/", pathParts);
+
+            try
+            {
+                var success = await Client.RenameFolderAsync(_selectedCollection, folder.Path, newFolderPath);
+
+                if (success)
+                {
+                    SnackBarMessage($"Folder renamed successfully");
+                    await LoadFolderStructureAsync();
+                }
+                else
+                {
+                    SnackBarError("Failed to rename folder");
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Error renaming folder {FolderPath}", folder.Path);
+                SnackBarError($"Error renaming folder: {ex.Message}");
+            }
+        }
+    }
+
+    private async Task DeleteFolderAsync(FolderNode folder)
+    {
+        if (string.IsNullOrEmpty(_selectedCollection) || folder == null)
+            return;
+
+        var parameters = new DialogParameters
+        {
+            { "ContentText", $"Are you sure you want to delete folder '{folder.Name}' and all its contents? This action cannot be undone." },
+            { "ButtonText", "Delete" },
+            { "Color", Color.Error }
+        };
+
+        var dialog = await DialogService.ShowAsync<ConfirmationDialog>("Confirm Folder Deletion", parameters);
+        var result = await dialog.Result;
+
+        if (result.Canceled)
+            return;
+
+        try
+        {
+            var success = await Client.DeleteFolderAsync(_selectedCollection, folder.Path);
+
+            if (success)
+            {
+                SnackBarMessage($"Folder '{folder.Name}' deleted successfully");
+                _selectedFolder = null;
+                _currentFolderPath = "";
+                await LoadFolderStructureAsync();
+            }
+            else
+            {
+                SnackBarError($"Failed to delete folder '{folder.Name}'");
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error deleting folder {FolderPath}", folder.Path);
+            SnackBarError($"Error deleting folder: {ex.Message}");
+        }
+    }
+
+    private async Task ShowEditFileMetadataDialogAsync(ContainerFileInfo fileInfo)
+    {
+        if (string.IsNullOrEmpty(_selectedCollection) || fileInfo == null)
+            return;
+
+        try
+        {
+            // Load existing metadata
+            var metadata = await Client.GetFileMetadataAsync(_selectedCollection, fileInfo.FileName);
+
+            if (metadata == null)
+            {
+                // Create new metadata with default values
+                metadata = new FileMetadata
+                {
+                    FileName = fileInfo.FileName,
+                    BlobPath = string.IsNullOrEmpty(fileInfo.FolderPath)
+                        ? fileInfo.FileName
+                        : $"{fileInfo.FolderPath}/{fileInfo.FileName}"
+                };
+            }
+
+            var parameters = new DialogParameters<FileMetadataDialog>
+            {
+                { x => x.FileName, fileInfo.FileName },
+                { x => x.Metadata, metadata }
+            };
+
+            var options = new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true, CloseButton = true };
+            var dialog = await DialogService.ShowAsync<FileMetadataDialog>("Edit File Metadata", parameters, options);
+            var result = await dialog.Result;
+
+            if (!result.Canceled && result.Data is FileMetadata updatedMetadata)
+            {
+                var success = await Client.UpdateFileMetadataAsync(_selectedCollection, fileInfo.FileName, updatedMetadata);
+
+                if (success)
+                {
+                    SnackBarMessage("File metadata updated successfully");
+                    fileInfo.Metadata = updatedMetadata;
+                    StateHasChanged();
+                }
+                else
+                {
+                    SnackBarError("Failed to update file metadata");
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error updating file metadata for {FileName}", fileInfo.FileName);
+            SnackBarError($"Error updating file metadata: {ex.Message}");
+        }
+    }
+
+    public void Dispose()
+    {
+        _cancellationTokenSource.Cancel();
+        _cancellationTokenSource.Dispose();
+    }
 }

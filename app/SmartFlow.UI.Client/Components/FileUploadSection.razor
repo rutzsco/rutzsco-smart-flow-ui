@@ -10,30 +10,24 @@
                        Title="Close upload section" />
     </MudStack>
     
-    <MudTextField Value="@Description"
-                  ValueChanged="@(async (string value) => { Description = value; await DescriptionChanged.InvokeAsync(value); })"
-                  Label="Description (Optional)"
-                  Variant="Variant.Outlined"
-                  Lines="2"
-                  Class="mb-3"
-                  HelperText="Provide a description for the uploaded file(s)" />
-    
-    <MudFileUpload T="IReadOnlyList<IBrowserFile>" 
+    <MudStack Row="true" Spacing="2" Class="mb-3">
+        <MudFileUpload T="IReadOnlyList<IBrowserFile>" 
                    Accept=".pdf,.png,.jpg,.jpeg" 
                    MaximumFileCount="10" 
                    FilesChanged="OnFilesChanged" 
                    Required="true" 
                    RequiredError="You must select at least one file to upload.">
-        <ActivatorContent>
-            <MudButton HtmlTag="label"
-                       Variant="Variant.Filled"
-                       Color="Color.Primary"
-                       StartIcon="@Icons.Material.Filled.FileOpen"
-                       Size="Size.Large">
-                Select Files
-            </MudButton>
-        </ActivatorContent>
-    </MudFileUpload>
+            <ActivatorContent>
+                <MudButton HtmlTag="label"
+                           Variant="Variant.Filled"
+                           Color="Color.Primary"
+                           StartIcon="@Icons.Material.Filled.FileOpen"
+                           Size="Size.Large">
+                    Select Files
+                </MudButton>
+            </ActivatorContent>
+        </MudFileUpload>
+    </MudStack>
 
     @if (SelectedFiles.Any())
     {
@@ -99,6 +93,12 @@
 
     [Parameter]
     public bool IsUploading { get; set; }
+    
+    [Parameter]
+    public string FolderPath { get; set; } = string.Empty;
+    
+    [Parameter]
+    public EventCallback<string> FolderPathChanged { get; set; }
 
     [Parameter]
     public string Description { get; set; } = string.Empty;
@@ -137,5 +137,10 @@
         Description = string.Empty;
         DescriptionChanged.InvokeAsync(Description);
         StateHasChanged();
+    }
+
+    protected override void OnParametersSet()
+    {
+        Console.WriteLine($"[UPLOAD COMPONENT] FolderPath = '{FolderPath}'");
     }
 }
