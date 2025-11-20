@@ -24,6 +24,11 @@ public sealed partial class Projects : IDisposable
     private HashSet<string> _analyzingFiles = new(); // Track files being analyzed (project-level)
     private HashSet<string> _editingFileDescriptions = new(); // Track files being edited
     private Dictionary<string, string> _editingDescriptions = new(); // Track temporary description values during editing
+    private bool _isAnalyzing = false; // Track if analysis is in progress
+    private System.Text.Json.JsonElement? _workflowStatus = null; // Store workflow status
+    private System.Threading.Timer? _statusPollTimer = null; // Timer for polling status
+    private bool _isPolling = false; // Track if polling is active to prevent concurrent polls
+    private const int StatusPollIntervalMs = 10000; // Poll every 10 seconds
 
     // Store a cancelation token that will be used to cancel if the user disposes of this component.
     private readonly CancellationTokenSource _cancellationTokenSource = new();
@@ -100,14 +105,68 @@ public sealed partial class Projects : IDisposable
     {
         if (_selectedProject != projectName)
         {
+            // Stop any existing status polling when switching projects
+            StopStatusPolling();
+            _isAnalyzing = false;
+            _workflowStatus = null;
+            
             _selectedProject = projectName;
             _selectedProjectInfo = _projects.FirstOrDefault(c => c.Name == projectName);
             _fileUploads.Clear(); // Clear any selected files when switching projects
             _filter = ""; // Clear filter when switching projects
             _showCreateProjectForm = false; // Hide create form when selecting a project
             _showUploadSection = false; // Hide upload section when switching projects
-            _showEditMetadataForm = false; // Hide edit metadata form when switching projects
+            _showEditMetadataForm = false; // Hide edit metadata form when selecting projects
             await LoadProjectFilesAsync();
+            
+            // Check for existing workflow status
+            await CheckWorkflowStatusAsync();
+        }
+    }
+
+    private async Task CheckWorkflowStatusAsync()
+    {
+        if (string.IsNullOrEmpty(_selectedProject))
+            return;
+
+        try
+        {
+            var status = await Client.GetProjectWorkflowStatusAsync(_selectedProject);
+            
+            if (status.HasValue)
+            {
+                _workflowStatus = status.Value;
+                
+                // Check if workflow is still in progress
+                if (status.Value.TryGetProperty("stages", out var stages))
+                {
+                    var hasIncomplete = false;
+                    foreach (var stage in stages.EnumerateObject())
+                    {
+                        if (stage.Value.TryGetProperty("status", out var stageStatus))
+                        {
+                            var statusStr = stageStatus.GetString();
+                            if (statusStr != "Complete" && statusStr != "Failed")
+                            {
+                                hasIncomplete = true;
+                                break;
+                            }
+                        }
+                    }
+                    
+                    if (hasIncomplete)
+                    {
+                        _isAnalyzing = true;
+                        StartStatusPolling();
+                    }
+                }
+                
+                StateHasChanged();
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error checking workflow status for project {ProjectName}", _selectedProject);
         }
     }
 
@@ -498,6 +557,10 @@ public sealed partial class Projects : IDisposable
             return;
         }
 
+        _isAnalyzing = true;
+        _workflowStatus = null;
+        StateHasChanged();
+
         try
         {
             Logger.LogInformation("Analyzing project {Project}", _selectedProject);
@@ -507,20 +570,122 @@ public sealed partial class Projects : IDisposable
             if (success)
             {
                 SnackBarMessage($"Analysis started for project '{_selectedProject}'");
-                // Refresh the file list after a delay to see processing files
-                await Task.Delay(3000);
-                await RefreshAsync();
+                
+                // Start polling for status
+                StartStatusPolling();
             }
             else
             {
+                _isAnalyzing = false;
                 SnackBarError($"Failed to start analysis for project '{_selectedProject}'");
             }
         }
         catch (Exception ex)
         {
+            _isAnalyzing = false;
             Logger.LogError(ex, "Error analyzing project {ProjectName}", _selectedProject);
             SnackBarError($"Error analyzing project: {ex.Message}");
         }
+        finally
+        {
+            StateHasChanged();
+        }
+    }
+
+    private void StartStatusPolling()
+    {
+        StopStatusPolling(); // Ensure any existing timer is stopped
+
+        // Start a new timer to poll the status periodically
+        _statusPollTimer = new System.Threading.Timer(async _ =>
+        {
+            await PollWorkflowStatusAsync();
+        }, null, StatusPollIntervalMs, StatusPollIntervalMs);
+    }
+
+    private async Task PollWorkflowStatusAsync()
+    {
+        // Prevent concurrent polling
+        if (_isPolling || string.IsNullOrEmpty(_selectedProject))
+            return;
+
+        _isPolling = true;
+
+        try
+        {
+            var status = await Client.GetProjectWorkflowStatusAsync(_selectedProject);
+            
+            if (status.HasValue)
+            {
+                _workflowStatus = status.Value;
+                
+                // Check if all stages are complete or failed
+                var allComplete = true;
+                if (status.Value.TryGetProperty("stages", out var stages))
+                {
+                    foreach (var stage in stages.EnumerateObject())
+                    {
+                        if (stage.Value.TryGetProperty("status", out var stageStatus))
+                        {
+                            var statusStr = stageStatus.GetString();
+                            if (statusStr != "Complete" && statusStr != "Failed")
+                            {
+                                allComplete = false;
+                                break;
+                            }
+                        }
+                    }
+                }
+                
+                if (allComplete)
+                {
+                    Logger.LogInformation("Workflow completed for project {ProjectName}", _selectedProject);
+                    _isAnalyzing = false;
+                    StopStatusPolling();
+                    SnackBarMessage($"Analysis completed for project '{_selectedProject}'");
+                    
+                    // Refresh files to show new processing files
+                    await InvokeAsync(async () =>
+                    {
+                        await LoadProjectFilesAsync();
+                        StateHasChanged();
+                    });
+                }
+                else
+                {
+                    // Update UI with current status
+                    await InvokeAsync(StateHasChanged);
+                }
+            }
+            else
+            {
+                // No status found - might be too early or workflow doesn't exist
+                Logger.LogDebug("No workflow status found for project {ProjectName}", _selectedProject);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error polling workflow status for project {ProjectName}", _selectedProject);
+        }
+        finally
+        {
+            _isPolling = false;
+        }
+    }
+
+    private void StopStatusPolling()
+    {
+        _statusPollTimer?.Dispose();
+        _statusPollTimer = null;
+    }
+
+    public void Dispose()
+    {
+        // Cancel any ongoing operations and timers
+        _cancellationTokenSource.Cancel();
+
+        // Ensure timers are stopped
+        StopStatusPolling();
     }
 
     private async Task ViewFileAsync(string fileName, bool isProcessingFile = false)
@@ -695,11 +860,6 @@ public sealed partial class Projects : IDisposable
             Logger.LogError(ex, "Error deleting workflow files for project {ProjectName}", _selectedProject);
             SnackBarError($"Error deleting workflow files: {ex.Message}");
         }
-    }
-
-    public void Dispose()
-    {
-        _cancellationTokenSource.Cancel();
     }
 
     private string GetProjectItemClass(CollectionInfo project)

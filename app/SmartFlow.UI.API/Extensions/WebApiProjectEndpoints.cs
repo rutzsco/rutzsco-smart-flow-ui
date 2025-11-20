@@ -8,6 +8,7 @@ internal static class WebApiProjectEndpoints
     private const string DocumentToolsServiceName = "Document Tools API";
     private const string HealthCheckLivenessPath = "/healthz/live";
     private const string SpecExtractorPath = "/agent/spec-extractor";
+    private const string WorkflowStatusPath = "/workflow/status";
     private const string DefaultAnalysisMessage = "Please extract the specification summary and explain the key sections.";
     private const int HttpClientTimeoutSeconds = 10;
 
@@ -53,6 +54,9 @@ internal static class WebApiProjectEndpoints
 
         // Analyze a file in a project
         api.MapPost("{projectName}/analyze", OnAnalyzeProjectFileAsync);
+
+        // Get workflow status for a project
+        api.MapGet("{projectName}/workflow/status", OnGetWorkflowStatusAsync);
 
         // Delete workflow files for a project
         api.MapDelete("{projectName}/workflow", OnDeleteProjectWorkflowAsync);
@@ -300,51 +304,136 @@ internal static class WebApiProjectEndpoints
 
             logger.LogInformation("Analyzing {FileCount} files in project '{ProjectName}'", files.Length, projectName);
 
-            // Call the external document-tools API
-            using var httpClient = httpClientFactory.CreateClient();
-            if (!string.IsNullOrEmpty(documentToolsApiKey))
-            {
-                httpClient.DefaultRequestHeaders.Add("X-API-Key", documentToolsApiKey);
-            }
-            
-            var requestBody = new
-            {
-                message = DefaultAnalysisMessage,
-                project_name = projectName,
-                files = files
-            };
-            
-            var jsonContent = System.Text.Json.JsonSerializer.Serialize(requestBody);
-            using var content = new StringContent(jsonContent, System.Text.Encoding.UTF8, "application/json");
-            
-            // Use the spec-extractor endpoint
-            var response = await httpClient.PostAsync($"{documentToolsEndpoint}{SpecExtractorPath}", content, cancellationToken);
+            logger.LogInformation("Triggering analysis for {FileCount} files in project '{ProjectName}'", files.Length, projectName);
 
-            if (response.IsSuccessStatusCode)
+            // Fire and forget - start the analysis without waiting for completion
+            _ = Task.Run(async () =>
             {
-                var responseContent = await response.Content.ReadAsStringAsync(cancellationToken);
-                logger.LogInformation("Successfully triggered analysis for {FileCount} files in project '{ProjectName}'", files.Length, projectName);
-                
-                return TypedResults.Ok(new 
-                { 
-                    success = true, 
-                    message = $"Analysis started for {files.Length} file(s) in project '{projectName}'",
-                    files = files,
-                    response = responseContent
-                });
-            }
-            else
-            {
-                var errorContent = await response.Content.ReadAsStringAsync(cancellationToken);
-                logger.LogError("Failed to trigger analysis for project '{ProjectName}': {StatusCode} - {Error}", 
-                    projectName, response.StatusCode, errorContent);
-                return Results.Problem($"Failed to start analysis: {response.StatusCode} - {errorContent}");
-            }
+                try
+                {
+                    using var httpClient = httpClientFactory.CreateClient();
+                    if (!string.IsNullOrEmpty(documentToolsApiKey))
+                    {
+                        httpClient.DefaultRequestHeaders.Add("X-API-Key", documentToolsApiKey);
+                    }
+                    
+                    var requestBody = new
+                    {
+                        message = DefaultAnalysisMessage,
+                        project_name = projectName,
+                        files = files
+                    };
+                    
+                    var jsonContent = System.Text.Json.JsonSerializer.Serialize(requestBody);
+                    using var content = new StringContent(jsonContent, System.Text.Encoding.UTF8, "application/json");
+                    
+                    var response = await httpClient.PostAsync($"{documentToolsEndpoint}{SpecExtractorPath}", content);
+
+                    if (response.IsSuccessStatusCode)
+                    {
+                        logger.LogInformation("Successfully triggered analysis for {FileCount} files in project '{ProjectName}'", files.Length, projectName);
+                    }
+                    else
+                    {
+                        var errorContent = await response.Content.ReadAsStringAsync();
+                        logger.LogError("Failed to trigger analysis for project '{ProjectName}': {StatusCode} - {Error}", 
+                            projectName, response.StatusCode, errorContent);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    logger.LogError(ex, "Background error analyzing project: {ProjectName}", projectName);
+                }
+            });
+
+            // Return immediately
+            return TypedResults.Ok(new 
+            { 
+                success = true, 
+                message = $"Analysis started for {files.Length} file(s) in project '{projectName}'",
+                project_name = projectName,
+                file_count = files.Length
+            });
         }
         catch (Exception ex)
         {
             logger.LogError(ex, "Error analyzing project: {ProjectName}", projectName);
             return Results.Problem($"Error analyzing project: {ex.Message}");
+        }
+    }
+
+    private static async Task<IResult> OnGetWorkflowStatusAsync(
+        HttpContext context,
+        string projectName,
+        [FromServices] IConfiguration configuration,
+        [FromServices] ILogger<WebApplication> logger,
+        [FromServices] IHttpClientFactory httpClientFactory,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            logger.LogInformation("Getting workflow status for project: {ProjectName}", projectName);
+
+            var userInfo = await context.GetUserInfoAsync();
+            
+            // Get the document tools API endpoint and key from configuration
+            var documentToolsEndpoint = configuration[DocumentToolsEndpointKey];
+            var documentToolsApiKey = configuration[DocumentToolsApiKeyKey];
+            
+            if (string.IsNullOrEmpty(documentToolsEndpoint))
+            {
+                logger.LogError("{Service} endpoint not configured", DocumentToolsServiceName);
+                return Results.Problem($"{DocumentToolsServiceName} not configured");
+            }
+
+            // Call the external document-tools API to get workflow status
+            using var httpClient = httpClientFactory.CreateClient();
+            httpClient.Timeout = TimeSpan.FromSeconds(HttpClientTimeoutSeconds);
+            
+            if (!string.IsNullOrEmpty(documentToolsApiKey))
+            {
+                httpClient.DefaultRequestHeaders.Add("X-API-Key", documentToolsApiKey);
+            }
+            
+            var statusUrl = $"{documentToolsEndpoint.TrimEnd('/')}{WorkflowStatusPath}/{projectName}";
+            var response = await httpClient.GetAsync(statusUrl, cancellationToken);
+
+            if (response.IsSuccessStatusCode)
+            {
+                var responseContent = await response.Content.ReadAsStringAsync(cancellationToken);
+                logger.LogInformation("Successfully retrieved workflow status for project '{ProjectName}'", projectName);
+                
+                // Parse and return the response
+                var statusData = System.Text.Json.JsonSerializer.Deserialize<System.Text.Json.JsonElement>(responseContent);
+                return TypedResults.Ok(statusData);
+            }
+            else if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+            {
+                logger.LogWarning("Workflow status not found for project '{ProjectName}'", projectName);
+                return Results.NotFound(new { success = false, message = $"Workflow status not found for project '{projectName}'" });
+            }
+            else
+            {
+                var errorContent = await response.Content.ReadAsStringAsync(cancellationToken);
+                logger.LogError("Failed to get workflow status for project '{ProjectName}': {StatusCode} - {Error}", 
+                    projectName, response.StatusCode, errorContent);
+                return Results.Problem($"Failed to get workflow status: {response.StatusCode} - {errorContent}");
+            }
+        }
+        catch (HttpRequestException ex)
+        {
+            logger.LogError(ex, "HTTP error getting workflow status for project: {ProjectName}", projectName);
+            return Results.Problem($"HTTP error getting workflow status: {ex.Message}");
+        }
+        catch (TaskCanceledException ex)
+        {
+            logger.LogError(ex, "Timeout getting workflow status for project: {ProjectName}", projectName);
+            return Results.Problem($"Request timed out getting workflow status");
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error getting workflow status for project: {ProjectName}", projectName);
+            return Results.Problem($"Error getting workflow status: {ex.Message}");
         }
     }
 
