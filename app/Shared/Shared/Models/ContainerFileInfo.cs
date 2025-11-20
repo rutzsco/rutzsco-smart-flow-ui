@@ -13,6 +13,11 @@ public class ContainerFileInfo
     public string FileName { get; set; } = string.Empty;
 
     /// <summary>
+    /// Optional description of the file
+    /// </summary>
+    public string? Description { get; set; }
+
+    /// <summary>
     /// The folder path within the collection (e.g., "internal_docs/Terminal Unit (VAV)")
     /// </summary>
     public string FolderPath { get; set; } = string.Empty;
@@ -31,14 +36,16 @@ public class ContainerFileInfo
     {
     }
 
-    public ContainerFileInfo(string fileName)
+    public ContainerFileInfo(string fileName, string? description = null)
     {
         FileName = fileName;
+        Description = description;
     }
 
-    public ContainerFileInfo(string fileName, List<string> processingFiles)
+    public ContainerFileInfo(string fileName, string? description, List<string> processingFiles)
     {
         FileName = fileName;
+        Description = description;
         ProcessingFiles = processingFiles;
     }
 

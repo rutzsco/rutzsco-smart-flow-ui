@@ -483,24 +483,48 @@ public sealed class ApiClient(HttpClient httpClient)
         }
     }
 
-    public async Task<bool> AnalyzeProjectFileAsync(string projectName, string fileName)
+    public async Task<bool> AnalyzeProjectAsync(string projectName)
     {
         try
         {
-            var request = new
-            {
-                fileName = fileName,
-                blobContainer = "project-files"
-            };
-
-            var json = System.Text.Json.JsonSerializer.Serialize(request, SerializerOptions.Default);
-            using var content = new StringContent(json, Encoding.UTF8, "application/json");
-            var response = await httpClient.PostAsync($"api/projects/{projectName}/analyze/{fileName}", content);
+            var response = await httpClient.PostAsync($"api/projects/{projectName}/analyze", null);
             return response.IsSuccessStatusCode;
         }
         catch (Exception ex)
         {
-            Debug.WriteLine($"Error analyzing project file: {ex.Message}");
+            Debug.WriteLine($"Error analyzing project: {ex.Message}");
+            return false;
+        }
+    }
+
+    public async Task<bool> DeleteProjectWorkflowAsync(string projectName)
+    {
+        try
+        {
+            var response = await httpClient.DeleteAsync($"api/projects/{projectName}/workflow");
+            return response.IsSuccessStatusCode;
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Error deleting project workflow: {ex.Message}");
+            return false;
+        }
+    }
+
+    public async Task<bool> UpdateFileDescriptionAsync(string projectName, string fileName, string? description)
+    {
+        try
+        {
+            var encodedFileName = Uri.EscapeDataString(fileName);
+            var request = new { Description = description };
+            var json = System.Text.Json.JsonSerializer.Serialize(request, SerializerOptions.Default);
+            using var content = new StringContent(json, Encoding.UTF8, "application/json");
+            var response = await httpClient.PutAsync($"api/projects/{projectName}/files/description?fileName={encodedFileName}", content);
+            return response.IsSuccessStatusCode;
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Error updating file description: {ex.Message}");
             return false;
         }
     }

@@ -119,17 +119,16 @@ public class ProjectService
                 }
             }
 
-            // Delete all processing files for this project
+            // Delete all processing files in the project folder (project-files-extract/{projectName}/*)
             var extractContainerClient = _blobServiceClient.GetBlobContainerClient(ProjectExtractContainerName);
             if (await extractContainerClient.ExistsAsync(cancellationToken))
             {
-                await foreach (var blobItem in extractContainerClient.GetBlobsAsync(traits: BlobTraits.Metadata, cancellationToken: cancellationToken))
+                // Delete all blobs in the project folder
+                var projectFolderPrefix = $"{projectName}/";
+                await foreach (var blobItem in extractContainerClient.GetBlobsAsync(prefix: projectFolderPrefix, cancellationToken: cancellationToken))
                 {
-                    if (blobItem.Metadata?.TryGetValue("project", out var project) == true && project == projectName)
-                    {
-                        var blobClient = extractContainerClient.GetBlobClient(blobItem.Name);
-                        await blobClient.DeleteIfExistsAsync(cancellationToken: cancellationToken);
-                    }
+                    var blobClient = extractContainerClient.GetBlobClient(blobItem.Name);
+                    await blobClient.DeleteIfExistsAsync(cancellationToken: cancellationToken);
                 }
             }
 
@@ -222,6 +221,38 @@ public class ProjectService
     }
 
     /// <summary>
+    /// Deletes all workflow processing files for a project (entire project folder in extract container)
+    /// </summary>
+    public async Task<bool> DeleteProjectWorkflowAsync(string projectName, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var extractContainerClient = _blobServiceClient.GetBlobContainerClient(ProjectExtractContainerName);
+            if (!await extractContainerClient.ExistsAsync(cancellationToken))
+            {
+                return false;
+            }
+
+            // Delete all blobs in the project folder
+            var projectFolderPrefix = $"{projectName}/";
+            var deletedCount = 0;
+
+            await foreach (var blobItem in extractContainerClient.GetBlobsAsync(prefix: projectFolderPrefix, cancellationToken: cancellationToken))
+            {
+                var blobClient = extractContainerClient.GetBlobClient(blobItem.Name);
+                await blobClient.DeleteIfExistsAsync(cancellationToken: cancellationToken);
+                deletedCount++;
+            }
+
+            return deletedCount > 0;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+
+    /// <summary>
     /// Gets all files for a specific project
     /// </summary>
     public async Task<List<ContainerFileInfo>> GetProjectFilesAsync(string projectName, CancellationToken cancellationToken = default)
@@ -237,11 +268,27 @@ public class ProjectService
         var extractContainerClient = _blobServiceClient.GetBlobContainerClient(ProjectExtractContainerName);
         var extractContainerExists = await extractContainerClient.ExistsAsync(cancellationToken);
 
+        // Get all project-level processing files first
+        var projectProcessingFiles = new List<string>();
+        if (extractContainerExists)
+        {
+            var projectFolderPrefix = $"{projectName}/";
+            
+            await foreach (var extractBlobItem in extractContainerClient.GetBlobsAsync(prefix: projectFolderPrefix, cancellationToken: cancellationToken))
+            {
+                projectProcessingFiles.Add(extractBlobItem.Name);
+            }
+        }
+
+        // Get all input files for the project
         await foreach (var blobItem in containerClient.GetBlobsAsync(traits: BlobTraits.Metadata, cancellationToken: cancellationToken))
         {
             // Filter by project metadata
             if (blobItem.Metadata?.TryGetValue("project", out var project) == true && project == projectName)
             {
+                // Get description from blob metadata
+                var description = blobItem.Metadata?.TryGetValue("description", out var desc) == true ? desc : null;
+                
                 // Extract metadata from blob properties
                 FileMetadata? metadata = null;
                 if (blobItem.Metadata != null && blobItem.Metadata.Count > 0)
@@ -262,7 +309,7 @@ public class ProjectService
                     };
                 }
 
-                var fileInfo = new ContainerFileInfo(blobItem.Name)
+                var fileInfo = new ContainerFileInfo(blobItem.Name, description)
                 {
                     Metadata = metadata
                 };
@@ -285,6 +332,13 @@ public class ProjectService
 
                 files.Add(fileInfo);
             }
+        }
+
+        // Add all project-level processing files to the first file entry (if any files exist)
+        // This is a workaround since processing files are project-level, not per-file
+        if (files.Any() && projectProcessingFiles.Any())
+        {
+            files[0].ProcessingFiles.AddRange(projectProcessingFiles);
         }
 
         return files;
@@ -339,15 +393,17 @@ public class ProjectService
             // Delete the main file
             await blobClient.DeleteAsync(cancellationToken: cancellationToken);
 
-            // Delete associated processing files
+            // Delete associated processing files in the project folder (searches all subfolders)
             var extractContainerClient = _blobServiceClient.GetBlobContainerClient(ProjectExtractContainerName);
             var extractContainerExists = await extractContainerClient.ExistsAsync(cancellationToken);
 
             if (extractContainerExists)
             {
                 var baseNameWithoutExtension = Path.GetFileNameWithoutExtension(fileName);
+                // Search entire project folder for processing files matching the base name
+                var projectFolderPrefix = $"{projectName}/";
 
-                await foreach (var extractBlobItem in extractContainerClient.GetBlobsAsync(traits: BlobTraits.Metadata, cancellationToken: cancellationToken))
+                await foreach (var extractBlobItem in extractContainerClient.GetBlobsAsync(prefix: projectFolderPrefix, cancellationToken: cancellationToken))
                 {
                     if (extractBlobItem.Metadata?.TryGetValue("project", out var extractProject) == true &&
                         extractProject == projectName &&
@@ -386,6 +442,7 @@ public class ProjectService
                 return (null, string.Empty);
             }
 
+            // For processing files, the fileName already includes the project folder path
             var blobClient = containerClient.GetBlobClient(fileName);
 
             if (!await blobClient.ExistsAsync(cancellationToken))
@@ -393,15 +450,25 @@ public class ProjectService
                 return (null, string.Empty);
             }
 
-            // Verify the blob belongs to this project
-            var properties = await blobClient.GetPropertiesAsync(cancellationToken: cancellationToken);
-            if (properties.Value.Metadata?.TryGetValue("project", out var project) != true || project != projectName)
+            // For processing files in extract container, verify they're in the correct project folder
+            if (isProcessingFile && !fileName.StartsWith($"{projectName}/", StringComparison.OrdinalIgnoreCase))
             {
                 return (null, string.Empty);
             }
 
+            // For input files, verify the blob belongs to this project via metadata
+            if (!isProcessingFile)
+            {
+                var properties = await blobClient.GetPropertiesAsync(cancellationToken: cancellationToken);
+                if (properties.Value.Metadata?.TryGetValue("project", out var project) != true || project != projectName)
+                {
+                    return (null, string.Empty);
+                }
+            }
+
             var download = await blobClient.DownloadAsync(cancellationToken);
-            var contentType = properties.Value.ContentType;
+            var blobProperties = await blobClient.GetPropertiesAsync(cancellationToken: cancellationToken);
+            var contentType = blobProperties.Value.ContentType;
 
             if (string.IsNullOrEmpty(contentType))
             {
@@ -420,6 +487,55 @@ public class ProjectService
         catch
         {
             return (null, string.Empty);
+        }
+    }
+
+    /// <summary>
+    /// Updates the description metadata for a specific file in a project
+    /// </summary>
+    public async Task<bool> UpdateFileDescriptionAsync(string projectName, string fileName, string? description, CancellationToken cancellationToken = default)
+    {
+        try
+        {
+            var containerClient = _blobServiceClient.GetBlobContainerClient(ProjectContainerName);
+            
+            if (!await containerClient.ExistsAsync(cancellationToken))
+            {
+                return false;
+            }
+
+            var blobClient = containerClient.GetBlobClient(fileName);
+            
+            if (!await blobClient.ExistsAsync(cancellationToken))
+            {
+                return false;
+            }
+
+            // Verify the blob belongs to this project
+            var properties = await blobClient.GetPropertiesAsync(cancellationToken: cancellationToken);
+            if (properties.Value.Metadata?.TryGetValue("project", out var project) != true || project != projectName)
+            {
+                return false;
+            }
+
+            // Get current metadata and update description
+            var metadata = new Dictionary<string, string>(properties.Value.Metadata);
+            
+            if (!string.IsNullOrWhiteSpace(description))
+            {
+                metadata["description"] = description;
+            }
+            else
+            {
+                metadata.Remove("description");
+            }
+
+            await blobClient.SetMetadataAsync(metadata, cancellationToken: cancellationToken);
+            return true;
+        }
+        catch
+        {
+            return false;
         }
     }
 }
