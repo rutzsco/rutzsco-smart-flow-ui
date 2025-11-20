@@ -286,6 +286,9 @@ public class ProjectService
             // Filter by project metadata
             if (blobItem.Metadata?.TryGetValue("project", out var project) == true && project == projectName)
             {
+                // Get description from blob metadata
+                var description = blobItem.Metadata?.TryGetValue("description", out var desc) == true ? desc : null;
+                
                 // Extract metadata from blob properties
                 FileMetadata? metadata = null;
                 if (blobItem.Metadata != null && blobItem.Metadata.Count > 0)
@@ -306,7 +309,7 @@ public class ProjectService
                     };
                 }
 
-                var fileInfo = new ContainerFileInfo(blobItem.Name)
+                var fileInfo = new ContainerFileInfo(blobItem.Name, description)
                 {
                     Metadata = metadata
                 };
