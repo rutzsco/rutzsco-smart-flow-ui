@@ -464,7 +464,8 @@ public class ProjectService
             }
 
             var download = await blobClient.DownloadAsync(cancellationToken);
-            var contentType = properties.Value.ContentType;
+            var blobProperties = await blobClient.GetPropertiesAsync(cancellationToken: cancellationToken);
+            var contentType = blobProperties.Value.ContentType;
 
             if (string.IsNullOrEmpty(contentType))
             {

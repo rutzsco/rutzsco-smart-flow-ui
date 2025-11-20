@@ -241,17 +241,42 @@ internal static class WebApiProjectEndpoints
     {
         try
         {
-            fileName = Uri.UnescapeDataString(fileName);
-
-            logger.LogInformation("Analyzing file {FileName} in project: {ProjectName}", fileName, projectName);
+            logger.LogInformation("Analyzing project: {ProjectName}", projectName);
 
             var userInfo = await context.GetUserInfoAsync();
-
+            
             // Get the document tools API endpoint and key from configuration
-            var documentToolsEndpoint = configuration["DocumentToolsAPIEndpoint"];
-            var documentToolsApiKey = configuration["DocumentToolsAPIKey"];
+            var documentToolsEndpoint = configuration[DocumentToolsEndpointKey];
+            var documentToolsApiKey = configuration[DocumentToolsApiKeyKey];
+            
+            if (string.IsNullOrEmpty(documentToolsEndpoint))
+            {
+                logger.LogError("{Service} endpoint not configured", DocumentToolsServiceName);
+                return Results.Problem($"{DocumentToolsServiceName} not configured");
+            }
 
-            if (string.IsNullOrEmpty(documentToolsEndpoint) || string.IsNullOrEmpty(documentToolsApiKey))
+            // Get all input files for the project
+            var projectFiles = await projectService.GetProjectFilesAsync(projectName, cancellationToken);
+            
+            if (!projectFiles.Any())
+            {
+                logger.LogWarning("No files found in project '{ProjectName}'", projectName);
+                return Results.BadRequest(new { success = false, message = $"No files found in project '{projectName}'" });
+            }
+
+            // Build file URLs for all input files in the project
+            var baseUrl = GetStorageBaseUrl(configuration, logger);
+            if (baseUrl == null)
+            {
+                return Results.Problem("Storage account not configured");
+            }
+
+            // Get blob container client to read metadata
+            var containerClient = blobServiceClient.GetBlobContainerClient(ProjectContainerName);
+            
+            // Create file objects with url, filename, and description from metadata
+            var filesList = new List<object>();
+            foreach (var file in projectFiles)
             {
                 var blobClient = containerClient.GetBlobClient(file.FileName);
                 var properties = await blobClient.GetPropertiesAsync(cancellationToken: cancellationToken);
@@ -276,20 +301,24 @@ internal static class WebApiProjectEndpoints
             logger.LogInformation("Analyzing {FileCount} files in project '{ProjectName}'", files.Length, projectName);
 
             // Call the external document-tools API
-            using var httpClient = new HttpClient();
-            httpClient.DefaultRequestHeaders.Add("X-API-Key", documentToolsApiKey);
-
+            using var httpClient = httpClientFactory.CreateClient();
+            if (!string.IsNullOrEmpty(documentToolsApiKey))
+            {
+                httpClient.DefaultRequestHeaders.Add("X-API-Key", documentToolsApiKey);
+            }
+            
             var requestBody = new
             {
                 message = DefaultAnalysisMessage,
                 project_name = projectName,
                 files = files
             };
-
+            
             var jsonContent = System.Text.Json.JsonSerializer.Serialize(requestBody);
             using var content = new StringContent(jsonContent, System.Text.Encoding.UTF8, "application/json");
-
-            var response = await httpClient.PostAsync($"{documentToolsEndpoint}/document-tools/markdown-extraction", content, cancellationToken);
+            
+            // Use the spec-extractor endpoint
+            var response = await httpClient.PostAsync($"{documentToolsEndpoint}{SpecExtractorPath}", content, cancellationToken);
 
             if (response.IsSuccessStatusCode)
             {
@@ -307,9 +336,9 @@ internal static class WebApiProjectEndpoints
             else
             {
                 var errorContent = await response.Content.ReadAsStringAsync(cancellationToken);
-                logger.LogError("Failed to trigger analysis for file '{FileName}' in project '{ProjectName}': {StatusCode} - {Error}",
-                    fileName, projectName, response.StatusCode, errorContent);
-                return Results.Problem($"Failed to start analysis: {response.StatusCode}");
+                logger.LogError("Failed to trigger analysis for project '{ProjectName}': {StatusCode} - {Error}", 
+                    projectName, response.StatusCode, errorContent);
+                return Results.Problem($"Failed to start analysis: {response.StatusCode} - {errorContent}");
             }
         }
         catch (Exception ex)

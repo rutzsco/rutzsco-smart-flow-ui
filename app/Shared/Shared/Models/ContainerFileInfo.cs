@@ -13,6 +13,11 @@ public class ContainerFileInfo
     public string FileName { get; set; } = string.Empty;
 
     /// <summary>
+    /// Optional description of the file
+    /// </summary>
+    public string? Description { get; set; }
+
+    /// <summary>
     /// The folder path within the collection (e.g., "internal_docs/Terminal Unit (VAV)")
     /// </summary>
     public string FolderPath { get; set; } = string.Empty;
