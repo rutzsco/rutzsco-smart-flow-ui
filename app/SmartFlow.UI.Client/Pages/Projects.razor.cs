@@ -637,24 +637,19 @@ public sealed partial class Projects : IDisposable
                     }
                 }
                 
+                // Refresh file list on each poll to show new workflow files as they're created
+                await InvokeAsync(async () =>
+                {
+                    await LoadProjectFilesAsync();
+                    StateHasChanged();
+                });
+                
                 if (allComplete)
                 {
                     Logger.LogInformation("Workflow completed for project {ProjectName}", _selectedProject);
                     _isAnalyzing = false;
                     StopStatusPolling();
                     SnackBarMessage($"Analysis completed for project '{_selectedProject}'");
-                    
-                    // Refresh files to show new processing files
-                    await InvokeAsync(async () =>
-                    {
-                        await LoadProjectFilesAsync();
-                        StateHasChanged();
-                    });
-                }
-                else
-                {
-                    // Update UI with current status
-                    await InvokeAsync(StateHasChanged);
                 }
             }
             else
