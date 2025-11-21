@@ -2,7 +2,7 @@
 
 using static System.Net.WebRequestMethods;
 
-namespace SmartFlow.UI.Client.Shared;
+namespace SmartFlow.UI.Client.Layout;
 
 public sealed partial class MainLayout
 {
