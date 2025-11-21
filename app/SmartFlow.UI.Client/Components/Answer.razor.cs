@@ -6,7 +6,7 @@ public sealed partial class Answer
 {
     [Parameter, EditorRequired] public required ApproachResponse Retort { get; set; }
     [Parameter, EditorRequired] public required EventCallback<string> FollowupQuestionClicked { get; set; }
- 
+
 
     [Inject] public required IDialogService Dialog { get; set; }
 
@@ -20,8 +20,8 @@ public sealed partial class Answer
             new DialogParameters
             {
                 [nameof(FeedbackDialog.Rating)] = _newRating,
-                [nameof(FeedbackDialog.MessageId)] = Retort.Context.MessageId.ToString(),
-                [nameof(FeedbackDialog.ChatId)] = Retort.Context.ChatId.ToString(),
+                [nameof(FeedbackDialog.MessageId)] = Retort.Context?.MessageId.ToString() ?? string.Empty,
+                [nameof(FeedbackDialog.ChatId)] = Retort.Context?.ChatId.ToString() ?? string.Empty,
             },
             new DialogOptions
             {
@@ -38,8 +38,8 @@ public sealed partial class Answer
             new DialogParameters
             {
                 [nameof(FeedbackDialog.Rating)] = _newRating,
-                [nameof(FeedbackDialog.MessageId)] = Retort.Context.MessageId.ToString(),
-                [nameof(FeedbackDialog.ChatId)] = Retort.Context.ChatId.ToString(),
+                [nameof(FeedbackDialog.MessageId)] = Retort.Context?.MessageId.ToString() ?? string.Empty,
+                [nameof(FeedbackDialog.ChatId)] = Retort.Context?.ChatId.ToString() ?? string.Empty,
             },
             new DialogOptions
             {
@@ -56,8 +56,8 @@ public sealed partial class Answer
             new DialogParameters
             {
                 [nameof(FeedbackDialog.Rating)] = _newRating,
-                [nameof(FeedbackDialog.MessageId)] = Retort.Context.MessageId.ToString(),
-                [nameof(FeedbackDialog.ChatId)] = Retort.Context.ChatId.ToString(),
+                [nameof(FeedbackDialog.MessageId)] = Retort.Context?.MessageId.ToString() ?? string.Empty,
+                [nameof(FeedbackDialog.ChatId)] = Retort.Context?.ChatId.ToString() ?? string.Empty,
             },
             new DialogOptions
             {
@@ -69,7 +69,7 @@ public sealed partial class Answer
 
     protected override void OnParametersSet()
     {
-        _parsedAnswer = ParseAnswerToHtml(Retort.Answer, Retort.CitationBaseUrl, Retort.HasDataPoints());
+        _parsedAnswer = ParseAnswerToHtml(Retort.Answer ?? string.Empty, Retort.CitationBaseUrl ?? string.Empty, Retort.HasDataPoints());
 
         base.OnParametersSet();
     }

@@ -47,26 +47,20 @@ public sealed partial class VoiceChat : IDisposable
             _connectionStatus = "Connecting...";
             StateHasChanged();
 
-            Console.WriteLine("Starting Voice Chat...");
-
             // Get authentication token from server
             var tokenResponse = await ApiClient.GetVoiceLiveTokenAsync();
-            
+
             if (tokenResponse == null)
             {
                 throw new Exception("Failed to get Voice Live authentication token");
             }
 
-            Console.WriteLine($"Token received - Project: {tokenResponse.ProjectName}, Agent: {tokenResponse.AgentId}");
-
             // Initialize Voice Live WebSocket connection via JavaScript
             if (_voiceLiveModule != null)
             {
                 var dotNetRef = DotNetObjectReference.Create(this);
-                
-                Console.WriteLine("Calling JavaScript initialize...");
-                
-                await _voiceLiveModule.InvokeVoidAsync("initialize", 
+
+                await _voiceLiveModule.InvokeVoidAsync("initialize",
                     tokenResponse.WebSocketUrl,
                     tokenResponse.ApiVersion,
                     tokenResponse.ProjectName,
@@ -76,13 +70,11 @@ public sealed partial class VoiceChat : IDisposable
                     tokenResponse.SpeechKey,
                     dotNetRef);
 
-                Console.WriteLine("JavaScript initialize called successfully");
-                
                 // Note: Don't set _isConnected = true here
                 // Wait for the OnConnectionOpened callback from JavaScript
                 // For now, we'll wait a bit to see if connection succeeds
                 await Task.Delay(1000);
-                
+
                 // Check if we got an error
                 if (_connectionStatus == "Error")
                 {
@@ -96,7 +88,6 @@ public sealed partial class VoiceChat : IDisposable
         }
         catch (Exception ex)
         {
-            Console.WriteLine($"Error in StartVoiceChatAsync: {ex}");
             _errorMessage = $"Failed to start voice chat: {ex.Message}";
             _connectionStatus = "Error";
             _isConnected = false;
@@ -142,7 +133,7 @@ public sealed partial class VoiceChat : IDisposable
                 // Stop listening and automatically send the audio
                 await _voiceLiveModule.InvokeVoidAsync("stopListening");
                 _isListening = false;
-                
+
                 // Automatically send the audio
                 if (_hasAudioData)
                 {
@@ -199,7 +190,6 @@ public sealed partial class VoiceChat : IDisposable
     [JSInvokable]
     public void OnConnectionOpened()
     {
-        Console.WriteLine("WebSocket connection opened!");
         _isConnected = true;
         _connectionStatus = "Connected";
         _sessionStartTime = DateTime.Now;

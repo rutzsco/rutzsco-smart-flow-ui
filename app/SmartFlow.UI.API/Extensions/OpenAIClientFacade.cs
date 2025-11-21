@@ -41,9 +41,12 @@ public class OpenAIClientFacade
         // Create chat client with APIM key header if provided
         if (!string.IsNullOrEmpty(_apimKey))
         {
+            // HttpClient from IHttpClientFactory is managed by the factory - no disposal needed
+#pragma warning disable CA2000 // Dispose objects before losing scope
             var httpClient = _httpClientFactory.CreateClient();
+#pragma warning restore CA2000 // Dispose objects before losing scope
             httpClient.DefaultRequestHeaders.Add("Ocp-Apim-Subscription-Key", _apimKey);
-            
+
             var clientOptions = new AzureOpenAIClientOptions
             {
                 Transport = new HttpClientPipelineTransport(httpClient)
@@ -66,12 +69,15 @@ public class OpenAIClientFacade
         if (!string.IsNullOrEmpty(_embeddingsDeploymentKey))
         {
             var embeddingsKeyCredential = new AzureKeyCredential(_embeddingsDeploymentKey);
-            
+
             if (!string.IsNullOrEmpty(_embeddingsDeploymentKey))
             {
+                // HttpClient from IHttpClientFactory is managed by the factory - no disposal needed
+#pragma warning disable CA2000 // Dispose objects before losing scope
                 var httpClient = _httpClientFactory.CreateClient();
+#pragma warning restore CA2000 // Dispose objects before losing scope
                 httpClient.DefaultRequestHeaders.Add("Ocp-Apim-Subscription-Key", _embeddingsDeploymentKey);
-                
+
                 var clientOptions = new AzureOpenAIClientOptions
                 {
                     Transport = new HttpClientPipelineTransport(httpClient)
@@ -125,21 +131,23 @@ public class OpenAIClientFacade
             // Use key-based authentication
             if (!string.IsNullOrEmpty(_apimKey))
             {
-                // Create HttpClient with APIM key header
+                // HttpClient from IHttpClientFactory is managed by the factory - no disposal needed
+                #pragma warning disable CA2000 // Dispose objects before losing scope
                 var httpClient = _httpClientFactory.CreateClient();
+                #pragma warning restore CA2000 // Dispose objects before losing scope
                 httpClient.DefaultRequestHeaders.Add("Ocp-Apim-Subscription-Key", _apimKey);
-                
+
                 kernelBuilder.AddAzureOpenAIChatCompletion(
-                    _standardChatGptDeployment, 
-                    _standardServiceEndpoint, 
+                    _standardChatGptDeployment,
+                    _standardServiceEndpoint,
                     _config.AOAIStandardServiceKey,
                     httpClient: httpClient);
             }
             else
             {
                 kernelBuilder.AddAzureOpenAIChatCompletion(
-                    _standardChatGptDeployment, 
-                    _standardServiceEndpoint, 
+                    _standardChatGptDeployment,
+                    _standardServiceEndpoint,
                     _config.AOAIStandardServiceKey);
             }
         }
@@ -148,21 +156,23 @@ public class OpenAIClientFacade
             // Use token-based authentication
             if (!string.IsNullOrEmpty(_apimKey))
             {
-                // Create HttpClient with APIM key header
+                // Create HttpClient with APIM key header - managed by IHttpClientFactory
+#pragma warning disable CA2000 // Dispose objects before losing scope
                 var httpClient = _httpClientFactory.CreateClient();
+#pragma warning restore CA2000 // Dispose objects before losing scope
                 httpClient.DefaultRequestHeaders.Add("Ocp-Apim-Subscription-Key", _apimKey);
-                
+
                 kernelBuilder.AddAzureOpenAIChatCompletion(
-                    _standardChatGptDeployment, 
-                    _standardServiceEndpoint, 
+                    _standardChatGptDeployment,
+                    _standardServiceEndpoint,
                     _tokenCredential,
                     httpClient: httpClient);
             }
             else
             {
                 kernelBuilder.AddAzureOpenAIChatCompletion(
-                    _standardChatGptDeployment, 
-                    _standardServiceEndpoint, 
+                    _standardChatGptDeployment,
+                    _standardServiceEndpoint,
                     _tokenCredential);
             }
         }
@@ -180,12 +190,14 @@ public class OpenAIClientFacade
             // Use key-based authentication
             if (!string.IsNullOrEmpty(_apimKey))
             {
-                // Create HttpClient with APIM key header
+                // Create HttpClient with APIM key header - managed by IHttpClientFactory
+#pragma warning disable CA2000 // Dispose objects before losing scope
                 var httpClient = _httpClientFactory.CreateClient();
+#pragma warning restore CA2000 // Dispose objects before losing scope
                 httpClient.DefaultRequestHeaders.Add("Ocp-Apim-Subscription-Key", _apimKey);
-                
+
                 kernelBuilder.AddAzureOpenAITextToImage(
-                    _standardChatGptDeployment, 
+                    _standardChatGptDeployment,
                     _standardServiceEndpoint,
                     _config.AOAIStandardServiceKey,
                     httpClient: httpClient);
@@ -193,7 +205,7 @@ public class OpenAIClientFacade
             else
             {
                 kernelBuilder.AddAzureOpenAITextToImage(
-                    _standardChatGptDeployment, 
+                    _standardChatGptDeployment,
                     _standardServiceEndpoint,
                     _config.AOAIStandardServiceKey);
             }
@@ -203,21 +215,23 @@ public class OpenAIClientFacade
             // Use token-based authentication
             if (!string.IsNullOrEmpty(_apimKey))
             {
-                // Create HttpClient with APIM key header
+                // Create HttpClient with APIM key header - managed by IHttpClientFactory
+#pragma warning disable CA2000 // Dispose objects before losing scope
                 var httpClient = _httpClientFactory.CreateClient();
+#pragma warning restore CA2000 // Dispose objects before losing scope
                 httpClient.DefaultRequestHeaders.Add("Ocp-Apim-Subscription-Key", _apimKey);
-                
+
                 kernelBuilder.AddAzureOpenAITextToImage(
-                    "dall-e-3", 
-                    _standardServiceEndpoint, 
+                    "dall-e-3",
+                    _standardServiceEndpoint,
                     _tokenCredential,
                     httpClient: httpClient);
             }
             else
             {
                 kernelBuilder.AddAzureOpenAITextToImage(
-                    "dall-e-3", 
-                    _standardServiceEndpoint, 
+                    "dall-e-3",
+                    _standardServiceEndpoint,
                     _tokenCredential);
             }
         }

@@ -1,0 +1,63 @@
+@using Microsoft.AspNetCore.Components.Web
+
+<Microsoft.AspNetCore.Components.Web.ErrorBoundary @ref="_errorBoundary">
+    <ChildContent>
+        @ChildContent
+    </ChildContent>
+    <ErrorContent Context="exception">
+        @{
+            LogError(exception);
+        }
+        <MudAlert Severity="Severity.Error" Variant="Variant.Filled" Dense="true" Class="my-2">
+            <div class="d-flex align-center justify-space-between">
+                <div class="d-flex align-center">
+                    <MudIcon Icon="@Icons.Material.Filled.Error" Class="mr-2" />
+                    <span>@ErrorMessage</span>
+                </div>
+                @if (AllowRecovery)
+                {
+                    <MudButton Size="Size.Small" 
+                               Variant="Variant.Text" 
+                               Color="Color.Inherit"
+                               StartIcon="@Icons.Material.Filled.Refresh"
+                               OnClick="Recover">
+                        Retry
+                    </MudButton>
+                }
+            </div>
+        </MudAlert>
+    </ErrorContent>
+</Microsoft.AspNetCore.Components.Web.ErrorBoundary>
+
+@code {
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    [Parameter]
+    public string ErrorMessage { get; set; } = "An error occurred in this component";
+
+    [Parameter]
+    public bool AllowRecovery { get; set; } = true;
+
+    [Parameter]
+    public string? ComponentName { get; set; }
+
+    [Inject]
+    private GlobalErrorHandler ErrorHandler { get; set; } = null!;
+
+    private Microsoft.AspNetCore.Components.Web.ErrorBoundary? _errorBoundary;
+
+    private void LogError(Exception exception)
+    {
+        var context = string.IsNullOrEmpty(ComponentName) 
+            ? "Component Error Boundary" 
+            : $"Component Error Boundary: {ComponentName}";
+            
+        ErrorHandler.HandleError(exception, context);
+    }
+
+    private void Recover()
+    {
+        _errorBoundary?.Recover();
+    }
+}

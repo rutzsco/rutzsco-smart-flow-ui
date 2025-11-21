@@ -6,6 +6,34 @@ namespace MinimalApi.Services;
 
 public sealed class AzureBlobStorageService(BlobServiceClient blobServiceClient, IOptions<AppConfiguration> configuration, ProfileService profileService)
 {
+    private static async Task CreateContainerWithRetryAsync(BlobContainerClient container, CancellationToken cancellationToken, int maxRetries = 5)
+    {
+        int retryCount = 0;
+        int delayMilliseconds = 1000; // Start with 1 second
+
+        while (retryCount < maxRetries)
+        {
+            try
+            {
+                await container.CreateAsync(cancellationToken: cancellationToken);
+                return; // Success
+            }
+            catch (Azure.RequestFailedException ex) when (ex.ErrorCode == "ContainerBeingDeleted")
+            {
+                retryCount++;
+                if (retryCount >= maxRetries)
+                {
+                    throw new InvalidOperationException(
+                        $"Container '{container.Name}' is being deleted. Please wait a few moments and try again.", ex);
+                }
+
+                // Exponential backoff: 1s, 2s, 4s, 8s, 16s
+                await Task.Delay(delayMilliseconds, cancellationToken);
+                delayMilliseconds *= 2;
+            }
+        }
+    }
+
     internal async Task<UploadDocumentsResponse> UploadFilesAsync(UserInformation userInfo, IEnumerable<IFormFile> files, string storageContainerName, IDictionary<string, string> metadata, Dictionary<string, string>? filePathMap, CancellationToken cancellationToken)
     {
         try
@@ -13,9 +41,8 @@ public sealed class AzureBlobStorageService(BlobServiceClient blobServiceClient,
             var container = blobServiceClient.GetBlobContainerClient(storageContainerName);
             if (!await container.ExistsAsync())
             {
-                // Create the container
-                await container.CreateAsync();
-                Console.WriteLine("Container created.");
+                // Create the container with retry logic for "ContainerBeingDeleted" error
+                await CreateContainerWithRetryAsync(container, cancellationToken);
             }
 
             List<UploadDocumentFileSummary> uploadedFiles = [];
@@ -28,18 +55,11 @@ public sealed class AzureBlobStorageService(BlobServiceClient blobServiceClient,
                     fileName = fullPath;
                 }
 
-                Console.WriteLine($"[UPLOAD DEBUG] Starting upload:");
-                Console.WriteLine($"[UPLOAD DEBUG]   file.FileName = '{file.FileName}'");
-                Console.WriteLine($"[UPLOAD DEBUG]   resolved fileName (from map or original) = '{fileName}'");
-                Console.WriteLine($"[UPLOAD DEBUG]   Incoming metadata keys: {string.Join(", ", metadata.Keys)}");
-
                 await using var stream = file.OpenReadStream();
                 // Use the full file path (preserving folder structure if present)
                 var blobName = fileName.Replace("\\", "/");
-                Console.WriteLine($"[UPLOAD DEBUG]   blobName (after normalize) = '{blobName}'");
 
                 var blobClient = container.GetBlobClient(blobName);
-                Console.WriteLine($"[UPLOAD DEBUG]   blobClient.Name = '{blobClient.Name}'");
                 //if (await blobClient.ExistsAsync(cancellationToken))
                 //{
                 //    continue;
@@ -56,13 +76,6 @@ public sealed class AzureBlobStorageService(BlobServiceClient blobServiceClient,
                 // Include container name in blobpath to show full path: containername/blobname
                 uploadMetadata["blobpath"] = $"{storageContainerName}/{blobClient.Name}";
                 uploadMetadata.Remove("folderPath"); // Remove client-side routing metadata
-
-                Console.WriteLine($"[SAVE DEBUG] Saving metadata to Azure:");
-                Console.WriteLine($"[SAVE DEBUG]   Container = '{storageContainerName}'");
-                Console.WriteLine($"[SAVE DEBUG]   blobClient.Name = '{blobClient.Name}'");
-                Console.WriteLine($"[SAVE DEBUG]   filename = '{uploadMetadata["filename"]}'");
-                Console.WriteLine($"[SAVE DEBUG]   blobpath = '{uploadMetadata["blobpath"]}'");
-                Console.WriteLine($"[SAVE DEBUG]   All metadata keys being saved: {string.Join(", ", uploadMetadata.Keys)}");
 
                 await blobClient.SetMetadataAsync(uploadMetadata, cancellationToken: cancellationToken);
 

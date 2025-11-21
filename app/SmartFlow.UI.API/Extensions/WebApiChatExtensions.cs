@@ -27,6 +27,11 @@ internal static class WebApiChatExtensions
 
     private static async Task<ApproachResponse> OnPostChatAsync(HttpContext context, ChatRequest request, ChatService chatService, RAGChatService ragChatService, IChatHistoryService chatHistoryService, EndpointChatService endpointChatService, EndpointChatServiceV2 endpointChatServiceV2, EndpointTaskService endpointTaskService, [FromServices] AzureAIAgentChatService? azureAIAgentChatService, ImageGenerationChatAgent imageGenerationChatAgent, [EnumeratorCancellation] CancellationToken cancellationToken)
     {
+        if (request == null)
+        {
+            throw new ArgumentNullException(nameof(request), "Chat request is required");
+        }
+
         ApproachResponse response = null;
         var resultChunks = OnPostChatStreamingAsync(context, request, chatService, ragChatService, azureAIAgentChatService, chatHistoryService, endpointChatService, endpointChatServiceV2, endpointTaskService, imageGenerationChatAgent, cancellationToken);
         await foreach (var chunk in resultChunks)
@@ -42,6 +47,11 @@ internal static class WebApiChatExtensions
 
     private static async IAsyncEnumerable<ChatChunkResponse> OnPostChatStreamingAsync(HttpContext context, ChatRequest request, ChatService chatService, RAGChatService ragChatService, [FromServices] AzureAIAgentChatService? azureAIAgentChatService, IChatHistoryService chatHistoryService, EndpointChatService endpointChatService, EndpointChatServiceV2 endpointChatServiceV2, EndpointTaskService endpointTaskService, ImageGenerationChatAgent imageGenerationChatAgent, [EnumeratorCancellation] CancellationToken cancellationToken)
     {
+        if (request == null)
+        {
+            throw new ArgumentNullException(nameof(request), "Chat request is required");
+        }
+
         var profileService = context.RequestServices.GetRequiredService<ProfileService>();
         var profileInfo = await profileService.GetProfileDataAsync();
         var userInfo = await context.GetUserInfoAsync(profileInfo);
@@ -77,7 +87,7 @@ internal static class WebApiChatExtensions
                 catch (Exception ex)
                 {
                     var logger = context.RequestServices.GetRequiredService<ILoggerFactory>().CreateLogger("WebApiChatExtensions");
-                    logger.LogError(ex, "Failed to record chat message for user {UserId}, chat {ChatId}, turn {ChatTurnId}", 
+                    logger.LogError(ex, "Failed to record chat message for user {UserId}, chat {ChatId}, turn {ChatTurnId}",
                         userInfo.UserId, request.ChatId, request.ChatTurnId);
                 }
             }
@@ -151,6 +161,11 @@ internal static class WebApiChatExtensions
 
     private static async Task<IEnumerable<ChatHistoryResponse>> OnGetChatHistorySessionAsync(string chatId, HttpContext context, IChatHistoryService chatHistoryService)
     {
+        if (string.IsNullOrWhiteSpace(chatId))
+        {
+            throw new ArgumentException("Chat ID is required", nameof(chatId));
+        }
+
         var profileService = context.RequestServices.GetRequiredService<ProfileService>();
         var profileInfo = await profileService.GetProfileDataAsync();
         var userInfo = await context.GetUserInfoAsync(profileInfo);
@@ -158,9 +173,14 @@ internal static class WebApiChatExtensions
         var apiResponseModel = response.AsFeedbackResponse(profileInfo);
         return apiResponseModel;
     }
-    
+
     private static async Task<IResult> OnPostChatRatingAsync(HttpContext context, ChatRatingRequest request, IChatHistoryService chatHistoryService, CancellationToken cancellationToken)
     {
+        if (request == null)
+        {
+            return Results.BadRequest(new { error = "Chat rating request is required" });
+        }
+
         var userInfo = await context.GetUserInfoAsync();
         await chatHistoryService.RecordRatingAsync(userInfo, request);
         return Results.Ok();

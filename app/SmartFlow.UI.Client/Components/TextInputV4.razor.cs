@@ -27,24 +27,22 @@ public sealed partial class TextInputV4
 
     [Parameter] public string ImageUrl { get; set; } = "";
 
-    [Parameter] public ProfileSummary SelectedProfileSummary { get; set; } = null;
+    [Parameter] public ProfileSummary? SelectedProfileSummary { get; set; } = null;
 
-    [Parameter] public UserSelectionModel UserSelectionModel { get; set; } = null;
+    [Parameter] public UserSelectionModel? UserSelectionModel { get; set; } = null;
 
     private async Task OnKeyUpAsync(KeyboardEventArgs args)
     {
-        Console.WriteLine($"OnKeyUpAsync - {UserQuestion}");
         if (args is { Key: "Enter", ShiftKey: false } && OnEnterKeyPressed.HasDelegate)
         {
             var question = UserQuestion;
             UserQuestion = string.Empty;
             question.TrimEnd('\n');
 
-            var template = SelectedProfileSummary.PromptTemplates.First();
+            var template = SelectedProfileSummary!.PromptTemplates.First();
             var promptTemplate = Encoding.UTF8.GetString(Convert.FromBase64String(template.PromptTemplate));
             foreach (var variable in template.Variables)
             {
-                Console.WriteLine($"${variable.Name}:{variable.Value}");
                 promptTemplate = promptTemplate.Replace($"${variable.Name}", variable.Value);
             }
 
@@ -52,7 +50,6 @@ public sealed partial class TextInputV4
             sb.Append(promptTemplate);
             sb.AppendLine();
             sb.Append(question);
-            Console.WriteLine($"OnKeyUpAsync - {sb.ToString()}");
             await OnEnterKeyPressed.InvokeAsync(sb.ToString());
         }
     }
@@ -61,11 +58,10 @@ public sealed partial class TextInputV4
         var question = UserQuestion;
         UserQuestion = string.Empty;
 
-        var template = SelectedProfileSummary.PromptTemplates.First();
+        var template = SelectedProfileSummary!.PromptTemplates.First();
         var promptTemplate = Encoding.UTF8.GetString(Convert.FromBase64String(template.PromptTemplate));
         foreach (var variable in template.Variables)
         {
-            Console.WriteLine($"${variable.Name}:{variable.Value}");
             promptTemplate = promptTemplate.Replace($"${variable.Name}", variable.Value);
         }
 
@@ -73,7 +69,6 @@ public sealed partial class TextInputV4
         sb.Append(promptTemplate);
         sb.AppendLine();
         sb.Append(question);
-        Console.WriteLine($"OnKeyUpAsync - {sb.ToString()}");
         await OnEnterKeyPressed.InvokeAsync(sb.ToString());
     }
     private async Task OnClearChatAsync()
@@ -89,7 +84,6 @@ public sealed partial class TextInputV4
 
     private async Task UploadFileAsync(IBrowserFile file)
     {
-        Console.WriteLine("UploadFilesAsync");
         var buffer = new byte[file.Size];
         await file.OpenReadStream(52428800).ReadAsync(buffer);
         var imageContent = Convert.ToBase64String(buffer);

@@ -1,0 +1,75 @@
+@using Microsoft.AspNetCore.Components.Web
+@implements IDisposable
+
+<Microsoft.AspNetCore.Components.Web.ErrorBoundary @ref="_errorBoundary">
+    <ChildContent>
+        @ChildContent
+    </ChildContent>
+    <ErrorContent Context="exception">
+        @{
+            LogError(exception);
+        }
+        <div class="error-boundary-content">
+            <MudPaper Elevation="3" Class="pa-6 ma-4">
+                <MudStack Spacing="4">
+                    <div class="d-flex align-center">
+                        <MudIcon Icon="@Icons.Material.Filled.Error" Color="Color.Error" Size="Size.Large" Class="mr-3" />
+                        <MudText Typo="Typo.h5" Color="Color.Error">An Error Occurred</MudText>
+                    </div>
+                    
+                    <MudText Typo="Typo.body1">
+                        Something went wrong while processing your request. Please try again or contact support if the problem persists.
+                    </MudText>
+                    
+                    <MudDivider />
+                    
+                    <div class="d-flex gap-2">
+                        <MudButton Variant="Variant.Filled" 
+                                   Color="Color.Primary" 
+                                   StartIcon="@Icons.Material.Filled.Refresh"
+                                   OnClick="Recover">
+                            Try Again
+                        </MudButton>
+                    </div>
+                </MudStack>
+            </MudPaper>
+        </div>
+    </ErrorContent>
+</Microsoft.AspNetCore.Components.Web.ErrorBoundary>
+
+@code {
+    [Parameter]
+    public RenderFragment? ChildContent { get; set; }
+
+    [Inject]
+    private GlobalErrorHandler ErrorHandler { get; set; } = null!;
+
+    [Inject]
+    private ISnackbar Snackbar { get; set; } = null!;
+
+    private Microsoft.AspNetCore.Components.Web.ErrorBoundary? _errorBoundary;
+
+    private void LogError(Exception exception)
+    {
+        ErrorHandler.HandleError(exception, "Page Error Boundary");
+        
+        Snackbar.Add(
+            "An error occurred. The error has been logged.",
+            Severity.Error,
+            config =>
+            {
+                config.VisibleStateDuration = 5000;
+                config.ShowCloseIcon = true;
+            });
+    }
+
+    private void Recover()
+    {
+        _errorBoundary?.Recover();
+    }
+
+    public void Dispose()
+    {
+        // Cleanup if needed
+    }
+}

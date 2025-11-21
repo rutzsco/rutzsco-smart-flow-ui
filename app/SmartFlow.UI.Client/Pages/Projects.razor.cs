@@ -184,10 +184,10 @@ public sealed partial class Projects : IDisposable
         try
         {
             var success = await Client.CreateProjectAsync(
-                _newProjectName, 
+                _newProjectName,
                 string.IsNullOrWhiteSpace(_newProjectDescription) ? null : _newProjectDescription,
                 string.IsNullOrWhiteSpace(_newProjectType) ? null : _newProjectType);
-            
+
             if (success)
             {
                 SnackBarMessage($"Project '{_newProjectName}' created successfully");
@@ -250,7 +250,7 @@ public sealed partial class Projects : IDisposable
         var dialog = await DialogService.ShowAsync<ConfirmationDialog>("Confirm Project Deletion", parameters);
         var result = await dialog.Result;
 
-        if (result.Canceled)
+        if (result!.Canceled)
             return;
 
         await DeleteProjectAsync();
@@ -266,7 +266,7 @@ public sealed partial class Projects : IDisposable
 
         try
         {
-            var projectToDelete = _selectedProject;
+            var projectToDelete = _selectedProject!;
             var success = await Client.DeleteProjectAsync(projectToDelete);
 
             if (success)
@@ -309,10 +309,10 @@ public sealed partial class Projects : IDisposable
             {
                 SnackBarMessage($"Project '{_selectedProject}' metadata updated successfully");
                 _showEditMetadataForm = false;
-                
+
                 // Refresh the project info
                 _selectedProjectInfo = await Client.GetProjectMetadataAsync(_selectedProject);
-                
+
                 // Update the project in the list
                 var projectInList = _projects.FirstOrDefault(c => c.Name == _selectedProject);
                 if (projectInList != null && _selectedProjectInfo != null)
@@ -320,7 +320,7 @@ public sealed partial class Projects : IDisposable
                     projectInList.Description = _selectedProjectInfo.Description;
                     projectInList.Type = _selectedProjectInfo.Type;
                 }
-                
+
                 StateHasChanged();
             }
             else
@@ -335,7 +335,7 @@ public sealed partial class Projects : IDisposable
         }
     }
 
-    private bool OnFileFilter(ContainerFileInfo fileInfo) => 
+    private bool OnFileFilter(ContainerFileInfo fileInfo) =>
         string.IsNullOrWhiteSpace(_filter) || fileInfo.FileName.Contains(_filter, StringComparison.OrdinalIgnoreCase);
 
     private bool OnProjectFilter(CollectionInfo projectInfo)
@@ -347,11 +347,11 @@ public sealed partial class Projects : IDisposable
         }
 
         var filter = _projectFilter.ToLower();
-        
+
         var matches = projectInfo.Name.Contains(filter, StringComparison.OrdinalIgnoreCase) ||
-                     (!string.IsNullOrWhiteSpace(projectInfo.Type) && 
+                     (!string.IsNullOrWhiteSpace(projectInfo.Type) &&
                       projectInfo.Type.Contains(filter, StringComparison.OrdinalIgnoreCase)) ||
-                     (!string.IsNullOrWhiteSpace(projectInfo.Description) && 
+                     (!string.IsNullOrWhiteSpace(projectInfo.Description) &&
                       projectInfo.Description.Contains(filter, StringComparison.OrdinalIgnoreCase));
 
         if (matches)
@@ -394,17 +394,17 @@ public sealed partial class Projects : IDisposable
         try
         {
             var metadata = new Dictionary<string, string>();
-            
+
             // Add description to metadata if provided
             if (!string.IsNullOrWhiteSpace(_fileDescription))
             {
                 metadata["description"] = _fileDescription;
             }
-            
+
             var result = await Client.UploadFilesToProjectAsync(
-                _fileUploads.ToArray(), 
-                MaxIndividualFileSize, 
-                _selectedProject, 
+                _fileUploads.ToArray(),
+                MaxIndividualFileSize,
+                _selectedProject,
                 metadata);
 
             Logger.LogInformation("Upload result: {Result}", result);
@@ -462,9 +462,9 @@ public sealed partial class Projects : IDisposable
         try
         {
             Logger.LogInformation("Analyzing file {FileName} in {Project}", fileName, _selectedProject);
-            
+
             var success = await Client.AnalyzeProjectAsync(_selectedProject);
-            
+
             if (success)
             {
                 SnackBarMessage($"Analysis for '{fileName}' started successfully");
@@ -501,9 +501,9 @@ public sealed partial class Projects : IDisposable
         try
         {
             Logger.LogInformation("Analyzing project {Project}", _selectedProject);
-            
+
             var success = await Client.AnalyzeProjectAsync(_selectedProject);
-            
+
             if (success)
             {
                 SnackBarMessage($"Analysis started for project '{_selectedProject}'");
@@ -531,11 +531,11 @@ public sealed partial class Projects : IDisposable
         try
         {
             var fileUrl = await Client.GetProjectFileUrlAsync(_selectedProject, fileName, isProcessingFile);
-            
+
             if (!string.IsNullOrEmpty(fileUrl))
             {
                 var extension = Path.GetExtension(fileName).ToLowerInvariant();
-                
+
                 if (extension == ".pdf")
                 {
                     var parameters = new DialogParameters<CollectionPdfViewerDialog>
@@ -605,7 +605,7 @@ public sealed partial class Projects : IDisposable
         var dialog = await DialogService.ShowAsync<ConfirmationDialog>("Confirm Deletion", parameters);
         var result = await dialog.Result;
 
-        if (result.Canceled)
+        if (result!.Canceled)
             return;
 
         // Add to deleting set
@@ -615,9 +615,9 @@ public sealed partial class Projects : IDisposable
         try
         {
             Logger.LogInformation("Deleting file {FileName} from {Project}", fileName, _selectedProject);
-            
-            var success = await Client.DeleteFileFromProjectAsync(_selectedProject, fileName);
-            
+
+            var success = await Client.DeleteFileFromProjectAsync(_selectedProject!, fileName);
+
             if (success)
             {
                 SnackBarMessage($"File '{fileName}' deleted successfully");
@@ -660,7 +660,7 @@ public sealed partial class Projects : IDisposable
         var dialog = await DialogService.ShowAsync<ConfirmationDialog>("Confirm Workflow Deletion", parameters);
         var result = await dialog.Result;
 
-        if (result.Canceled)
+        if (result!.Canceled)
             return;
 
         await DeleteProjectWorkflowAsync();
@@ -676,10 +676,10 @@ public sealed partial class Projects : IDisposable
 
         try
         {
-            Logger.LogInformation("Deleting workflow files for project {Project}", _selectedProject);
-            
+            Logger.LogInformation("Deleting workflow files for project {Project}", _selectedProject!);
+
             var success = await Client.DeleteProjectWorkflowAsync(_selectedProject);
-            
+
             if (success)
             {
                 SnackBarMessage($"Workflow files for project '{_selectedProject}' deleted successfully");
@@ -705,15 +705,15 @@ public sealed partial class Projects : IDisposable
     private string GetProjectItemClass(CollectionInfo project)
     {
         var baseClass = "project-item";
-        return project.Name == _selectedProject 
-            ? $"{baseClass} project-item-selected" 
+        return project.Name == _selectedProject
+            ? $"{baseClass} project-item-selected"
             : baseClass;
     }
 
     private string GetProjectTextStyle(CollectionInfo project)
     {
-        return project.Name == _selectedProject 
-            ? "font-weight: 500;" 
+        return project.Name == _selectedProject
+            ? "font-weight: 500;"
             : "font-weight: 400;";
     }
 
@@ -752,18 +752,18 @@ public sealed partial class Projects : IDisposable
         try
         {
             Logger.LogInformation("Saving description for file {FileName}: '{Description}'", file.FileName, newDescription);
-            
+
             var success = await Client.UpdateFileDescriptionAsync(_selectedProject, file.FileName, string.IsNullOrWhiteSpace(newDescription) ? null : newDescription);
-            
+
             if (success)
             {
                 // Update the local file object immediately for UI responsiveness
                 file.Description = string.IsNullOrWhiteSpace(newDescription) ? null : newDescription;
                 _editingFileDescriptions.Remove(file.FileName);
                 _editingDescriptions.Remove(file.FileName);
-                
+
                 SnackBarMessage("File description updated successfully");
-                
+
                 // Reload files from server to ensure we have the latest persisted data
                 await LoadProjectFilesAsync();
             }

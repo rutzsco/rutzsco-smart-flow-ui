@@ -91,6 +91,11 @@ internal static class WebApiCollectionEndpoints
         [FromServices] ILogger<WebApplication> logger,
         CancellationToken cancellationToken)
     {
+        if (string.IsNullOrWhiteSpace(indexName))
+        {
+            return Results.BadRequest(new { error = "Index name is required" });
+        }
+
         try
         {
             logger.LogInformation("Getting index details for: {IndexName}", indexName);
@@ -146,6 +151,21 @@ internal static class WebApiCollectionEndpoints
         [FromServices] ILogger<WebApplication> logger,
         CancellationToken cancellationToken)
     {
+        if (request == null)
+        {
+            return Results.BadRequest(new { error = "Request body is required" });
+        }
+
+        if (string.IsNullOrWhiteSpace(request.Name))
+        {
+            return Results.BadRequest(new { error = "Collection name is required" });
+        }
+
+        if (request.Name.Length > 63 || !System.Text.RegularExpressions.Regex.IsMatch(request.Name, "^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$"))
+        {
+            return Results.BadRequest(new { error = "Collection name must be 1-63 characters, lowercase alphanumeric with hyphens, and start/end with alphanumeric" });
+        }
+
         try
         {
             logger.LogInformation("Creating managed collection: {ContainerName} with description: {Description}, type: {Type}, index: {IndexName}",
@@ -184,6 +204,11 @@ internal static class WebApiCollectionEndpoints
         [FromServices] ILogger<WebApplication> logger,
         CancellationToken cancellationToken)
     {
+        if (string.IsNullOrWhiteSpace(containerName))
+        {
+            return Results.BadRequest(new { error = "Container name is required" });
+        }
+
         try
         {
             logger.LogInformation("Deleting blob container: {ContainerName}", containerName);
@@ -216,6 +241,11 @@ internal static class WebApiCollectionEndpoints
         [FromServices] ILogger<WebApplication> logger,
         CancellationToken cancellationToken)
     {
+        if (string.IsNullOrWhiteSpace(containerName))
+        {
+            return Results.BadRequest(new { error = "Container name is required" });
+        }
+
         try
         {
             logger.LogInformation("Creating/tagging managed collection: {ContainerName}", containerName);
@@ -249,6 +279,16 @@ internal static class WebApiCollectionEndpoints
         [FromServices] ILogger<WebApplication> logger,
         CancellationToken cancellationToken)
     {
+        if (string.IsNullOrWhiteSpace(containerName))
+        {
+            return Results.BadRequest(new { error = "Container name is required" });
+        }
+
+        if (request == null)
+        {
+            return Results.BadRequest(new { error = "Request body is required" });
+        }
+
         try
         {
             logger.LogInformation("Updating metadata for collection: {ContainerName}", containerName);
@@ -286,6 +326,11 @@ internal static class WebApiCollectionEndpoints
         [FromServices] ILogger<WebApplication> logger,
         CancellationToken cancellationToken)
     {
+        if (string.IsNullOrWhiteSpace(containerName))
+        {
+            return Results.BadRequest(new { error = "Container name is required" });
+        }
+
         try
         {
             logger.LogInformation("Getting metadata for collection: {ContainerName}", containerName);
@@ -316,6 +361,11 @@ internal static class WebApiCollectionEndpoints
         [FromServices] ILogger<WebApplication> logger,
         CancellationToken cancellationToken)
     {
+        if (string.IsNullOrWhiteSpace(containerName))
+        {
+            return Results.BadRequest(new { error = "Container name is required" });
+        }
+
         try
         {
             logger.LogInformation("Getting files from container: {ContainerName}", containerName);
@@ -343,6 +393,16 @@ internal static class WebApiCollectionEndpoints
         [FromServices] ILogger<WebApplication> logger,
         CancellationToken cancellationToken)
     {
+        if (string.IsNullOrWhiteSpace(containerName))
+        {
+            return Results.BadRequest(new { error = "Container name is required" });
+        }
+
+        if (files == null || files.Count == 0)
+        {
+            return Results.BadRequest(new { error = "At least one file is required" });
+        }
+
         try
         {
             logger.LogInformation("Uploading {FileCount} files to container: {ContainerName}", files.Count, containerName);
@@ -392,6 +452,16 @@ internal static class WebApiCollectionEndpoints
         [FromServices] ILogger<WebApplication> logger,
         CancellationToken cancellationToken)
     {
+        if (string.IsNullOrWhiteSpace(containerName))
+        {
+            return Results.BadRequest(new { error = "Container name is required" });
+        }
+
+        if (string.IsNullOrWhiteSpace(fileName))
+        {
+            return Results.BadRequest(new { error = "File name is required" });
+        }
+
         try
         {
             // URL decode the filename since it comes URL-encoded from the client
@@ -428,6 +498,16 @@ internal static class WebApiCollectionEndpoints
         [FromServices] ILogger<WebApplication> logger,
         CancellationToken cancellationToken)
     {
+        if (string.IsNullOrWhiteSpace(containerName))
+        {
+            return Results.BadRequest(new { error = "Container name is required" });
+        }
+
+        if (string.IsNullOrWhiteSpace(fileName))
+        {
+            return Results.BadRequest(new { error = "File name is required" });
+        }
+
         try
         {
             // URL decode the filename since it comes URL-encoded from the client
@@ -500,6 +580,11 @@ internal static class WebApiCollectionEndpoints
         [FromServices] ILogger<WebApplication> logger,
         CancellationToken cancellationToken)
     {
+        if (string.IsNullOrWhiteSpace(containerName))
+        {
+            return Results.BadRequest(new { error = "Container name is required" });
+        }
+
         try
         {
             logger.LogInformation("Getting folder structure from container: {ContainerName}", containerName);
@@ -524,6 +609,16 @@ internal static class WebApiCollectionEndpoints
         [FromServices] ILogger<WebApplication> logger,
         CancellationToken cancellationToken)
     {
+        if (string.IsNullOrWhiteSpace(containerName))
+        {
+            return Results.BadRequest(new { error = "Container name is required" });
+        }
+
+        if (request == null || string.IsNullOrWhiteSpace(request.FolderPath))
+        {
+            return Results.BadRequest(new { error = "Folder path is required" });
+        }
+
         try
         {
             logger.LogInformation("Creating folder {FolderPath} in container: {ContainerName}", request.FolderPath, containerName);
@@ -557,6 +652,16 @@ internal static class WebApiCollectionEndpoints
         [FromServices] ILogger<WebApplication> logger,
         CancellationToken cancellationToken)
     {
+        if (string.IsNullOrWhiteSpace(containerName))
+        {
+            return Results.BadRequest(new { error = "Container name is required" });
+        }
+
+        if (request == null || string.IsNullOrWhiteSpace(request.OldFolderPath) || string.IsNullOrWhiteSpace(request.NewFolderPath))
+        {
+            return Results.BadRequest(new { error = "Both old and new folder paths are required" });
+        }
+
         try
         {
             logger.LogInformation("Renaming folder from {OldPath} to {NewPath} in container: {ContainerName}",
@@ -594,6 +699,16 @@ internal static class WebApiCollectionEndpoints
         [FromServices] ILogger<WebApplication> logger,
         CancellationToken cancellationToken)
     {
+        if (string.IsNullOrWhiteSpace(containerName))
+        {
+            return Results.BadRequest(new { error = "Container name is required" });
+        }
+
+        if (string.IsNullOrWhiteSpace(folderPath))
+        {
+            return Results.BadRequest(new { error = "Folder path is required" });
+        }
+
         try
         {
             logger.LogInformation("Deleting folder {FolderPath} from container: {ContainerName}", folderPath, containerName);
@@ -628,6 +743,21 @@ internal static class WebApiCollectionEndpoints
         [FromServices] ILogger<WebApplication> logger,
         CancellationToken cancellationToken)
     {
+        if (string.IsNullOrWhiteSpace(containerName))
+        {
+            return Results.BadRequest(new { error = "Container name is required" });
+        }
+
+        if (string.IsNullOrWhiteSpace(fileName))
+        {
+            return Results.BadRequest(new { error = "File name is required" });
+        }
+
+        if (metadata == null)
+        {
+            return Results.BadRequest(new { error = "Metadata is required" });
+        }
+
         try
         {
             fileName = Uri.UnescapeDataString(fileName);
@@ -662,6 +792,16 @@ internal static class WebApiCollectionEndpoints
         [FromServices] ILogger<WebApplication> logger,
         CancellationToken cancellationToken)
     {
+        if (string.IsNullOrWhiteSpace(containerName))
+        {
+            return Results.BadRequest(new { error = "Container name is required" });
+        }
+
+        if (string.IsNullOrWhiteSpace(fileName))
+        {
+            return Results.BadRequest(new { error = "File name is required" });
+        }
+
         try
         {
             fileName = Uri.UnescapeDataString(fileName);

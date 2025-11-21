@@ -60,7 +60,7 @@
                     <MudTabPanel Icon="@Icons.Material.Filled.Lightbulb" Text="Thought process" ToolTip="Show thought process." Disabled="@(!Retort.HasThoughts())">
                     <ChildContent>
                         <MudPaper Class="pa-6" Elevation="3">
-                            @foreach (var thought in Retort.Context.Thoughts)
+                            @foreach (var thought in Retort.Context!.Thoughts)
                                 {
                                     <MudCard Class="mb-6" Style="background-color: #fbfbfb;" Outlined="true">
                                         <MudCardHeader Style="padding: 10px">
@@ -81,7 +81,7 @@
                 <MudTabPanel Icon="@Icons.Material.Filled.TextSnippet" Text="Supporting Content" ToolTip="Show the supporting content." Disabled="@(!Retort.HasDataPoints())">
                     <ChildContent>
                         <MudPaper Class="pa-2" Elevation="3">
-                            <SupportingContent DataPoints="Retort.Context.DataPoints" />
+                            <SupportingContent DataPoints="Retort.Context!.DataPoints" />
                         </MudPaper>
                     </ChildContent>
                 </MudTabPanel>

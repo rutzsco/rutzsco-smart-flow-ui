@@ -20,9 +20,9 @@ namespace MinimalApi.Services;
 /// </summary>
 public class TextToImageService
 {
-    private readonly HttpClient _httpClient;
+    private readonly IHttpClientFactory _httpClientFactory;
     private readonly IConfiguration _configuration;
-    
+
     // API configuration properties
     private string ApiEndpoint => _configuration["TextToImageAPIEndpoint"];
     private string ApiDeployment => _configuration["TextToImageAPIDeployment"];
@@ -33,11 +33,11 @@ public class TextToImageService
     /// <summary>
     /// Initializes a new instance of the TextToImageService
     /// </summary>
+    /// <param name="httpClientFactory">Factory for creating HttpClient instances</param>
     /// <param name="configuration">Application configuration</param>
-    public TextToImageService(IConfiguration configuration)
+    public TextToImageService(IHttpClientFactory httpClientFactory, IConfiguration configuration)
     {
-        _httpClient = new HttpClient();
-        _httpClient.Timeout = TimeSpan.FromMinutes(2); 
+        _httpClientFactory = httpClientFactory ?? throw new ArgumentNullException(nameof(httpClientFactory));
         _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
     }
 
@@ -51,14 +51,15 @@ public class TextToImageService
     /// <param name="outputFormat">Output format (default: "png")</param>
     /// <returns>Base64 data URL of the generated image</returns>
     public async Task<string> NewImageAsync(
-        string prompt, 
-        string size = "1024x1024", 
-        int n = 1, 
-        string quality = "medium", 
+        string prompt,
+        string size = "1024x1024",
+        int n = 1,
+        string quality = "medium",
         string outputFormat = "png")
     {
+        using var httpClient = CreateHttpClient();
         var requestUrl = $"{ApiEndpoint}{BaseApiPath}/generations?api-version={ApiVersion}";
-        
+
         var requestBody = new ImageGenerationRequest
         {
             Prompt = prompt,
@@ -67,13 +68,14 @@ public class TextToImageService
             Quality = quality,
             OutputFormat = outputFormat
         };
-        
+
         var jsonResponse = await SendApiRequestAsync(
-            HttpMethod.Post, 
-            requestUrl, 
+            httpClient,
+            HttpMethod.Post,
+            requestUrl,
             JsonConvert.SerializeObject(requestBody),
             "application/json");
-        
+
         return ExtractImageDataUrl(jsonResponse, "image generation");
     }
 
@@ -87,29 +89,40 @@ public class TextToImageService
     /// <param name="quality">Image quality (e.g., "medium")</param>
     /// <returns>Base64 data URL of the edited image</returns>
     public async Task<string> EditImageFromDataUrlAsync(
-        string imageSourceUrl, 
-        string prompt, 
-        string size = "1024x1024", 
-        int n = 1, 
+        string imageSourceUrl,
+        string prompt,
+        string size = "1024x1024",
+        int n = 1,
         string quality = "medium")
     {
+        using var httpClient = CreateHttpClient();
         var requestUrl = $"{ApiEndpoint}{BaseApiPath}/edits?api-version={ApiVersion}";
-        
+
         // Extract image data from URL or data URL
-        var (imageData, imageMediaType) = await GetImageDataAsync(imageSourceUrl);
-        
+        var (imageData, imageMediaType) = await GetImageDataAsync(httpClient, imageSourceUrl);
+
         // Prepare form data for the edit request
         using var form = new MultipartFormDataContent();
         AddEditRequestFields(form, prompt, n, size, quality);
         AddImageContent(form, imageData, imageMediaType);
-        
-        var jsonResponse = await SendApiRequestAsync(HttpMethod.Post, requestUrl, form);
-        
+
+        var jsonResponse = await SendApiRequestAsync(httpClient, HttpMethod.Post, requestUrl, form);
+
         return ExtractImageDataUrl(jsonResponse, "image edit");
     }
 
     #region Private Helper Methods
-    
+
+    /// <summary>
+    /// Creates a configured HttpClient instance from the factory
+    /// </summary>
+    private HttpClient CreateHttpClient()
+    {
+        var httpClient = _httpClientFactory.CreateClient();
+        httpClient.Timeout = TimeSpan.FromMinutes(2);
+        return httpClient;
+    }
+
     /// <summary>
     /// Parses a base64 data URL to extract binary data and media type
     /// </summary>
@@ -126,17 +139,17 @@ public class TextToImageService
         var data = Convert.FromBase64String(base64Data);
         return (data, mediaType);
     }
-    
+
     /// <summary>
     /// Gets image data from either a URL or data URL
     /// </summary>
-    private async Task<(byte[] Data, string MediaType)> GetImageDataAsync(string imageSourceUrl)
+    private async Task<(byte[] Data, string MediaType)> GetImageDataAsync(HttpClient httpClient, string imageSourceUrl)
     {
         if (string.IsNullOrEmpty(imageSourceUrl))
         {
             throw new ArgumentNullException(nameof(imageSourceUrl), "Image source URL cannot be null or empty.");
         }
-        
+
         byte[] imageData;
         string imageMediaType = "image/png";
 
@@ -153,34 +166,34 @@ public class TextToImageService
         }
         else
         {
-            (imageData, imageMediaType) = await DownloadImageFromUrlAsync(imageSourceUrl);
+            (imageData, imageMediaType) = await DownloadImageFromUrlAsync(httpClient, imageSourceUrl);
         }
 
         if (imageData == null || imageData.Length == 0)
         {
             throw new ArgumentException("Image data could not be processed or is empty.", nameof(imageSourceUrl));
         }
-        
+
         return (imageData, imageMediaType);
     }
-    
+
     /// <summary>
     /// Downloads an image from a URL and returns its data and media type
     /// </summary>
-    private async Task<(byte[] Data, string MediaType)> DownloadImageFromUrlAsync(string imageUrl)
+    private async Task<(byte[] Data, string MediaType)> DownloadImageFromUrlAsync(HttpClient httpClient, string imageUrl)
     {
         string mediaType = "image/png";
         try
         {
-            using var imageResponse = await _httpClient.GetAsync(imageUrl);
+            using var imageResponse = await httpClient.GetAsync(imageUrl);
             imageResponse.EnsureSuccessStatusCode();
-            
+
             var contentTypeHeader = imageResponse.Content.Headers.ContentType;
             if (contentTypeHeader != null && !string.IsNullOrEmpty(contentTypeHeader.MediaType))
             {
                 mediaType = contentTypeHeader.MediaType;
             }
-            
+
             var data = await imageResponse.Content.ReadAsByteArrayAsync();
             return (data, mediaType);
         }
@@ -190,14 +203,14 @@ public class TextToImageService
         }
         catch (TaskCanceledException ex)
         {
-            if (ex.InnerException is TimeoutException || ex.CancellationToken.IsCancellationRequested && _httpClient.Timeout < TimeSpan.MaxValue)
+            if (ex.InnerException is TimeoutException || ex.CancellationToken.IsCancellationRequested && httpClient.Timeout < TimeSpan.MaxValue)
             {
                 throw new TimeoutException($"The request to download image from URL: {imageUrl} timed out.", ex);
             }
             throw;
         }
     }
-    
+
     /// <summary>
     /// Adds fields to a multipart form for image edit requests
     /// </summary>
@@ -217,7 +230,7 @@ public class TextToImageService
             form.Add(content, kvp.Key);
         }
     }
-    
+
     /// <summary>
     /// Adds image content to a multipart form
     /// </summary>
@@ -228,45 +241,45 @@ public class TextToImageService
     string fileName = $"image.{imageMediaType.Split('/')[1]}";
     form.Add(imageContent, "image", fileName);
     }
-    
+
     /// <summary>
     /// Sends an API request with JSON content
     /// </summary>
-    private async Task<string> SendApiRequestAsync(HttpMethod method, string url, string jsonContent, string contentType)
+    private async Task<string> SendApiRequestAsync(HttpClient httpClient, HttpMethod method, string url, string jsonContent, string contentType)
     {
         using var request = new HttpRequestMessage(method, url);
         request.Headers.Add("api-key", ApiKey);
         request.Content = new StringContent(jsonContent, Encoding.UTF8, contentType);
-        
-        return await ExecuteApiRequestAsync(request, url);
+
+        return await ExecuteApiRequestAsync(httpClient, request, url);
     }
-    
+
     /// <summary>
     /// Sends an API request with form content
     /// </summary>
-    private async Task<string> SendApiRequestAsync(HttpMethod method, string url, MultipartFormDataContent content)
+    private async Task<string> SendApiRequestAsync(HttpClient httpClient, HttpMethod method, string url, MultipartFormDataContent content)
     {
         using var request = new HttpRequestMessage(method, url);
         request.Headers.Add("api-key", ApiKey);
         request.Content = content;
-        
-        return await ExecuteApiRequestAsync(request, url);
+
+        return await ExecuteApiRequestAsync(httpClient, request, url);
     }
-    
+
     /// <summary>
     /// Executes an API request and handles errors
     /// </summary>
-    private async Task<string> ExecuteApiRequestAsync(HttpRequestMessage request, string url)
+    private async Task<string> ExecuteApiRequestAsync(HttpClient httpClient, HttpRequestMessage request, string url)
     {
         HttpResponseMessage response;
         try
         {
-            response = await _httpClient.SendAsync(request);
+            response = await httpClient.SendAsync(request);
         }
         catch (TaskCanceledException ex)
         {
-            if (ex.InnerException is TimeoutException || 
-                (_httpClient.Timeout != Timeout.InfiniteTimeSpan && ex.CancellationToken.IsCancellationRequested))
+            if (ex.InnerException is TimeoutException ||
+                (httpClient.Timeout != Timeout.InfiniteTimeSpan && ex.CancellationToken.IsCancellationRequested))
             {
                 throw new TimeoutException($"The API request to {url} timed out.", ex);
             }
@@ -278,10 +291,10 @@ public class TextToImageService
         {
             throw new HttpRequestException($"API request failed with status code {response.StatusCode}: {jsonResponse}");
         }
-        
+
         return jsonResponse;
     }
-    
+
     /// <summary>
     /// Extracts the base64 image data from an API response
     /// </summary>
@@ -297,11 +310,11 @@ public class TextToImageService
 
         return $"data:image/png;base64,{b64Json}";
     }
-    
+
     #endregion
-    
+
     #region Models
-    
+
     /// <summary>
     /// Request model for image generation
     /// </summary>
@@ -309,19 +322,19 @@ public class TextToImageService
     {
         [JsonProperty("prompt")]
         public string Prompt { get; set; }
-        
+
         [JsonProperty("n")]
         public int N { get; set; }
-        
+
         [JsonProperty("size")]
         public string Size { get; set; }
-        
+
         [JsonProperty("quality")]
         public string Quality { get; set; }
-        
+
         [JsonProperty("output_format")]
         public string OutputFormat { get; set; }
     }
-    
+
     #endregion
 }

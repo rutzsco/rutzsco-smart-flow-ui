@@ -105,7 +105,7 @@
         var dialog = DialogService.Show<CreateAgentDialog>("Create New Agent");
         var result = await dialog.Result;
 
-        if (!result.Canceled && result.Data is AgentViewModel newAgent)
+        if (result is { Canceled: false, Data: AgentViewModel newAgent })
         {
             var response = await Http.PostAsJsonAsync("api/agent", newAgent);
             if (response.IsSuccessStatusCode)
@@ -131,7 +131,7 @@
         var dialog = DialogService.Show<DeleteAgentConfirmationDialog>("Confirm Deletion", parameters);
         var result = await dialog.Result;
 
-        if (!result.Canceled)
+        if (!result!.Canceled)
         {
             try
             {
@@ -176,7 +176,7 @@
         var dialog = DialogService.Show<EditAgentDialog>("Edit Agent", parameters);
         var result = await dialog.Result;
 
-        if (!result.Canceled && result.Data is AgentViewModel updatedAgent)
+        if (result is { Canceled: false, Data: AgentViewModel updatedAgent })
         {
             try
             {

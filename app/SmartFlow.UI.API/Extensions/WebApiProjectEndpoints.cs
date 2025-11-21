@@ -86,7 +86,7 @@ internal static class WebApiProjectEndpoints
             {
                 errorMessage = $"{DocumentToolsEndpointKey} is not configured";
                 logger.LogWarning("{Service} endpoint is not configured", DocumentToolsServiceName);
-                
+
                 return CreateUnhealthyResponse(errorMessage, diagnostics);
             }
 
@@ -99,7 +99,7 @@ internal static class WebApiProjectEndpoints
             // Test connectivity to the liveness endpoint
             using var httpClient = httpClientFactory.CreateClient();
             httpClient.Timeout = TimeSpan.FromSeconds(HttpClientTimeoutSeconds);
-            
+
             if (!string.IsNullOrEmpty(documentToolsApiKey))
             {
                 httpClient.DefaultRequestHeaders.Add("X-API-Key", documentToolsApiKey);
@@ -156,7 +156,7 @@ internal static class WebApiProjectEndpoints
             errorMessage = $"HTTP request failed: {ex.Message}";
             diagnostics["exception_type"] = ex.GetType().Name;
             diagnostics["exception_message"] = ex.Message;
-            
+
             if (ex.InnerException != null)
             {
                 diagnostics["inner_exception"] = ex.InnerException.Message;
@@ -204,6 +204,11 @@ internal static class WebApiProjectEndpoints
         [FromServices] ILogger<WebApplication> logger,
         CancellationToken cancellationToken)
     {
+        if (string.IsNullOrWhiteSpace(projectName))
+        {
+            return Results.BadRequest(new { error = "Project name is required" });
+        }
+
         try
         {
             logger.LogInformation("Deleting workflow files for project: {ProjectName}", projectName);
@@ -239,16 +244,21 @@ internal static class WebApiProjectEndpoints
         [FromServices] BlobServiceClient blobServiceClient,
         CancellationToken cancellationToken)
     {
+        if (string.IsNullOrWhiteSpace(projectName))
+        {
+            return Results.BadRequest(new { error = "Project name is required" });
+        }
+
         try
         {
             logger.LogInformation("Analyzing project: {ProjectName}", projectName);
 
             var userInfo = await context.GetUserInfoAsync();
-            
+
             // Get the document tools API endpoint and key from configuration
             var documentToolsEndpoint = configuration[DocumentToolsEndpointKey];
             var documentToolsApiKey = configuration[DocumentToolsApiKeyKey];
-            
+
             if (string.IsNullOrEmpty(documentToolsEndpoint))
             {
                 logger.LogError("{Service} endpoint not configured", DocumentToolsServiceName);
@@ -257,7 +267,7 @@ internal static class WebApiProjectEndpoints
 
             // Get all input files for the project
             var projectFiles = await projectService.GetProjectFilesAsync(projectName, cancellationToken);
-            
+
             if (!projectFiles.Any())
             {
                 logger.LogWarning("No files found in project '{ProjectName}'", projectName);
@@ -273,21 +283,21 @@ internal static class WebApiProjectEndpoints
 
             // Get blob container client to read metadata
             var containerClient = blobServiceClient.GetBlobContainerClient(ProjectContainerName);
-            
+
             // Create file objects with url, filename, and description from metadata
             var filesList = new List<object>();
             foreach (var file in projectFiles)
             {
                 var blobClient = containerClient.GetBlobClient(file.FileName);
                 var properties = await blobClient.GetPropertiesAsync(cancellationToken: cancellationToken);
-                
+
                 // Try to get description from metadata, otherwise leave it empty
                 var description = string.Empty;
                 if (properties.Value.Metadata?.TryGetValue("description", out var desc) == true && !string.IsNullOrWhiteSpace(desc))
                 {
                     description = desc;
                 }
-                
+
                 filesList.Add(new
                 {
                     url = $"{baseUrl}/{ProjectContainerName}/{file.FileName}",
@@ -295,7 +305,7 @@ internal static class WebApiProjectEndpoints
                     description = description
                 });
             }
-            
+
             var files = filesList.ToArray();
 
             logger.LogInformation("Analyzing {FileCount} files in project '{ProjectName}'", files.Length, projectName);
@@ -306,17 +316,17 @@ internal static class WebApiProjectEndpoints
             {
                 httpClient.DefaultRequestHeaders.Add("X-API-Key", documentToolsApiKey);
             }
-            
+
             var requestBody = new
             {
                 message = DefaultAnalysisMessage,
                 project_name = projectName,
                 files = files
             };
-            
+
             var jsonContent = System.Text.Json.JsonSerializer.Serialize(requestBody);
             using var content = new StringContent(jsonContent, System.Text.Encoding.UTF8, "application/json");
-            
+
             // Use the spec-extractor endpoint
             var response = await httpClient.PostAsync($"{documentToolsEndpoint}{SpecExtractorPath}", content, cancellationToken);
 
@@ -324,10 +334,10 @@ internal static class WebApiProjectEndpoints
             {
                 var responseContent = await response.Content.ReadAsStringAsync(cancellationToken);
                 logger.LogInformation("Successfully triggered analysis for {FileCount} files in project '{ProjectName}'", files.Length, projectName);
-                
-                return TypedResults.Ok(new 
-                { 
-                    success = true, 
+
+                return TypedResults.Ok(new
+                {
+                    success = true,
                     message = $"Analysis started for {files.Length} file(s) in project '{projectName}'",
                     files = files,
                     response = responseContent
@@ -336,7 +346,7 @@ internal static class WebApiProjectEndpoints
             else
             {
                 var errorContent = await response.Content.ReadAsStringAsync(cancellationToken);
-                logger.LogError("Failed to trigger analysis for project '{ProjectName}': {StatusCode} - {Error}", 
+                logger.LogError("Failed to trigger analysis for project '{ProjectName}': {StatusCode} - {Error}",
                     projectName, response.StatusCode, errorContent);
                 return Results.Problem($"Failed to start analysis: {response.StatusCode} - {errorContent}");
             }
@@ -385,6 +395,7 @@ internal static class WebApiProjectEndpoints
         [FromServices] ILogger<WebApplication> logger,
         CancellationToken cancellationToken)
     {
+        // No input validation needed - no parameters
         try
         {
             logger.LogInformation("Getting projects");
@@ -411,6 +422,11 @@ internal static class WebApiProjectEndpoints
         [FromServices] ILogger<WebApplication> logger,
         CancellationToken cancellationToken)
     {
+        if (request == null || string.IsNullOrWhiteSpace(request.Name))
+        {
+            return Results.BadRequest(new { error = "Project name is required" });
+        }
+
         try
         {
             logger.LogInformation("Creating project: {ProjectName} with description: {Description}, type: {Type}",
@@ -447,7 +463,10 @@ internal static class WebApiProjectEndpoints
         [FromServices] ProjectService projectService,
         [FromServices] ILogger<WebApplication> logger,
         CancellationToken cancellationToken)
-    {
+    {        if (string.IsNullOrWhiteSpace(projectName))
+        {
+            return Results.BadRequest(new { error = "Project name is required" });
+        }
         try
         {
             logger.LogInformation("Deleting project: {ProjectName}", projectName);
@@ -481,6 +500,16 @@ internal static class WebApiProjectEndpoints
         [FromServices] ILogger<WebApplication> logger,
         CancellationToken cancellationToken)
     {
+        if (string.IsNullOrWhiteSpace(projectName))
+        {
+            return Results.BadRequest(new { error = "Project name is required" });
+        }
+
+        if (request == null)
+        {
+            return Results.BadRequest(new { error = "Request body is required" });
+        }
+
         try
         {
             logger.LogInformation("Updating metadata for project: {ProjectName}", projectName);
@@ -517,6 +546,11 @@ internal static class WebApiProjectEndpoints
         [FromServices] ILogger<WebApplication> logger,
         CancellationToken cancellationToken)
     {
+        if (string.IsNullOrWhiteSpace(projectName))
+        {
+            return Results.BadRequest(new { error = "Project name is required" });
+        }
+
         try
         {
             logger.LogInformation("Getting metadata for project: {ProjectName}", projectName);
@@ -627,6 +661,16 @@ internal static class WebApiProjectEndpoints
         [FromServices] ILogger<WebApplication> logger,
         CancellationToken cancellationToken)
     {
+        if (string.IsNullOrWhiteSpace(projectName))
+        {
+            return Results.BadRequest(new { error = "Project name is required" });
+        }
+
+        if (string.IsNullOrWhiteSpace(fileName))
+        {
+            return Results.BadRequest(new { error = "File name is required" });
+        }
+
         try
         {
             fileName = Uri.UnescapeDataString(fileName);
@@ -662,6 +706,16 @@ internal static class WebApiProjectEndpoints
         [FromServices] ILogger<WebApplication> logger,
         CancellationToken cancellationToken)
     {
+        if (string.IsNullOrWhiteSpace(projectName))
+        {
+            return Results.BadRequest(new { error = "Project name is required" });
+        }
+
+        if (string.IsNullOrWhiteSpace(fileName))
+        {
+            return Results.BadRequest(new { error = "File name is required" });
+        }
+
         try
         {
             fileName = Uri.UnescapeDataString(fileName);
@@ -740,10 +794,10 @@ internal static class WebApiProjectEndpoints
                 logger.LogWarning("UpdateFileDescription called without fileName parameter");
                 return Results.BadRequest(new { success = false, message = "fileName query parameter is required" });
             }
-            
+
             var fileName = Uri.UnescapeDataString(fileNameValue.ToString());
-            
-            logger.LogInformation("Updating description for file '{FileName}' in project '{ProjectName}' to '{Description}'", 
+
+            logger.LogInformation("Updating description for file '{FileName}' in project '{ProjectName}' to '{Description}'",
                 fileName, projectName, request?.Description ?? "(null)");
 
             var userInfo = await context.GetUserInfoAsync();

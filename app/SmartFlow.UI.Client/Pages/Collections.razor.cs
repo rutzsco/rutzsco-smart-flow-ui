@@ -280,7 +280,7 @@ public sealed partial class Collections : IDisposable
         var dialog = await DialogService.ShowAsync<ConfirmationDialog>("Confirm Collection Removal", parameters);
         var result = await dialog.Result;
 
-        if (result.Canceled)
+        if (result!.Canceled)
             return;
 
         await DeleteCollectionAsync();
@@ -296,7 +296,7 @@ public sealed partial class Collections : IDisposable
 
         try
         {
-            var collectionToDelete = _selectedCollection;
+            var collectionToDelete = _selectedCollection!;
             var success = await Client.DeleteCollectionAsync(collectionToDelete);
 
             if (success)
@@ -446,7 +446,7 @@ public sealed partial class Collections : IDisposable
             var result = await Client.UploadFilesToCollectionAsync(
                 _fileUploads.ToArray(),
                 MaxIndividualFileSize,
-                _selectedCollection,
+                _selectedCollection!,
                 metadata);
 
             Logger.LogInformation("Upload result: {Result}", result);
@@ -698,6 +698,9 @@ public sealed partial class Collections : IDisposable
                 collectionNode.Path = collection.Name;
                 collectionNode.IsExpanded = true;  // Expand collections by default to show all folders
 
+                // Prepend collection name to all child folder paths so they are correctly identified as subfolders
+                PrependCollectionNameToFolderPaths(collectionNode, collection.Name);
+
                 Logger.LogInformation($"Collection: {collection.Name}, Children: {collectionNode.Children.Count}");
 
                 // Recursively expand all folders in the tree
@@ -727,6 +730,20 @@ public sealed partial class Collections : IDisposable
         foreach (var child in node.Children)
         {
             ExpandAllFolders(child);
+        }
+    }
+
+    private void PrependCollectionNameToFolderPaths(FolderNode node, string collectionName)
+    {
+        foreach (var child in node.Children)
+        {
+            // Prepend collection name to child paths if not already present
+            if (!child.Path.StartsWith(collectionName + "/"))
+            {
+                child.Path = $"{collectionName}/{child.Path}";
+            }
+            // Recursively update nested folders
+            PrependCollectionNameToFolderPaths(child, collectionName);
         }
     }
 
@@ -794,7 +811,7 @@ public sealed partial class Collections : IDisposable
         var dialog = await DialogService.ShowAsync<TextInputDialog>("Create Folder", parameters, options);
         var result = await dialog.Result;
 
-        if (!result.Canceled && result.Data is string folderName && !string.IsNullOrWhiteSpace(folderName))
+        if (result is { Canceled: false, Data: string folderName } && !string.IsNullOrWhiteSpace(folderName))
         {
             await CreateFolderAsync(folderName, parentFolder);
         }
@@ -925,13 +942,13 @@ public sealed partial class Collections : IDisposable
         var dialog = await DialogService.ShowAsync<ConfirmationDialog>("Confirm Folder Deletion", parameters);
         var result = await dialog.Result;
 
-        if (result.Canceled)
+        if (result!.Canceled)
             return;
 
         try
         {
             // Extract folder path without collection name prefix
-            var folderPath = folder.Path.StartsWith(_selectedCollection + "/")
+            var folderPath = folder.Path.StartsWith(_selectedCollection! + "/")
                 ? folder.Path.Substring(_selectedCollection.Length + 1)
                 : folder.Path;
 
@@ -990,9 +1007,9 @@ public sealed partial class Collections : IDisposable
             var dialog = await DialogService.ShowAsync<FileMetadataDialog>("Edit File Metadata", parameters, options);
             var result = await dialog.Result;
 
-            if (!result.Canceled && result.Data is FileMetadata updatedMetadata)
+            if (result is { Canceled: false, Data: FileMetadata updatedMetadata })
             {
-                var success = await Client.UpdateFileMetadataAsync(_selectedCollection, fileInfo.FileName, updatedMetadata);
+                var success = await Client.UpdateFileMetadataAsync(_selectedCollection!, fileInfo.FileName, updatedMetadata);
 
                 if (success)
                 {

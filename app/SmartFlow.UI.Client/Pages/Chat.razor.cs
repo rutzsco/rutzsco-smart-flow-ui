@@ -80,8 +80,8 @@ public sealed partial class Chat
             if (profileToSelect != null)
             {
                 await SetSelectedProfileAsync(profileToSelect);
-                _userQuestion = QueryInitialMessage; 
-                _ = OnAskClickedAsync(); 
+                _userQuestion = QueryInitialMessage;
+                _ = OnAskClickedAsync();
             }
             else
             {
@@ -93,7 +93,7 @@ public sealed partial class Chat
         {
             await LoadDefaultProfileOrArchivedChatAsync();
         }
-        
+
         _errorLoadingMessage = _profiles.Count > 0 ? string.Empty : $" Error loading profiles...! {user.SessionId}";
         EvaluateOptions();
         StateHasChanged();
@@ -132,10 +132,9 @@ public sealed partial class Chat
             _userSelectionModel = await ApiClient.GetProfileUserSelectionModelAsync(profile.Id);
         }
     }
-    private void OnFileUpload(FileSummary fileSummary)
+    private void OnFileUpload(FileSummary file)
     {
-        _files.Add(fileSummary);
-        Console.WriteLine($"OnFileUpload - {_files.Count()}");
+        _files.Add(file);
     }
     private void OnModelSelection(bool isPremium)
     {
@@ -163,8 +162,6 @@ public sealed partial class Chat
 
     private async Task OnAskClickedAsync()
     {
-        Console.WriteLine($"OnAskClickedAsync: {_userQuestion}");
-
         if (string.IsNullOrWhiteSpace(_userQuestion))
         {
             return;
@@ -185,7 +182,7 @@ public sealed partial class Chat
 
         try
         {
-            var history = _questionAndAnswerMap.Where(x => x.Value is not null).Select(x => new ChatTurn(x.Key.Question, x.Value.Answer)).ToList();
+            var history = _questionAndAnswerMap.Where(x => x.Value is not null).Select(x => new ChatTurn(x.Key.Question, x.Value!.Answer)).ToList();
             history.Add(new ChatTurn(_userQuestion.Trim()));
 
             var options = new Dictionary<string, string>
@@ -274,7 +271,6 @@ public sealed partial class Chat
 
     private void OnSelectedDocumentsChanged()
     {
-        Console.WriteLine($"SelectedDocuments: {SelectedDocuments.Count()}");
         if (SelectedDocuments.Any())
         {
             if (SelectedDocuments.Count() == 1)
@@ -296,7 +292,6 @@ public sealed partial class Chat
 
     protected override async Task OnAfterRenderAsync(bool firstRender)
     {
-        Console.WriteLine($"OnAfterRenderAsync: _isReceivingResponse - {_isReceivingResponse}");
         await JS.InvokeVoidAsync("scrollToBottom", "answerSection");
         await JS.InvokeVoidAsync("highlight");
         //if (!_isReceivingResponse)

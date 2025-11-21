@@ -24,16 +24,14 @@ public sealed partial class TextInputV3
     [Parameter] public string Placeholder { get; set; } = "";
 
     [Parameter] public string ImageUrl { get; set; } = "";
-    
+
     private async Task OnKeyUpAsync(KeyboardEventArgs args)
     {
-        Console.WriteLine($"OnKeyUpAsync - {UserQuestion}");
         if (args is { Key: "Enter", ShiftKey: false } && OnEnterKeyPressed.HasDelegate)
         {
             var question = UserQuestion;
             UserQuestion = string.Empty;
             question.TrimEnd('\n');
-            Console.WriteLine($"OnKeyUpAsync - {question}");
             await OnEnterKeyPressed.InvokeAsync(question);
         }
     }
@@ -55,7 +53,6 @@ public sealed partial class TextInputV3
 
     private async Task UploadFilesAsync(IBrowserFile file)
     {
-        Console.WriteLine("UploadFilesAsync");
         var buffer = new byte[file.Size];
         await file.OpenReadStream(104857600).ReadAsync(buffer);
         var imageContent = Convert.ToBase64String(buffer);

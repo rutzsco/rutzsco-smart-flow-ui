@@ -94,6 +94,11 @@ internal static class WebApiExtensions
 
     private static async Task<IResult> OnGetProfileUserSelectionOptionsAsync(HttpContext context, string profileId, SearchClientFactory searchClientFactory, ILogger<WebApplication> logger)
     {
+        if (string.IsNullOrWhiteSpace(profileId))
+        {
+            return Results.BadRequest(new { error = "Profile ID is required" });
+        }
+
         var profileService = context.RequestServices.GetRequiredService<ProfileService>();
         var profileInfo = await profileService.GetProfileDataAsync();
         var profileDefinition = profileInfo.Profiles.FirstOrDefault(x => x.Id == profileId);
@@ -153,6 +158,11 @@ internal static class WebApiExtensions
 
     private static async Task<IResult> OnGetSourceFileAsync(HttpContext context, string fileName, BlobServiceClient blobServiceClient, IConfiguration configuration)
     {
+        if (string.IsNullOrWhiteSpace(fileName))
+        {
+            return Results.BadRequest(new { error = "File name is required" });
+        }
+
         try
         {
             int underscoreIndex = fileName.IndexOf('|');  // Find the first underscore
@@ -210,6 +220,11 @@ internal static class WebApiExtensions
         [FromServices] ILogger<AzureBlobStorageService> logger,
         CancellationToken cancellationToken)
     {
+        if (files == null || files.Count == 0)
+        {
+            return Results.BadRequest(new { error = "At least one file is required" });
+        }
+
         logger.LogInformation("Upload documents");
         var userInfo = await context.GetUserInfoAsync();
         var fileMetadataContent = context.Request.Headers["X-FILE-METADATA"];
@@ -243,6 +258,11 @@ internal static class WebApiExtensions
 
     private static async Task<IResult> OnGetCollectionDocumentsAsync(HttpContext context, DocumentService documentService, string profileId)
     {
+        if (string.IsNullOrWhiteSpace(profileId))
+        {
+            return Results.BadRequest(new { error = "Profile ID is required" });
+        }
+
         var userInfo = await context.GetUserInfoAsync();
         var documents = await documentService.GetDocumentUploadsAsync(userInfo, profileId);
         return TypedResults.Ok(documents.Select(d => new DocumentSummary(d.Id, d.SourceName, d.ContentType, d.Size, d.Status, d.StatusMessage, d.ProcessingProgress, d.Timestamp, d.Metadata)));
@@ -271,30 +291,16 @@ internal static class WebApiExtensions
             var properties = await blobClient.GetPropertiesAsync();
             var tags = await blobClient.GetTagsAsync();
 
-            Console.WriteLine($"Blob Name: {blobItem.Name}");
-            Console.WriteLine("Metadata Tags:");
-
-            // Loop through and print metadata
-            foreach (var m in properties.Value.Metadata)
-            {
-                Console.WriteLine($"  {m.Key}: {m.Value}");
-            }
-
-
             var existingMetadata = properties.Value.Metadata;
             // Loop through and print blob index tags
             foreach (var tag in tags.Value.Tags)
             {
                 if (tag.Key == "Type")
                 {
-                    Console.WriteLine($"  {tag.Key}: {tag.Value}");
                     existingMetadata.Add("Type", tag.Value);
                     await blobClient.SetMetadataAsync(existingMetadata);
                 }
-
             }
-
-            Console.WriteLine(); // Blank line for readability
         }
         return Results.Ok("OK");
     }

@@ -31,7 +31,6 @@ export async function initialize(websocketUrl, apiVersion, projectName, agentId,
         websocket = new WebSocket(url);
         
         websocket.onopen = () => {
-            console.log('Voice Live connected');
             isConnected = true;
             
             // Configure session settings
@@ -72,12 +71,11 @@ export async function initialize(websocketUrl, apiVersion, projectName, agentId,
                 const message = JSON.parse(event.data);
                 await handleWebSocketMessage(message);
             } catch (error) {
-                console.error('Error handling message:', error);
+                // Error handling delegated to .NET
             }
         };
         
         websocket.onerror = (error) => {
-            console.error('WebSocket error:', error);
             dotNetRef.invokeMethodAsync('OnError', 'WebSocket connection error. Please check your configuration.');
         };
         
@@ -94,7 +92,6 @@ export async function initialize(websocketUrl, apiVersion, projectName, agentId,
                 closeReason = event.reason;
             }
             
-            console.log(`Voice Live disconnected: ${closeReason} (code: ${event.code})`);
             dotNetRef.invokeMethodAsync('OnConnectionClosed');
             
             if (event.code !== 1000) {
@@ -110,7 +107,6 @@ export async function initialize(websocketUrl, apiVersion, projectName, agentId,
         nextPlayTime = audioContext.currentTime;
         
     } catch (error) {
-        console.error('Error initializing Voice Live:', error);
         dotNetRef.invokeMethodAsync('OnError', error.message);
     }
 }
@@ -119,7 +115,7 @@ async function handleWebSocketMessage(message) {
     switch (message.type) {
         case 'session.created':
         case 'session.updated':
-            console.log(`Session ${message.type.split('.')[1]}`);
+            // Session status updated
             break;
             
         case 'conversation.item.input_audio_transcription.completed':
@@ -151,13 +147,12 @@ async function handleWebSocketMessage(message) {
             break;
             
         case 'error':
-            console.error('Voice Live error:', message.error?.message || 'Unknown error');
             dotNetRef.invokeMethodAsync('OnError', message.error?.message || 'Unknown error occurred');
             break;
             
         default:
-            // Log unhandled message types for debugging
-            console.log('Unhandled message type:', message.type);
+            // Unhandled message types ignored
+            break;
     }
 }
 
@@ -193,7 +188,7 @@ async function playAudioChunkStreaming(base64Audio) {
         nextPlayTime = startTime + audioBuffer.duration;
         
     } catch (error) {
-        console.error('Error playing audio chunk:', error);
+        // Audio playback error silently handled
     }
 }
 
@@ -242,7 +237,6 @@ export async function startListening() {
         audioWorkletNode = processor;
         
     } catch (error) {
-        console.error('Error starting microphone:', error);
         dotNetRef.invokeMethodAsync('OnError', 'Failed to access microphone: ' + error.message);
     }
 }
@@ -261,7 +255,6 @@ export function stopListening() {
 
 export function sendAudio() {
     if (!isConnected) {
-        console.error('Not connected to Voice Live');
         return;
     }
     
@@ -315,8 +308,6 @@ function cleanup() {
 function sendMessage(message) {
     if (websocket && websocket.readyState === WebSocket.OPEN) {
         websocket.send(JSON.stringify(message));
-    } else {
-        console.error('WebSocket not connected');
     }
 }
 
