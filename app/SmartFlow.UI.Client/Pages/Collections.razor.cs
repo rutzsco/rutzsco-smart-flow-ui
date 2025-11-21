@@ -113,6 +113,8 @@ public sealed partial class Collections : IDisposable
             _showCreateCollectionForm = false; // Hide create form when selecting a collection
             _showUploadSection = false; // Hide upload section when switching collections
             _showEditMetadataForm = false; // Hide edit metadata form when switching collections
+            _currentFolderPath = ""; // Reset to show root level files
+            _selectedFolder = null; // Clear selected folder
             await Task.WhenAll(
                 LoadCollectionFilesAsync(),
                 LoadFolderStructureAsync()
@@ -145,16 +147,45 @@ public sealed partial class Collections : IDisposable
     private IEnumerable<ContainerFileInfo> GetFilteredFiles()
     {
         if (_collectionFiles == null || !_collectionFiles.Any())
-            return Enumerable.Empty<ContainerFileInfo>();
-
-        // If no folder is selected or we're at the collection root, show all files at root level (no folder path)
-        if (string.IsNullOrEmpty(_currentFolderPath) || _currentFolderPath == _selectedCollection)
         {
-            return _collectionFiles.Where(f => string.IsNullOrEmpty(f.FolderPath));
+            Logger.LogInformation($"GetFilteredFiles: No files loaded. _collectionFiles is null or empty.");
+            return Enumerable.Empty<ContainerFileInfo>();
         }
 
-        // Show only files in the selected folder (not in subfolders)
-        return _collectionFiles.Where(f => f.FolderPath == _currentFolderPath);
+        Logger.LogInformation($"GetFilteredFiles: Total files: {_collectionFiles.Count}, _currentFolderPath: '{_currentFolderPath}', _selectedCollection: '{_selectedCollection}'");
+        
+        // Log first few files to see their folder paths
+        var sampleFiles = _collectionFiles.Take(5).ToList();
+        foreach (var file in sampleFiles)
+        {
+            Logger.LogInformation($"  Sample File: {file.FileName}, FolderPath: '{file.FolderPath ?? "NULL"}'");
+        }
+
+        IEnumerable<ContainerFileInfo> filteredFiles;
+
+        // If no folder is selected, show ALL files in the collection
+        if (string.IsNullOrEmpty(_currentFolderPath))
+        {
+            Logger.LogInformation($"No folder selected - showing all files in collection");
+            filteredFiles = _collectionFiles;
+        }
+        else
+        {
+            Logger.LogInformation($"Showing files in folder: '{_currentFolderPath}'");
+            // Show only files in the selected folder (not in subfolders)
+            filteredFiles = _collectionFiles.Where(f => f.FolderPath == _currentFolderPath);
+        }
+
+        Logger.LogInformation($"After folder filter: {filteredFiles.Count()} files");
+
+        // Apply text filter if present
+        if (!string.IsNullOrWhiteSpace(_filter))
+        {
+            filteredFiles = filteredFiles.Where(f => f.FileName.Contains(_filter, StringComparison.OrdinalIgnoreCase));
+            Logger.LogInformation($"After text filter '{_filter}': {filteredFiles.Count()} files");
+        }
+
+        return filteredFiles;
     }
 
     private void ShowCreateCollectionForm()
@@ -685,32 +716,27 @@ public sealed partial class Collections : IDisposable
     {
         try
         {
-            // Create root node with all collections as children (containers are the root folders)
-            var rootNode = new FolderNode("root", "");
-
-            foreach (var collection in _collections)
+            if (string.IsNullOrEmpty(_selectedCollection))
             {
-                // Get the folder structure from the API (includes empty folders)
-                var collectionNode = await Client.GetFolderStructureAsync(collection.Name);
-
-                // Set collection properties
-                collectionNode.Name = collection.Name;
-                collectionNode.Path = collection.Name;
-                collectionNode.IsExpanded = true;  // Expand collections by default to show all folders
-
-                Logger.LogInformation($"Collection: {collection.Name}, Children: {collectionNode.Children.Count}");
-
-                // Recursively expand all folders in the tree
-                ExpandAllFolders(collectionNode);
-
-                LogTreeStructure(collectionNode, 1);
-
-                rootNode.Children.Add(collectionNode);
+                _folderStructure = new FolderNode("root", "");
+                return;
             }
 
-            _folderStructure = rootNode;
-            Logger.LogInformation($"=== COMPLETE TREE STRUCTURE ===");
-            Logger.LogInformation($"Root has {rootNode.Children.Count} collections");
+            // Get the folder structure for the SELECTED collection only
+            var collectionNode = await Client.GetFolderStructureAsync(_selectedCollection);
+
+            // Use the children of the collection as the root - don't show the collection itself
+            _folderStructure = new FolderNode("root", "");
+            _folderStructure.Children = collectionNode.Children;
+
+            // Recursively expand all folders in the tree
+            foreach (var child in _folderStructure.Children)
+            {
+                ExpandAllFolders(child);
+            }
+
+            Logger.LogInformation($"Loaded folder structure for '{_selectedCollection}': {_folderStructure.Children.Count} top-level folders");
+
             StateHasChanged();
         }
         catch (Exception ex)
@@ -744,34 +770,13 @@ public sealed partial class Collections : IDisposable
     {
         _selectedFolder = folder;
 
-        // Check if this is a root-level folder (collection/container)
-        // Root folders have paths that don't contain slashes
-        if (!folder.Path.Contains('/') && !string.IsNullOrEmpty(folder.Path))
-        {
-            // This is a collection - select it
-            _currentFolderPath = folder.Path;
-            await SelectCollectionAsync(folder.Path);
-        }
-        else
-        {
-            // This is a subfolder within a collection
-            // Extract the collection name (first part of path before /)
-            var collectionName = folder.Path.Split('/')[0];
+        // Since the tree now only shows subfolders (not the collection itself),
+        // the folder.Path is already the correct folder path within the collection
+        _currentFolderPath = folder.Path;
 
-            // Remove the collection name prefix to get the actual folder path
-            // E.g., "collection1/folder1/subfolder" -> "folder1/subfolder"
-            var folderPath = folder.Path.Substring(collectionName.Length).TrimStart('/');
-            _currentFolderPath = folderPath;
+        Logger.LogInformation($"Selected folder: {folder.Path} in collection: {_selectedCollection}");
 
-            Logger.LogInformation($"Selected folder: {folder.Path}, Extracted folder path: {folderPath}");
-
-            if (_selectedCollection != collectionName)
-            {
-                _selectedCollection = collectionName;
-                _selectedCollectionInfo = _collections.FirstOrDefault(c => c.Name == collectionName);
-            }
-            await LoadCollectionFilesAsync();
-        }
+        await LoadCollectionFilesAsync();
     }
 
     private async Task ShowCreateFolderDialogAsync(FolderNode? parentFolder = null)
