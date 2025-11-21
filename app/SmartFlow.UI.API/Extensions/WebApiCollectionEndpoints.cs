@@ -56,6 +56,9 @@ internal static class WebApiCollectionEndpoints
         api.MapPut("{containerName}/files/metadata/{*fileName}", OnUpdateFileMetadataAsync);
         api.MapGet("{containerName}/files/metadata/{*fileName}", OnGetFileMetadataAsync);
 
+        // Metadata configuration
+        api.MapGet("metadata-configuration", OnGetMetadataConfigurationAsync);
+
         return app;
     }
 
@@ -680,6 +683,37 @@ internal static class WebApiCollectionEndpoints
         {
             logger.LogError(ex, "Error getting metadata for file {FileName} from container: {ContainerName}", fileName, containerName);
             return Results.Problem("Error retrieving file metadata");
+        }
+    }
+
+    private static Task<IResult> OnGetMetadataConfigurationAsync(
+        HttpContext context,
+        [FromServices] IConfiguration configuration,
+        [FromServices] ILogger<WebApplication> logger)
+    {
+        try
+        {
+            logger.LogInformation("Getting metadata configuration");
+
+            var metadataConfig = configuration.GetSection("MetadataConfiguration").Get<MetadataConfiguration>();
+
+            if (metadataConfig == null)
+            {
+                logger.LogWarning("No metadata configuration found, returning default");
+                metadataConfig = new MetadataConfiguration
+                {
+                    Name = "Default",
+                    Description = "Default configuration",
+                    Fields = new List<MetadataFieldConfiguration>()
+                };
+            }
+
+            return Task.FromResult<IResult>(TypedResults.Ok(metadataConfig));
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error getting metadata configuration");
+            return Task.FromResult<IResult>(Results.Problem("Error retrieving metadata configuration"));
         }
     }
 }
