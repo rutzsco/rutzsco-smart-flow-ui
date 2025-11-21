@@ -309,26 +309,24 @@
                                                                        Title="View file"
                                                                        Style="color: #1976d2;" />
                                                     }
-                                                    <MudStack Spacing="0" Style="flex: 1; min-width: 0;">
-                                                        <MudText Typo="Typo.body2" Style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 500;">
-                                                            @file.FileName
-                                                        </MudText>
-                                                        @if (!_editingFileDescriptions.Contains(file.FileName))
+                                                    <MudText Typo="Typo.body2" Style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 500;">
+                                                        @file.FileName
+                                                    </MudText>
+                                                    @if (!_editingFileDescriptions.Contains(file.FileName))
+                                                    {
+                                                        @if (!string.IsNullOrWhiteSpace(file.Description))
                                                         {
-                                                            @if (!string.IsNullOrWhiteSpace(file.Description))
-                                                            {
-                                                                <MudText Typo="Typo.caption" Color="Color.Secondary" Style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                                                                    @file.Description
-                                                                </MudText>
-                                                            }
-                                                            else
-                                                            {
-                                                                <MudText Typo="Typo.caption" Color="Color.Tertiary" Style="font-style: italic;">
-                                                                    No description
-                                                                </MudText>
-                                                            }
+                                                            <MudText Typo="Typo.caption" Color="Color.Secondary" Style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
+                                                                — @file.Description
+                                                            </MudText>
                                                         }
-                                                    </MudStack>
+                                                        else
+                                                        {
+                                                            <MudText Typo="Typo.caption" Color="Color.Tertiary" Style="font-style: italic;">
+                                                                — No description
+                                                            </MudText>
+                                                        }
+                                                    }
                                                 </MudStack>
                                                 
                                                 <MudStack Row="true" Spacing="1" AlignItems="AlignItems.Center">
