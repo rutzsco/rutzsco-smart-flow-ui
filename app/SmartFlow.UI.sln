@@ -10,7 +10,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SmartFlow.UI.Client", "Smar
 		{626B1D52-BBD1-11BC-B02F-BAA61CE5EAB1} = {626B1D52-BBD1-11BC-B02F-BAA61CE5EAB1}
 	EndProjectSection
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Shared", "shared\Shared\Shared.csproj", "{626B1D52-BBD1-11BC-B02F-BAA61CE5EAB1}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Shared", "Shared\Shared\Shared.csproj", "{626B1D52-BBD1-11BC-B02F-BAA61CE5EAB1}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
