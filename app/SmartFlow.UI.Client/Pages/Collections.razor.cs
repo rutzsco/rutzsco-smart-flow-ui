@@ -802,7 +802,7 @@ public sealed partial class Collections : IDisposable
             { x => x.ButtonText, "CREATE" },
             { x => x.CancelText, "CANCEL" },
             { x => x.ButtonColor, Color.Primary },
-            { x => x.HelperText, "Use any characters except ending with . / \\ or consecutive dots. Max 1,024 characters." },
+            { x => x.HelperText, "Folder names cannot end with . / \\ or contain consecutive dots. Max 1,024 characters." },
             { x => x.MaxLength, 1024 },
             { x => x.ValidationFunc, new Func<string, string?>(ValidateFolderName) }
         };

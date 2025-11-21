@@ -476,6 +476,25 @@ public sealed class ApiClient(HttpClient httpClient)
         }
     }
 
+    public async Task<System.Text.Json.JsonElement?> GetProjectWorkflowStatusAsync(string projectName)
+    {
+        try
+        {
+            var response = await httpClient.GetAsync($"api/projects/{projectName}/workflow/status");
+            if (response.IsSuccessStatusCode)
+            {
+                var content = await response.Content.ReadAsStringAsync();
+                return System.Text.Json.JsonSerializer.Deserialize<System.Text.Json.JsonElement>(content);
+            }
+            return null;
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Error fetching project workflow status: {ex.Message}");
+            return null;
+        }
+    }
+
     public async Task<bool> UpdateFileDescriptionAsync(string projectName, string fileName, string? description)
     {
         try

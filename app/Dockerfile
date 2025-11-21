@@ -11,13 +11,17 @@ RUN if [ -d "Shared" ] && [ ! -d "shared" ]; then mv Shared shared; fi
 # Restore dependencies
 RUN dotnet restore "SmartFlow.UI.sln"
 
-# Build the solution
+# Clean the solution to remove any stale Razor-generated files
+RUN dotnet clean "SmartFlow.UI.sln" -c Release
+
+# Build the solution with --no-incremental to force fresh Razor compilation
 WORKDIR "/src"
-RUN dotnet build "SmartFlow.UI.sln" -c Release
+RUN dotnet build "SmartFlow.UI.sln" -c Release --no-incremental
 
 # Publish stage
 FROM build AS publish
-RUN dotnet publish "SmartFlow.UI.API/SmartFlow.UI.API.csproj" -c Release -o /app/publish /p:UseAppHost=false
+# Use --no-build as the project is already built
+RUN dotnet publish "SmartFlow.UI.API/SmartFlow.UI.API.csproj" -c Release -o /app/publish /p:UseAppHost=false --no-build
 
 # Runtime stage
 FROM mcr.microsoft.com/dotnet/aspnet:8.0 AS final

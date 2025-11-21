@@ -50,41 +50,41 @@
 
 @code {
     [Parameter]
-    public List<FolderNode> Items { get; set; } = new();
+    public List<global::Shared.Models.FolderNode> Items { get; set; } = new();
 
     [Parameter]
-    public FolderNode? SelectedNode { get; set; }
+    public global::Shared.Models.FolderNode? SelectedNode { get; set; }
 
     [Parameter]
-    public EventCallback<FolderNode> OnFolderSelected { get; set; }
+    public EventCallback<global::Shared.Models.FolderNode> OnFolderSelected { get; set; }
 
     [Parameter]
-    public EventCallback<FolderNode> OnUploadDocuments { get; set; }
+    public EventCallback<global::Shared.Models.FolderNode> OnUploadDocuments { get; set; }
 
     [Parameter]
-    public EventCallback<FolderNode> OnDeleteFolder { get; set; }
+    public EventCallback<global::Shared.Models.FolderNode> OnDeleteFolder { get; set; }
 
     [Parameter]
     public bool ShowFolderActions { get; set; } = true;
 
-    private async Task HandleFolderClick(FolderNode folder)
+    private async Task HandleFolderClick(global::Shared.Models.FolderNode folder)
     {
         SelectedNode = folder;
         await OnFolderSelected.InvokeAsync(folder);
     }
 
-    private void ToggleExpand(FolderNode folder)
+    private void ToggleExpand(global::Shared.Models.FolderNode folder)
     {
         folder.IsExpanded = !folder.IsExpanded;
         StateHasChanged();
     }
 
-    private bool IsSelected(FolderNode folder)
+    private bool IsSelected(global::Shared.Models.FolderNode folder)
     {
         return SelectedNode != null && SelectedNode.Path == folder.Path;
     }
 
-    private string GetSelectedStyle(FolderNode folder)
+    private string GetSelectedStyle(global::Shared.Models.FolderNode folder)
     {
         return IsSelected(folder) ? "font-weight: bold; color: var(--mud-palette-primary);" : "";
     }
