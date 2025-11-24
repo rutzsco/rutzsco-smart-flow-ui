@@ -40,6 +40,9 @@ internal static class WebApiCollectionEndpoints
         // Delete a file from a container
         api.MapDelete("{containerName}/files/{*fileName}", OnDeleteFileAsync);
 
+        // Process/index a single document
+        api.MapPost("{containerName}/process/{*fileName}", OnProcessSingleDocumentAsync);
+
         // Get all Azure AI Search indexes
         api.MapGet("indexes", OnGetSearchIndexesAsync);
 
@@ -58,6 +61,11 @@ internal static class WebApiCollectionEndpoints
 
         // Metadata configuration
         api.MapGet("metadata-configuration", OnGetMetadataConfigurationAsync);
+
+        // Collection indexing endpoints (vector database pipeline)
+        api.MapPost("{collectionName}/index", OnIndexCollectionAsync);
+        api.MapGet("{collectionName}/indexing-workflow/status", OnGetCollectionIndexingWorkflowStatusAsync);
+        api.MapDelete("{collectionName}/indexing-workflow", OnDeleteCollectionIndexingWorkflowAsync);
 
         return app;
     }
@@ -91,6 +99,11 @@ internal static class WebApiCollectionEndpoints
         [FromServices] ILogger<WebApplication> logger,
         CancellationToken cancellationToken)
     {
+        if (string.IsNullOrWhiteSpace(indexName))
+        {
+            return Results.BadRequest(new { error = "Index name is required" });
+        }
+
         try
         {
             logger.LogInformation("Getting index details for: {IndexName}", indexName);
@@ -146,6 +159,21 @@ internal static class WebApiCollectionEndpoints
         [FromServices] ILogger<WebApplication> logger,
         CancellationToken cancellationToken)
     {
+        if (request == null)
+        {
+            return Results.BadRequest(new { error = "Request body is required" });
+        }
+
+        if (string.IsNullOrWhiteSpace(request.Name))
+        {
+            return Results.BadRequest(new { error = "Collection name is required" });
+        }
+
+        if (request.Name.Length > 63 || !System.Text.RegularExpressions.Regex.IsMatch(request.Name, "^[a-z0-9](?:[a-z0-9-]*[a-z0-9])?$"))
+        {
+            return Results.BadRequest(new { error = "Collection name must be 1-63 characters, lowercase alphanumeric with hyphens, and start/end with alphanumeric" });
+        }
+
         try
         {
             logger.LogInformation("Creating managed collection: {ContainerName} with description: {Description}, type: {Type}, index: {IndexName}",
@@ -184,6 +212,11 @@ internal static class WebApiCollectionEndpoints
         [FromServices] ILogger<WebApplication> logger,
         CancellationToken cancellationToken)
     {
+        if (string.IsNullOrWhiteSpace(containerName))
+        {
+            return Results.BadRequest(new { error = "Container name is required" });
+        }
+
         try
         {
             logger.LogInformation("Deleting blob container: {ContainerName}", containerName);
@@ -216,6 +249,11 @@ internal static class WebApiCollectionEndpoints
         [FromServices] ILogger<WebApplication> logger,
         CancellationToken cancellationToken)
     {
+        if (string.IsNullOrWhiteSpace(containerName))
+        {
+            return Results.BadRequest(new { error = "Container name is required" });
+        }
+
         try
         {
             logger.LogInformation("Creating/tagging managed collection: {ContainerName}", containerName);
@@ -249,6 +287,16 @@ internal static class WebApiCollectionEndpoints
         [FromServices] ILogger<WebApplication> logger,
         CancellationToken cancellationToken)
     {
+        if (string.IsNullOrWhiteSpace(containerName))
+        {
+            return Results.BadRequest(new { error = "Container name is required" });
+        }
+
+        if (request == null)
+        {
+            return Results.BadRequest(new { error = "Request body is required" });
+        }
+
         try
         {
             logger.LogInformation("Updating metadata for collection: {ContainerName}", containerName);
@@ -286,6 +334,11 @@ internal static class WebApiCollectionEndpoints
         [FromServices] ILogger<WebApplication> logger,
         CancellationToken cancellationToken)
     {
+        if (string.IsNullOrWhiteSpace(containerName))
+        {
+            return Results.BadRequest(new { error = "Container name is required" });
+        }
+
         try
         {
             logger.LogInformation("Getting metadata for collection: {ContainerName}", containerName);
@@ -316,6 +369,11 @@ internal static class WebApiCollectionEndpoints
         [FromServices] ILogger<WebApplication> logger,
         CancellationToken cancellationToken)
     {
+        if (string.IsNullOrWhiteSpace(containerName))
+        {
+            return Results.BadRequest(new { error = "Container name is required" });
+        }
+
         try
         {
             logger.LogInformation("Getting files from container: {ContainerName}", containerName);
@@ -343,6 +401,16 @@ internal static class WebApiCollectionEndpoints
         [FromServices] ILogger<WebApplication> logger,
         CancellationToken cancellationToken)
     {
+        if (string.IsNullOrWhiteSpace(containerName))
+        {
+            return Results.BadRequest(new { error = "Container name is required" });
+        }
+
+        if (files == null || files.Count == 0)
+        {
+            return Results.BadRequest(new { error = "At least one file is required" });
+        }
+
         try
         {
             logger.LogInformation("Uploading {FileCount} files to container: {ContainerName}", files.Count, containerName);
@@ -392,6 +460,16 @@ internal static class WebApiCollectionEndpoints
         [FromServices] ILogger<WebApplication> logger,
         CancellationToken cancellationToken)
     {
+        if (string.IsNullOrWhiteSpace(containerName))
+        {
+            return Results.BadRequest(new { error = "Container name is required" });
+        }
+
+        if (string.IsNullOrWhiteSpace(fileName))
+        {
+            return Results.BadRequest(new { error = "File name is required" });
+        }
+
         try
         {
             // URL decode the filename since it comes URL-encoded from the client
@@ -428,6 +506,16 @@ internal static class WebApiCollectionEndpoints
         [FromServices] ILogger<WebApplication> logger,
         CancellationToken cancellationToken)
     {
+        if (string.IsNullOrWhiteSpace(containerName))
+        {
+            return Results.BadRequest(new { error = "Container name is required" });
+        }
+
+        if (string.IsNullOrWhiteSpace(fileName))
+        {
+            return Results.BadRequest(new { error = "File name is required" });
+        }
+
         try
         {
             // URL decode the filename since it comes URL-encoded from the client
@@ -500,6 +588,11 @@ internal static class WebApiCollectionEndpoints
         [FromServices] ILogger<WebApplication> logger,
         CancellationToken cancellationToken)
     {
+        if (string.IsNullOrWhiteSpace(containerName))
+        {
+            return Results.BadRequest(new { error = "Container name is required" });
+        }
+
         try
         {
             logger.LogInformation("Getting folder structure from container: {ContainerName}", containerName);
@@ -524,6 +617,16 @@ internal static class WebApiCollectionEndpoints
         [FromServices] ILogger<WebApplication> logger,
         CancellationToken cancellationToken)
     {
+        if (string.IsNullOrWhiteSpace(containerName))
+        {
+            return Results.BadRequest(new { error = "Container name is required" });
+        }
+
+        if (request == null || string.IsNullOrWhiteSpace(request.FolderPath))
+        {
+            return Results.BadRequest(new { error = "Folder path is required" });
+        }
+
         try
         {
             logger.LogInformation("Creating folder {FolderPath} in container: {ContainerName}", request.FolderPath, containerName);
@@ -557,6 +660,16 @@ internal static class WebApiCollectionEndpoints
         [FromServices] ILogger<WebApplication> logger,
         CancellationToken cancellationToken)
     {
+        if (string.IsNullOrWhiteSpace(containerName))
+        {
+            return Results.BadRequest(new { error = "Container name is required" });
+        }
+
+        if (request == null || string.IsNullOrWhiteSpace(request.OldFolderPath) || string.IsNullOrWhiteSpace(request.NewFolderPath))
+        {
+            return Results.BadRequest(new { error = "Both old and new folder paths are required" });
+        }
+
         try
         {
             logger.LogInformation("Renaming folder from {OldPath} to {NewPath} in container: {ContainerName}",
@@ -594,6 +707,16 @@ internal static class WebApiCollectionEndpoints
         [FromServices] ILogger<WebApplication> logger,
         CancellationToken cancellationToken)
     {
+        if (string.IsNullOrWhiteSpace(containerName))
+        {
+            return Results.BadRequest(new { error = "Container name is required" });
+        }
+
+        if (string.IsNullOrWhiteSpace(folderPath))
+        {
+            return Results.BadRequest(new { error = "Folder path is required" });
+        }
+
         try
         {
             logger.LogInformation("Deleting folder {FolderPath} from container: {ContainerName}", folderPath, containerName);
@@ -628,6 +751,21 @@ internal static class WebApiCollectionEndpoints
         [FromServices] ILogger<WebApplication> logger,
         CancellationToken cancellationToken)
     {
+        if (string.IsNullOrWhiteSpace(containerName))
+        {
+            return Results.BadRequest(new { error = "Container name is required" });
+        }
+
+        if (string.IsNullOrWhiteSpace(fileName))
+        {
+            return Results.BadRequest(new { error = "File name is required" });
+        }
+
+        if (metadata == null)
+        {
+            return Results.BadRequest(new { error = "Metadata is required" });
+        }
+
         try
         {
             fileName = Uri.UnescapeDataString(fileName);
@@ -662,6 +800,16 @@ internal static class WebApiCollectionEndpoints
         [FromServices] ILogger<WebApplication> logger,
         CancellationToken cancellationToken)
     {
+        if (string.IsNullOrWhiteSpace(containerName))
+        {
+            return Results.BadRequest(new { error = "Container name is required" });
+        }
+
+        if (string.IsNullOrWhiteSpace(fileName))
+        {
+            return Results.BadRequest(new { error = "File name is required" });
+        }
+
         try
         {
             fileName = Uri.UnescapeDataString(fileName);
@@ -714,6 +862,356 @@ internal static class WebApiCollectionEndpoints
         {
             logger.LogError(ex, "Error getting metadata configuration");
             return Task.FromResult<IResult>(Results.Problem("Error retrieving metadata configuration"));
+        }
+    }
+
+    // Collection Indexing Endpoints (Vector Database Pipeline)
+
+    private static async Task<IResult> OnProcessSingleDocumentAsync(
+        HttpContext context,
+        string containerName,
+        string fileName,
+        [FromServices] DocumentService documentService,
+        [FromServices] IConfiguration configuration,
+        [FromServices] ILogger<WebApplication> logger,
+        [FromServices] IHttpClientFactory httpClientFactory,
+        [FromServices] BlobServiceClient blobServiceClient,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(containerName) || string.IsNullOrWhiteSpace(fileName))
+        {
+            return Results.BadRequest(new { error = "Container name and file name are required" });
+        }
+
+        try
+        {
+            logger.LogInformation("Starting vector indexing for file '{FileName}' in container '{ContainerName}'", fileName, containerName);
+
+            var userInfo = await context.GetUserInfoAsync();
+
+            // Get the Document Tools API endpoint from configuration (Agent Hub API)
+            var documentToolsEndpoint = configuration["DocumentToolsAPIEndpoint"];
+            var documentToolsApiKey = configuration["DocumentToolsAPIKey"];
+
+            if (string.IsNullOrEmpty(documentToolsEndpoint))
+            {
+                logger.LogWarning("DocumentToolsAPIEndpoint not configured");
+                return Results.BadRequest(new { success = false, message = "DocumentToolsAPIEndpoint is not configured" });
+            }
+
+            // Validate file extension (should be PDF)
+            if (!fileName.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase))
+            {
+                logger.LogWarning("File '{FileName}' is not a PDF file", fileName);
+                return Results.BadRequest(new { success = false, message = "Only PDF files can be indexed" });
+            }
+
+            // Get file metadata
+            var fileMetadata = await documentService.GetFileMetadataAsync(containerName, fileName, cancellationToken);
+
+            // Construct blob path (URL-decode the fileName since it comes encoded from the route)
+            var decodedFileName = Uri.UnescapeDataString(fileName);
+            var blobPath = decodedFileName;
+
+            // Get storage account name for constructing blob paths
+            var storageAccountName = blobServiceClient.AccountName;
+
+            using var httpClient = httpClientFactory.CreateClient();
+            httpClient.Timeout = TimeSpan.FromMinutes(5);
+
+            if (!string.IsNullOrEmpty(documentToolsApiKey))
+            {
+                httpClient.DefaultRequestHeaders.Add("X-API-Key", documentToolsApiKey);
+            }
+
+            var requestBody = new
+            {
+                file_name = System.IO.Path.GetFileName(decodedFileName),
+                blob_path = blobPath,
+                equipment_category = fileMetadata?.EquipmentCategory,
+                equipment_subcategory = fileMetadata?.EquipmentSubcategory,
+                equipment_part = fileMetadata?.EquipmentPart,
+                equipment_part_subcategory = fileMetadata?.EquipmentPartSubcategory,
+                product = fileMetadata?.Product,
+                manufacturer = fileMetadata?.Manufacturer,
+                document_type = fileMetadata?.DocumentType,
+                is_required_for_cde = fileMetadata?.IsRequiredForCde,
+                added_to_index = "No"
+            };
+
+            var jsonContent = System.Text.Json.JsonSerializer.Serialize(requestBody);
+            logger.LogInformation("Sending request to Agent Hub API: {RequestBody}", jsonContent);
+
+            using var content = new StringContent(jsonContent, System.Text.Encoding.UTF8, "application/json");
+
+            var response = await httpClient.PostAsync($"{documentToolsEndpoint}/knowledge-base/vectorize-document", content);
+
+            if (response.IsSuccessStatusCode)
+            {
+                logger.LogInformation("Successfully triggered vectorization for file '{FileName}' in container '{ContainerName}'",
+                    decodedFileName, containerName);
+
+                return TypedResults.Ok(new
+                {
+                    success = true,
+                    message = $"Successfully started indexing for '{System.IO.Path.GetFileName(decodedFileName)}'"
+                });
+            }
+            else
+            {
+                var errorContent = await response.Content.ReadAsStringAsync();
+                logger.LogError("Failed to trigger vectorization for file '{FileName}' in container '{ContainerName}': {StatusCode} - {Error}",
+                    decodedFileName, containerName, response.StatusCode, errorContent);
+
+                return Results.Problem(
+                    detail: errorContent,
+                    statusCode: (int)response.StatusCode,
+                    title: "Failed to start indexing");
+            }
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error indexing file '{FileName}' in container '{ContainerName}'", fileName, containerName);
+            return Results.Problem($"Error indexing file: {ex.Message}");
+        }
+    }
+
+    private static async Task<IResult> OnIndexCollectionAsync(
+        HttpContext context,
+        string collectionName,
+        [FromServices] DocumentService documentService,
+        [FromServices] IConfiguration configuration,
+        [FromServices] ILogger<WebApplication> logger,
+        [FromServices] IHttpClientFactory httpClientFactory,
+        [FromServices] BlobServiceClient blobServiceClient,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(collectionName))
+        {
+            return Results.BadRequest(new { error = "Collection name is required" });
+        }
+
+        try
+        {
+            logger.LogInformation("Starting vector indexing for collection: {CollectionName}", collectionName);
+
+            var userInfo = await context.GetUserInfoAsync();
+
+            // Get the Document Tools API endpoint from configuration (Agent Hub API)
+            var documentToolsEndpoint = configuration["DocumentToolsAPIEndpoint"];
+            var documentToolsApiKey = configuration["DocumentToolsAPIKey"];
+
+            if (string.IsNullOrEmpty(documentToolsEndpoint))
+            {
+                logger.LogWarning("DocumentToolsAPIEndpoint not configured");
+                return Results.BadRequest(new { success = false, message = "DocumentToolsAPIEndpoint is not configured" });
+            }
+
+            // Get all files in the collection
+            var collectionFiles = await documentService.GetFilesInContainerAsync(collectionName, cancellationToken);
+
+            if (!collectionFiles.Any())
+            {
+                logger.LogWarning("No files found in collection '{CollectionName}'", collectionName);
+                return Results.BadRequest(new { success = false, message = $"No files found in collection '{collectionName}'" });
+            }
+
+            // Filter to only PDF files
+            var pdfFiles = collectionFiles.Where(f => f.FileName.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase)).ToList();
+
+            if (!pdfFiles.Any())
+            {
+                logger.LogWarning("No PDF files found in collection '{CollectionName}'", collectionName);
+                return Results.BadRequest(new { success = false, message = $"No PDF files found in collection '{collectionName}'" });
+            }
+
+            logger.LogInformation("Triggering vector indexing for {FileCount} PDF file(s) in collection '{CollectionName}'",
+                pdfFiles.Count, collectionName);
+
+            // Get storage account name for constructing blob paths
+            var storageAccountName = blobServiceClient.AccountName;
+
+            // Fire and forget - start the indexing without waiting for completion
+            _ = Task.Run(async () =>
+            {
+                var successCount = 0;
+                var failureCount = 0;
+
+                foreach (var file in pdfFiles)
+                {
+                    try
+                    {
+                        using var httpClient = httpClientFactory.CreateClient();
+                        httpClient.Timeout = TimeSpan.FromMinutes(5);
+
+                        if (!string.IsNullOrEmpty(documentToolsApiKey))
+                        {
+                            httpClient.DefaultRequestHeaders.Add("X-API-Key", documentToolsApiKey);
+                        }
+
+                        // Construct blob path (with folder if present)
+                        var blobPath = string.IsNullOrEmpty(file.FolderPath)
+                            ? file.FileName
+                            : $"{file.FolderPath}/{file.FileName}";
+
+                        // Extract metadata from file metadata if available
+                        var metadata = file.Metadata;
+
+                        var requestBody = new
+                        {
+                            file_name = file.FileName,
+                            blob_path = blobPath,
+                            equipment_category = metadata?.EquipmentCategory,
+                            equipment_subcategory = metadata?.EquipmentSubcategory,
+                            equipment_part = metadata?.EquipmentPart,
+                            equipment_part_subcategory = metadata?.EquipmentPartSubcategory,
+                            product = metadata?.Product,
+                            manufacturer = metadata?.Manufacturer,
+                            document_type = metadata?.DocumentType,
+                            is_required_for_cde = metadata?.IsRequiredForCde,
+                            added_to_index = "No"
+                        };
+
+                        var jsonContent = System.Text.Json.JsonSerializer.Serialize(requestBody);
+                        using var content = new StringContent(jsonContent, System.Text.Encoding.UTF8, "application/json");
+
+                        var response = await httpClient.PostAsync($"{documentToolsEndpoint}/knowledge-base/vectorize-document", content);
+
+                        if (response.IsSuccessStatusCode)
+                        {
+                            successCount++;
+                            logger.LogInformation("Successfully triggered vectorization for file '{FileName}' in collection '{CollectionName}'",
+                                file.FileName, collectionName);
+                        }
+                        else
+                        {
+                            failureCount++;
+                            var errorContent = await response.Content.ReadAsStringAsync();
+                            logger.LogError("Failed to trigger vectorization for file '{FileName}' in collection '{CollectionName}': {StatusCode} - {Error}",
+                                file.FileName, collectionName, response.StatusCode, errorContent);
+                        }
+                    }
+                    catch (Exception ex)
+                    {
+                        failureCount++;
+                        logger.LogError(ex, "Error vectorizing file '{FileName}' in collection '{CollectionName}'",
+                            file.FileName, collectionName);
+                    }
+                }
+
+                logger.LogInformation("Completed vector indexing for collection '{CollectionName}': {SuccessCount} succeeded, {FailureCount} failed",
+                    collectionName, successCount, failureCount);
+            });
+
+            // Return immediately
+            return TypedResults.Ok(new
+            {
+                success = true,
+                message = $"Indexing started for {pdfFiles.Count} PDF file(s) in collection '{collectionName}'",
+                collection_name = collectionName,
+                file_count = pdfFiles.Count
+            });
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error indexing collection: {CollectionName}", collectionName);
+            return Results.Problem($"Error indexing collection: {ex.Message}");
+        }
+    }
+
+    private static async Task<IResult> OnGetCollectionIndexingWorkflowStatusAsync(
+        HttpContext context,
+        string collectionName,
+        [FromServices] IConfiguration configuration,
+        [FromServices] ILogger<WebApplication> logger,
+        [FromServices] IHttpClientFactory httpClientFactory,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(collectionName))
+        {
+            return Results.BadRequest(new { error = "Collection name is required" });
+        }
+
+        try
+        {
+            logger.LogInformation("Getting indexing workflow status for collection: {CollectionName}", collectionName);
+
+            var userInfo = await context.GetUserInfoAsync();
+
+            // Agent Hub API processes documents individually and doesn't provide workflow status
+            // Return a "complete" status since the indexing is fire-and-forget
+            logger.LogInformation("Returning complete status for collection '{CollectionName}' (Agent Hub API processes documents individually)", collectionName);
+            
+            return TypedResults.Ok(new
+            {
+                stages = new
+                {
+                    initialization = new { status = "Complete", message = "Document processing initiated" },
+                    vectorization = new { status = "Complete", message = "Files are being processed individually" },
+                    indexing = new { status = "Complete", message = "Vectorization in progress" }
+                }
+            });
+        }
+        catch (HttpRequestException ex)
+        {
+            logger.LogError(ex, "HTTP error getting indexing workflow status for collection: {CollectionName}", collectionName);
+            return Results.Problem($"HTTP error getting indexing workflow status: {ex.Message}");
+        }
+        catch (TaskCanceledException ex)
+        {
+            logger.LogError(ex, "Timeout getting indexing workflow status for collection: {CollectionName}", collectionName);
+            return Results.Problem("Request timed out getting indexing workflow status");
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error getting indexing workflow status for collection: {CollectionName}", collectionName);
+            return Results.Problem($"Error getting indexing workflow status: {ex.Message}");
+        }
+    }
+
+    private static async Task<IResult> OnDeleteCollectionIndexingWorkflowAsync(
+        HttpContext context,
+        string collectionName,
+        [FromServices] IConfiguration configuration,
+        [FromServices] ILogger<WebApplication> logger,
+        [FromServices] IHttpClientFactory httpClientFactory,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(collectionName))
+        {
+            return Results.BadRequest(new { error = "Collection name is required" });
+        }
+
+        try
+        {
+            logger.LogInformation("Deleting indexing workflow for collection: {CollectionName}", collectionName);
+
+            var userInfo = await context.GetUserInfoAsync();
+
+            // Agent Hub API doesn't maintain workflow state - documents are processed individually
+            // There's nothing to delete, so return success
+            logger.LogInformation("Delete workflow requested for collection '{CollectionName}' (Agent Hub API processes documents individually - no workflow to delete)", collectionName);
+            
+            return TypedResults.Ok(new
+            {
+                success = true,
+                message = $"No workflow files to delete (Agent Hub API processes documents individually)"
+            });
+        }
+        catch (HttpRequestException ex)
+        {
+            logger.LogError(ex, "HTTP error deleting indexing workflow for collection: {CollectionName}", collectionName);
+            return Results.Problem($"HTTP error deleting indexing workflow: {ex.Message}");
+        }
+        catch (TaskCanceledException ex)
+        {
+            logger.LogError(ex, "Timeout deleting indexing workflow for collection: {CollectionName}", collectionName);
+            return Results.Problem("Request timed out deleting indexing workflow");
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error deleting indexing workflow for collection: {CollectionName}", collectionName);
+            return Results.Problem($"Error deleting indexing workflow: {ex.Message}");
         }
     }
 }

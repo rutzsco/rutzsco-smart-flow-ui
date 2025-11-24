@@ -714,13 +714,6 @@ public class DocumentService
             var properties = await blobClient.GetPropertiesAsync(cancellationToken: cancellationToken);
             var metadata = properties.Value.Metadata;
 
-            Console.WriteLine($"[GET METADATA DEBUG] Getting metadata for file: {fileName}");
-            Console.WriteLine($"[GET METADATA DEBUG]   Metadata count: {metadata.Count}");
-            foreach (var kvp in metadata)
-            {
-                Console.WriteLine($"[GET METADATA DEBUG]   {kvp.Key} = '{kvp.Value}'");
-            }
-
             return new FileMetadata
             {
                 FileName = metadata.TryGetValue("filename", out var fn) ? fn : Path.GetFileName(fileName),
