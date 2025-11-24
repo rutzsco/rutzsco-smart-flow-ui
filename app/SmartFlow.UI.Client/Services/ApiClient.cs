@@ -174,25 +174,10 @@ public sealed class ApiClient(HttpClient httpClient)
             string folderPrefix = "";
             if (metadata != null)
             {
-                Console.WriteLine($"[CLIENT DEBUG] Metadata contains {metadata.Count} keys:");
-                foreach (var kvp in metadata)
-                {
-                    Console.WriteLine($"[CLIENT DEBUG]   {kvp.Key} = '{kvp.Value}'");
-                }
-
                 if (metadata.TryGetValue("folderPath", out var folderPath))
                 {
                     folderPrefix = folderPath.ToString().TrimEnd('/') + "/";
-                    Console.WriteLine($"[CLIENT DEBUG] Extracted folderPrefix = '{folderPrefix}'");
                 }
-                else
-                {
-                    Console.WriteLine($"[CLIENT DEBUG] No 'folderPath' key found in metadata");
-                }
-            }
-            else
-            {
-                Console.WriteLine($"[CLIENT DEBUG] Metadata is null");
             }
 
             // Create a mapping of original filename to full path for metadata
@@ -208,8 +193,6 @@ public sealed class ApiClient(HttpClient httpClient)
                 // Prepend folder path to filename if specified
                 var fullPath = folderPrefix + file.Name;
                 filePathMap[file.Name] = fullPath;
-
-                Console.WriteLine($"[CLIENT DEBUG] Creating path map: '{file.Name}' -> '{fullPath}'");
 
                 // Note: ASP.NET Core will strip path from filename for security, but we'll send full path in metadata
                 content.Add(fileContent, "files", file.Name);
@@ -408,25 +391,10 @@ public sealed class ApiClient(HttpClient httpClient)
             string folderPrefix = "";
             if (metadata != null)
             {
-                Console.WriteLine($"[CLIENT DEBUG PROJECT] Metadata contains {metadata.Count} keys:");
-                foreach (var kvp in metadata)
-                {
-                    Console.WriteLine($"[CLIENT DEBUG PROJECT]   {kvp.Key} = '{kvp.Value}'");
-                }
-
                 if (metadata.TryGetValue("folderPath", out var folderPath))
                 {
                     folderPrefix = folderPath.ToString().TrimEnd('/') + "/";
-                    Console.WriteLine($"[CLIENT DEBUG PROJECT] Extracted folderPrefix = '{folderPrefix}'");
                 }
-                else
-                {
-                    Console.WriteLine($"[CLIENT DEBUG PROJECT] No 'folderPath' key found in metadata");
-                }
-            }
-            else
-            {
-                Console.WriteLine($"[CLIENT DEBUG PROJECT] Metadata is null");
             }
 
             // Create a mapping of original filename to full path for metadata
@@ -442,8 +410,6 @@ public sealed class ApiClient(HttpClient httpClient)
                 // Prepend folder path to filename if specified
                 var fullPath = folderPrefix + file.Name;
                 filePathMap[file.Name] = fullPath;
-
-                Console.WriteLine($"[CLIENT DEBUG] Creating path map for project: '{file.Name}' -> '{fullPath}'");
 
                 content.Add(fileContent, file.Name, file.Name);
             }
@@ -468,7 +434,6 @@ public sealed class ApiClient(HttpClient httpClient)
             {
                 string serializedPathMap = System.Text.Json.JsonSerializer.Serialize(filePathMap);
                 content.Headers.Add("X-FILE-PATH-MAP", serializedPathMap);
-                Console.WriteLine($"[CLIENT DEBUG] Sending file path map header for project with {filePathMap.Count} entries");
             }
 
             var response = await httpClient.PostAsync($"api/projects/{projectName}/upload", content);
@@ -497,17 +462,51 @@ public sealed class ApiClient(HttpClient httpClient)
         }
     }
 
-    public async Task<bool> AnalyzePlanProjectAsync(string projectName)
+    // Collection Indexing APIs
+    public async Task<bool> IndexCollectionAsync(string collectionName)
     {
         try
         {
-            var response = await httpClient.PostAsync($"api/projects/{projectName}/analyze-plan", null);
+            var response = await httpClient.PostAsync($"api/collections/{collectionName}/index", null);
             return response.IsSuccessStatusCode;
         }
         catch (Exception ex)
         {
-            Debug.WriteLine($"Error analyzing project plan: {ex.Message}");
+            Debug.WriteLine($"Error indexing collection: {ex.Message}");
             return false;
+        }
+    }
+
+    public async Task<bool> DeleteCollectionIndexingWorkflowAsync(string collectionName)
+    {
+        try
+        {
+            var response = await httpClient.DeleteAsync($"api/collections/{collectionName}/indexing-workflow");
+            return response.IsSuccessStatusCode;
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Error deleting collection indexing workflow: {ex.Message}");
+            return false;
+        }
+    }
+
+    public async Task<System.Text.Json.JsonElement?> GetCollectionIndexingWorkflowStatusAsync(string collectionName)
+    {
+        try
+        {
+            var response = await httpClient.GetAsync($"api/collections/{collectionName}/indexing-workflow/status");
+            if (response.IsSuccessStatusCode)
+            {
+                var content = await response.Content.ReadAsStringAsync();
+                return System.Text.Json.JsonSerializer.Deserialize<System.Text.Json.JsonElement>(content);
+            }
+            return null;
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Error fetching collection indexing workflow status: {ex.Message}");
+            return null;
         }
     }
 
@@ -615,8 +614,12 @@ public sealed class ApiClient(HttpClient httpClient)
 
             // otherwise, if it's good - convert this into a user profile
             var user = System.Text.Json.JsonSerializer.Deserialize<UserInformation>(userInfo, SerializerOptions.Default);
-            Cache.SetUserInformation(user);
-            return user;
+            if (user != null)
+            {
+                Cache.SetUserInformation(user);
+                return user;
+            }
+            return new UserInformation(false, "ERROR!", "ERROR!", "Failed to deserialize user information", [], []);
         }
         catch (Exception ex)
         {
@@ -630,21 +633,21 @@ public sealed class ApiClient(HttpClient httpClient)
         var response = await httpClient.GetAsync("api/user/documents");
         response.EnsureSuccessStatusCode();
 
-        return await response.Content.ReadFromJsonAsync<List<DocumentSummary>>();
+        return await response.Content.ReadFromJsonAsync<List<DocumentSummary>>() ?? [];
     }
     public async Task<List<DocumentSummary>> GetCollectionDocumentsAsync(string profileId)
     {
         var response = await httpClient.GetAsync($"api/collection/documents/{profileId}");
         response.EnsureSuccessStatusCode();
 
-        return await response.Content.ReadFromJsonAsync<List<DocumentSummary>>();
+        return await response.Content.ReadFromJsonAsync<List<DocumentSummary>>() ?? [];
     }
     public async Task<UserSelectionModel> GetProfileUserSelectionModelAsync(string profileId)
     {
         var response = await httpClient.GetAsync($"api/profile/selections?profileId={profileId}");
         response.EnsureSuccessStatusCode();
 
-        return await response.Content.ReadFromJsonAsync<UserSelectionModel>();
+        return await response.Content.ReadFromJsonAsync<UserSelectionModel>() ?? new UserSelectionModel([]);
     }
     public async Task<UploadDocumentsResponse> UploadDocumentsAsync(IReadOnlyList<IBrowserFile> files, long maxAllowedSize, string selectedProfile, IDictionary<string, string>? metadata = null)
     {
