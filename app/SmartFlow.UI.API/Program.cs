@@ -23,6 +23,7 @@ builder.Services.AddControllersWithViews();
 builder.Services.AddRazorPages();
 builder.Services.AddCrossOriginResourceSharing();
 builder.Services.AddHttpContextAccessor();
+builder.Services.AddHttpClient();
 
 // bind configuration
 builder.Services.AddOptions<AppConfiguration>()
