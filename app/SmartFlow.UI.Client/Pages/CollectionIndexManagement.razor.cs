@@ -18,14 +18,14 @@ public sealed partial class CollectionIndexManagement : IDisposable
     private Dictionary<string, SearchIndexInfo?> _indexDetails = new();
     private HashSet<string> _expandedIndexes = new();
     private HashSet<string> _loadingIndexDetails = new();
-    
+
     private bool _isLoadingIndexes = false;
     private bool _isLoadingCollections = false;
     private string _indexFilter = "";
 
-    private IEnumerable<SearchIndexInfo> _filteredIndexes => 
-        string.IsNullOrWhiteSpace(_indexFilter) 
-            ? _indexes 
+    private IEnumerable<SearchIndexInfo> _filteredIndexes =>
+        string.IsNullOrWhiteSpace(_indexFilter)
+            ? _indexes
             : _indexes.Where(i => i.Name.Contains(_indexFilter, StringComparison.OrdinalIgnoreCase));
 
     protected override async Task OnInitializedAsync()
@@ -90,14 +90,14 @@ public sealed partial class CollectionIndexManagement : IDisposable
         else
         {
             _expandedIndexes.Add(indexName);
-            
+
             // Load index details if not already loaded
             if (!_indexDetails.ContainsKey(indexName))
             {
                 await LoadIndexDetailsAsync(indexName);
             }
         }
-        
+
         StateHasChanged();
     }
 
@@ -110,7 +110,7 @@ public sealed partial class CollectionIndexManagement : IDisposable
         {
             var details = await Client.GetSearchIndexDetailsAsync(indexName);
             _indexDetails[indexName] = details;
-            Logger.LogInformation("Loaded details for index {IndexName} with {FieldCount} fields", 
+            Logger.LogInformation("Loaded details for index {IndexName} with {FieldCount} fields",
                 indexName, details?.Fields.Count ?? 0);
         }
         catch (Exception ex)
@@ -128,8 +128,8 @@ public sealed partial class CollectionIndexManagement : IDisposable
 
     private IEnumerable<CollectionInfo> GetAssociatedCollections(string indexName)
     {
-        return _collections.Where(c => 
-            !string.IsNullOrEmpty(c.IndexName) && 
+        return _collections.Where(c =>
+            !string.IsNullOrEmpty(c.IndexName) &&
             c.IndexName.Equals(indexName, StringComparison.OrdinalIgnoreCase));
     }
 
@@ -137,7 +137,7 @@ public sealed partial class CollectionIndexManagement : IDisposable
     {
         // Get collections that don't have an index or have a different index
         var availableCollections = _collections
-            .Where(c => string.IsNullOrEmpty(c.IndexName) || 
+            .Where(c => string.IsNullOrEmpty(c.IndexName) ||
                        !c.IndexName.Equals(indexName, StringComparison.OrdinalIgnoreCase))
             .ToList();
 
@@ -153,21 +153,21 @@ public sealed partial class CollectionIndexManagement : IDisposable
             { x => x.AvailableCollections, availableCollections }
         };
 
-        var options = new DialogOptions 
-        { 
-            MaxWidth = MaxWidth.Small, 
-            FullWidth = true, 
-            CloseButton = true 
+        var options = new DialogOptions
+        {
+            MaxWidth = MaxWidth.Small,
+            FullWidth = true,
+            CloseButton = true
         };
 
         var dialog = await DialogService.ShowAsync<AssociateCollectionDialog>(
-            "Associate Collection with Index", 
-            parameters, 
+            "Associate Collection with Index",
+            parameters,
             options);
-        
+
         var result = await dialog.Result;
 
-        if (!result.Canceled && result.Data is string selectedCollectionName)
+        if (result is { Canceled: false, Data: string selectedCollectionName })
         {
             await AssociateCollectionWithIndexAsync(selectedCollectionName, indexName);
         }
@@ -177,7 +177,7 @@ public sealed partial class CollectionIndexManagement : IDisposable
     {
         try
         {
-            var collection = _collections.FirstOrDefault(c => c.Name == collectionName);
+            var collection = _collections.FirstOrDefault(c => c.Name == collectionName)!;
             if (collection == null)
             {
                 SnackBarError($"Collection '{collectionName}' not found");
@@ -202,7 +202,7 @@ public sealed partial class CollectionIndexManagement : IDisposable
         }
         catch (Exception ex)
         {
-            Logger.LogError(ex, "Error associating collection {CollectionName} with index {IndexName}", 
+            Logger.LogError(ex, "Error associating collection {CollectionName} with index {IndexName}",
                 collectionName, indexName);
             SnackBarError($"Error associating collection: {ex.Message}");
         }
@@ -220,7 +220,7 @@ public sealed partial class CollectionIndexManagement : IDisposable
         // Show confirmation dialog
         var parameters = new DialogParameters
         {
-            { "ContentText", $"Are you sure you want to remove the index association from collection '{collectionName}'? The collection will remain but will no longer be associated with index '{collection.IndexName}'." },
+            { "ContentText", $"Are you sure you want to remove the index association from collection '{collectionName}'? The collection will remain but will no longer be associated with index '{collection.IndexName!}'." },
             { "ButtonText", "Remove Association" },
             { "Color", Color.Warning }
         };
@@ -228,7 +228,7 @@ public sealed partial class CollectionIndexManagement : IDisposable
         var dialog = await DialogService.ShowAsync<ConfirmationDialog>("Confirm Index Removal", parameters);
         var result = await dialog.Result;
 
-        if (result.Canceled)
+        if (result!.Canceled)
             return;
 
         try
@@ -271,7 +271,7 @@ public sealed partial class CollectionIndexManagement : IDisposable
 
     private void SnackBarMessage(string? message) => SnackBarAdd(false, message);
     private void SnackBarError(string? message) => SnackBarAdd(true, message);
-    
+
     private void SnackBarAdd(bool isError, string? message)
     {
         Snackbar.Add(
