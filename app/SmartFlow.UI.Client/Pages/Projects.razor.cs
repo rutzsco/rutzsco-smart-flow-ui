@@ -24,7 +24,8 @@ public sealed partial class Projects : IDisposable
     private HashSet<string> _analyzingFiles = new(); // Track files being analyzed (project-level)
     private HashSet<string> _editingFileDescriptions = new(); // Track files being edited
     private Dictionary<string, string> _editingDescriptions = new(); // Track temporary description values during editing
-    private bool _isAnalyzing = false; // Track if analysis is in progress
+    private bool _isAnalyzing = false; // Track if spec analysis is in progress
+    private bool _isAnalyzingPlan = false; // Track if plan analysis is in progress
     private System.Text.Json.JsonElement? _workflowStatus = null; // Store workflow status
     private System.Threading.Timer? _statusPollTimer = null; // Timer for polling status
     private bool _isPolling = false; // Track if polling is active to prevent concurrent polls
@@ -108,6 +109,7 @@ public sealed partial class Projects : IDisposable
             // Stop any existing status polling when switching projects
             StopStatusPolling();
             _isAnalyzing = false;
+            _isAnalyzingPlan = false;
             _workflowStatus = null;
             
             _selectedProject = projectName;
@@ -569,7 +571,7 @@ public sealed partial class Projects : IDisposable
             
             if (success)
             {
-                SnackBarMessage($"Analysis started for project '{_selectedProject}'");
+                SnackBarMessage($"Spec analysis started for project '{_selectedProject}'");
                 
                 // Start polling for status
                 StartStatusPolling();
@@ -577,7 +579,7 @@ public sealed partial class Projects : IDisposable
             else
             {
                 _isAnalyzing = false;
-                SnackBarError($"Failed to start analysis for project '{_selectedProject}'");
+                SnackBarError($"Failed to start spec analysis for project '{_selectedProject}'");
             }
         }
         catch (Exception ex)
@@ -585,6 +587,49 @@ public sealed partial class Projects : IDisposable
             _isAnalyzing = false;
             Logger.LogError(ex, "Error analyzing project {ProjectName}", _selectedProject);
             SnackBarError($"Error analyzing project: {ex.Message}");
+        }
+        finally
+        {
+            StateHasChanged();
+        }
+    }
+
+    private async Task AnalyzePlanSelectedProjectAsync()
+    {
+        if (string.IsNullOrEmpty(_selectedProject))
+        {
+            SnackBarError("No project selected");
+            return;
+        }
+
+        _isAnalyzingPlan = true;
+        _workflowStatus = null;
+        StateHasChanged();
+
+        try
+        {
+            Logger.LogInformation("Analyzing plan for project {Project}", _selectedProject);
+            
+            var success = await Client.AnalyzePlanProjectAsync(_selectedProject);
+            
+            if (success)
+            {
+                SnackBarMessage($"Plan analysis started for project '{_selectedProject}'");
+                
+                // Start polling for status
+                StartStatusPolling();
+            }
+            else
+            {
+                _isAnalyzingPlan = false;
+                SnackBarError($"Failed to start plan analysis for project '{_selectedProject}'");
+            }
+        }
+        catch (Exception ex)
+        {
+            _isAnalyzingPlan = false;
+            Logger.LogError(ex, "Error analyzing plan for project {ProjectName}", _selectedProject);
+            SnackBarError($"Error analyzing plan: {ex.Message}");
         }
         finally
         {
@@ -646,6 +691,7 @@ public sealed partial class Projects : IDisposable
                     {
                         Logger.LogInformation("Workflow completed for project {ProjectName}", _selectedProject);
                         _isAnalyzing = false;
+                        _isAnalyzingPlan = false;
                         StopStatusPolling();
                         SnackBarMessage($"Analysis completed for project '{_selectedProject}'");
                     }

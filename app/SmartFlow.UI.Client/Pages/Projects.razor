@@ -238,27 +238,43 @@
                                            Variant="Variant.Outlined"
                                            Size="Size.Small"
                                            OnClick="@(async () => await AnalyzeSelectedProjectAsync())"
-                                           Disabled="@(!_projectFiles.Any() || _isAnalyzing)">
+                                           Disabled="@(!_projectFiles.Any() || _isAnalyzing || _isAnalyzingPlan)">
                                     @if (_isAnalyzing)
                                     {
                                         <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
-                                        <span>Analyzing...</span>
+                                        <span>Analyzing Spec...</span>
                                     }
                                     else
                                     {
-                                        <span>Analyze</span>
+                                        <span>Analyze Spec</span>
+                                    }
+                                </MudButton>
+
+                                <MudButton Color="Color.Secondary"
+                                           Variant="Variant.Outlined"
+                                           Size="Size.Small"
+                                           OnClick="@(async () => await AnalyzePlanSelectedProjectAsync())"
+                                           Disabled="@(!_projectFiles.Any() || _isAnalyzing || _isAnalyzingPlan)">
+                                    @if (_isAnalyzingPlan)
+                                    {
+                                        <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                                        <span>Analyzing Plan...</span>
+                                    }
+                                    else
+                                    {
+                                        <span>Analyze Plan</span>
                                     }
                                 </MudButton>
                             </MudStack>
                         </MudStack>
 
                         <!-- Workflow Status Section -->
-                        @if (_isAnalyzing && _workflowStatus != null)
+                        @if ((_isAnalyzing || _isAnalyzingPlan) && _workflowStatus != null)
                         {
                             <MudAlert Severity="Severity.Info" Dense="true" Class="mb-2">
                                 <MudStack Spacing="1">
                                     <MudText Typo="Typo.body2" Style="font-weight: 500;">
-                                        Processing Status
+                                        Processing Status (@(_isAnalyzing ? "Spec" : "Plan") Analysis)
                                     </MudText>
                                     @if (_workflowStatus.Value.TryGetProperty("stages", out var stages))
                                     {

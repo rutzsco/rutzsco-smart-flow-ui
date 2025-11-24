@@ -497,6 +497,20 @@ public sealed class ApiClient(HttpClient httpClient)
         }
     }
 
+    public async Task<bool> AnalyzePlanProjectAsync(string projectName)
+    {
+        try
+        {
+            var response = await httpClient.PostAsync($"api/projects/{projectName}/analyze-plan", null);
+            return response.IsSuccessStatusCode;
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Error analyzing project plan: {ex.Message}");
+            return false;
+        }
+    }
+
     public async Task<bool> DeleteProjectWorkflowAsync(string projectName)
     {
         try

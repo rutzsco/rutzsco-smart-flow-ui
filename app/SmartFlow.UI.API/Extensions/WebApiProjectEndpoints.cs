@@ -8,8 +8,10 @@ internal static class WebApiProjectEndpoints
     private const string DocumentToolsServiceName = "Document Tools API";
     private const string HealthCheckLivenessPath = "/healthz/live";
     private const string SpecExtractorPath = "/agent/spec-extractor";
+    private const string PlanExtractorPath = "/agent/plan-extractor";
     private const string WorkflowStatusPath = "/workflow/status";
     private const string DefaultAnalysisMessage = "Please extract the specification summary and explain the key sections.";
+    private const string DefaultPlanAnalysisMessage = "Please extract the plan summary I uploaded and explain the key sections.";
     private const int HttpClientTimeoutSeconds = 10;
 
     // Configuration keys
@@ -54,6 +56,9 @@ internal static class WebApiProjectEndpoints
 
         // Analyze a file in a project
         api.MapPost("{projectName}/analyze", OnAnalyzeProjectFileAsync);
+
+        // Analyze a file in a project using plan-extractor
+        api.MapPost("{projectName}/analyze-plan", OnAnalyzePlanProjectFileAsync);
 
         // Get workflow status for a project
         api.MapGet("{projectName}/workflow/status", OnGetWorkflowStatusAsync);
@@ -243,9 +248,60 @@ internal static class WebApiProjectEndpoints
         [FromServices] BlobServiceClient blobServiceClient,
         CancellationToken cancellationToken)
     {
+        return await AnalyzeProjectAsync(
+            context, 
+            projectName, 
+            projectService, 
+            configuration, 
+            logger, 
+            httpClientFactory, 
+            blobServiceClient, 
+            cancellationToken,
+            SpecExtractorPath,
+            DefaultAnalysisMessage,
+            "spec");
+    }
+
+    private static async Task<IResult> OnAnalyzePlanProjectFileAsync(
+        HttpContext context,
+        string projectName,
+        [FromServices] ProjectService projectService,
+        [FromServices] IConfiguration configuration,
+        [FromServices] ILogger<WebApplication> logger,
+        [FromServices] IHttpClientFactory httpClientFactory,
+        [FromServices] BlobServiceClient blobServiceClient,
+        CancellationToken cancellationToken)
+    {
+        return await AnalyzeProjectAsync(
+            context, 
+            projectName, 
+            projectService, 
+            configuration, 
+            logger, 
+            httpClientFactory, 
+            blobServiceClient, 
+            cancellationToken,
+            PlanExtractorPath,
+            DefaultPlanAnalysisMessage,
+            "plan");
+    }
+
+    private static async Task<IResult> AnalyzeProjectAsync(
+        HttpContext context,
+        string projectName,
+        ProjectService projectService,
+        IConfiguration configuration,
+        ILogger<WebApplication> logger,
+        IHttpClientFactory httpClientFactory,
+        BlobServiceClient blobServiceClient,
+        CancellationToken cancellationToken,
+        string extractorPath,
+        string defaultMessage,
+        string analysisType)
+    {
         try
         {
-            logger.LogInformation("Analyzing project: {ProjectName}", projectName);
+            logger.LogInformation("Analyzing project ({AnalysisType}): {ProjectName}", analysisType, projectName);
 
             var userInfo = await context.GetUserInfoAsync();
             
@@ -302,9 +358,9 @@ internal static class WebApiProjectEndpoints
             
             var files = filesList.ToArray();
 
-            logger.LogInformation("Analyzing {FileCount} files in project '{ProjectName}'", files.Length, projectName);
+            logger.LogInformation("Analyzing {FileCount} files in project '{ProjectName}' using {AnalysisType}", files.Length, projectName, analysisType);
 
-            logger.LogInformation("Triggering analysis for {FileCount} files in project '{ProjectName}'", files.Length, projectName);
+            logger.LogInformation("Triggering {AnalysisType} analysis for {FileCount} files in project '{ProjectName}'", analysisType, files.Length, projectName);
 
             // Fire and forget - start the analysis without waiting for completion
             _ = Task.Run(async () =>
@@ -319,7 +375,7 @@ internal static class WebApiProjectEndpoints
                     
                     var requestBody = new
                     {
-                        message = DefaultAnalysisMessage,
+                        message = defaultMessage,
                         project_name = projectName,
                         files = files
                     };
@@ -327,22 +383,22 @@ internal static class WebApiProjectEndpoints
                     var jsonContent = System.Text.Json.JsonSerializer.Serialize(requestBody);
                     using var content = new StringContent(jsonContent, System.Text.Encoding.UTF8, "application/json");
                     
-                    var response = await httpClient.PostAsync($"{documentToolsEndpoint}{SpecExtractorPath}", content);
+                    var response = await httpClient.PostAsync($"{documentToolsEndpoint}{extractorPath}", content);
 
                     if (response.IsSuccessStatusCode)
                     {
-                        logger.LogInformation("Successfully triggered analysis for {FileCount} files in project '{ProjectName}'", files.Length, projectName);
+                        logger.LogInformation("Successfully triggered {AnalysisType} analysis for {FileCount} files in project '{ProjectName}'", analysisType, files.Length, projectName);
                     }
                     else
                     {
                         var errorContent = await response.Content.ReadAsStringAsync();
-                        logger.LogError("Failed to trigger analysis for project '{ProjectName}': {StatusCode} - {Error}", 
-                            projectName, response.StatusCode, errorContent);
+                        logger.LogError("Failed to trigger {AnalysisType} analysis for project '{ProjectName}': {StatusCode} - {Error}", 
+                            analysisType, projectName, response.StatusCode, errorContent);
                     }
                 }
                 catch (Exception ex)
                 {
-                    logger.LogError(ex, "Background error analyzing project: {ProjectName}", projectName);
+                    logger.LogError(ex, "Background error analyzing project ({AnalysisType}): {ProjectName}", analysisType, projectName);
                 }
             });
 
@@ -350,14 +406,15 @@ internal static class WebApiProjectEndpoints
             return TypedResults.Ok(new 
             { 
                 success = true, 
-                message = $"Analysis started for {files.Length} file(s) in project '{projectName}'",
+                message = $"{char.ToUpper(analysisType[0]) + analysisType.Substring(1)} analysis started for {files.Length} file(s) in project '{projectName}'",
                 project_name = projectName,
-                file_count = files.Length
+                file_count = files.Length,
+                analysis_type = analysisType
             });
         }
         catch (Exception ex)
         {
-            logger.LogError(ex, "Error analyzing project: {ProjectName}", projectName);
+            logger.LogError(ex, "Error analyzing project ({AnalysisType}): {ProjectName}", analysisType, projectName);
             return Results.Problem($"Error analyzing project: {ex.Message}");
         }
     }
