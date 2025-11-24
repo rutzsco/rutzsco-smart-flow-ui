@@ -322,7 +322,9 @@ public class DocumentService
             if (extractContainerExists)
             {
                 var baseNameWithoutExtension = Path.GetFileNameWithoutExtension(blobItem.Name);
-                var directoryPath = Path.GetDirectoryName(blobItem.Name);
+                // Use blob-style path parsing (forward slashes) instead of OS-specific Path.GetDirectoryName
+                var lastSlashIndex = blobItem.Name.LastIndexOf('/');
+                var directoryPath = lastSlashIndex >= 0 ? blobItem.Name.Substring(0, lastSlashIndex) : "";
 
                 // Look for files with the same base name in the extract container
                 var searchPrefix = string.IsNullOrEmpty(directoryPath)
