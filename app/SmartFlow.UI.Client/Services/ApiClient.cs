@@ -1003,4 +1003,52 @@ public sealed class ApiClient(HttpClient httpClient)
             return null;
         }
     }
+
+    // Collection Indexing Workflow APIs
+    public async Task<System.Text.Json.JsonElement?> GetCollectionIndexingWorkflowStatusAsync(string containerName)
+    {
+        try
+        {
+            var response = await httpClient.GetAsync($"api/collections/{containerName}/indexing/status");
+            if (response.IsSuccessStatusCode)
+            {
+                var content = await response.Content.ReadAsStringAsync();
+                return System.Text.Json.JsonSerializer.Deserialize<System.Text.Json.JsonElement>(content);
+            }
+            return null;
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Error fetching collection indexing workflow status: {ex.Message}");
+            return null;
+        }
+    }
+
+    public async Task<bool> IndexCollectionAsync(string containerName)
+    {
+        try
+        {
+            var response = await httpClient.PostAsync($"api/collections/{containerName}/index", null);
+            return response.IsSuccessStatusCode;
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Error indexing collection: {ex.Message}");
+            return false;
+        }
+    }
+
+    public async Task<bool> DeleteCollectionIndexingWorkflowAsync(string containerName)
+    {
+        try
+        {
+            var response = await httpClient.DeleteAsync($"api/collections/{containerName}/indexing");
+            return response.IsSuccessStatusCode;
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Error deleting collection indexing workflow: {ex.Message}");
+            return false;
+        }
+    }
 }
