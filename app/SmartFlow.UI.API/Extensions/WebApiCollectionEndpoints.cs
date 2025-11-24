@@ -40,6 +40,9 @@ internal static class WebApiCollectionEndpoints
         // Delete a file from a container
         api.MapDelete("{containerName}/files/{*fileName}", OnDeleteFileAsync);
 
+        // Process/index a single document
+        api.MapPost("{containerName}/process/{*fileName}", OnProcessSingleDocumentAsync);
+
         // Get all Azure AI Search indexes
         api.MapGet("indexes", OnGetSearchIndexesAsync);
 
@@ -864,6 +867,115 @@ internal static class WebApiCollectionEndpoints
 
     // Collection Indexing Endpoints (Vector Database Pipeline)
 
+    private static async Task<IResult> OnProcessSingleDocumentAsync(
+        HttpContext context,
+        string containerName,
+        string fileName,
+        [FromServices] DocumentService documentService,
+        [FromServices] IConfiguration configuration,
+        [FromServices] ILogger<WebApplication> logger,
+        [FromServices] IHttpClientFactory httpClientFactory,
+        [FromServices] BlobServiceClient blobServiceClient,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(containerName) || string.IsNullOrWhiteSpace(fileName))
+        {
+            return Results.BadRequest(new { error = "Container name and file name are required" });
+        }
+
+        try
+        {
+            logger.LogInformation("Starting vector indexing for file '{FileName}' in container '{ContainerName}'", fileName, containerName);
+
+            var userInfo = await context.GetUserInfoAsync();
+
+            // Get the Document Tools API endpoint from configuration (Agent Hub API)
+            var documentToolsEndpoint = configuration["DocumentToolsAPIEndpoint"];
+            var documentToolsApiKey = configuration["DocumentToolsAPIKey"];
+
+            if (string.IsNullOrEmpty(documentToolsEndpoint))
+            {
+                logger.LogWarning("DocumentToolsAPIEndpoint not configured");
+                return Results.BadRequest(new { success = false, message = "DocumentToolsAPIEndpoint is not configured" });
+            }
+
+            // Validate file extension (should be PDF)
+            if (!fileName.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase))
+            {
+                logger.LogWarning("File '{FileName}' is not a PDF file", fileName);
+                return Results.BadRequest(new { success = false, message = "Only PDF files can be indexed" });
+            }
+
+            // Get file metadata
+            var fileMetadata = await documentService.GetFileMetadataAsync(containerName, fileName, cancellationToken);
+
+            // Construct blob path (URL-decode the fileName since it comes encoded from the route)
+            var decodedFileName = Uri.UnescapeDataString(fileName);
+            var blobPath = decodedFileName;
+
+            // Get storage account name for constructing blob paths
+            var storageAccountName = blobServiceClient.AccountName;
+
+            using var httpClient = httpClientFactory.CreateClient();
+            httpClient.Timeout = TimeSpan.FromMinutes(5);
+
+            if (!string.IsNullOrEmpty(documentToolsApiKey))
+            {
+                httpClient.DefaultRequestHeaders.Add("X-API-Key", documentToolsApiKey);
+            }
+
+            var requestBody = new
+            {
+                file_name = System.IO.Path.GetFileName(decodedFileName),
+                blob_path = blobPath,
+                equipment_category = fileMetadata?.EquipmentCategory,
+                equipment_subcategory = fileMetadata?.EquipmentSubcategory,
+                equipment_part = fileMetadata?.EquipmentPart,
+                equipment_part_subcategory = fileMetadata?.EquipmentPartSubcategory,
+                product = fileMetadata?.Product,
+                manufacturer = fileMetadata?.Manufacturer,
+                document_type = fileMetadata?.DocumentType,
+                is_required_for_cde = fileMetadata?.IsRequiredForCde,
+                added_to_index = "No"
+            };
+
+            var jsonContent = System.Text.Json.JsonSerializer.Serialize(requestBody);
+            logger.LogInformation("Sending request to Agent Hub API: {RequestBody}", jsonContent);
+
+            using var content = new StringContent(jsonContent, System.Text.Encoding.UTF8, "application/json");
+
+            var response = await httpClient.PostAsync($"{documentToolsEndpoint}/knowledge-base/vectorize-document", content);
+
+            if (response.IsSuccessStatusCode)
+            {
+                logger.LogInformation("Successfully triggered vectorization for file '{FileName}' in container '{ContainerName}'",
+                    decodedFileName, containerName);
+
+                return TypedResults.Ok(new
+                {
+                    success = true,
+                    message = $"Successfully started indexing for '{System.IO.Path.GetFileName(decodedFileName)}'"
+                });
+            }
+            else
+            {
+                var errorContent = await response.Content.ReadAsStringAsync();
+                logger.LogError("Failed to trigger vectorization for file '{FileName}' in container '{ContainerName}': {StatusCode} - {Error}",
+                    decodedFileName, containerName, response.StatusCode, errorContent);
+
+                return Results.Problem(
+                    detail: errorContent,
+                    statusCode: (int)response.StatusCode,
+                    title: "Failed to start indexing");
+            }
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error indexing file '{FileName}' in container '{ContainerName}'", fileName, containerName);
+            return Results.Problem($"Error indexing file: {ex.Message}");
+        }
+    }
+
     private static async Task<IResult> OnIndexCollectionAsync(
         HttpContext context,
         string collectionName,
@@ -871,6 +983,7 @@ internal static class WebApiCollectionEndpoints
         [FromServices] IConfiguration configuration,
         [FromServices] ILogger<WebApplication> logger,
         [FromServices] IHttpClientFactory httpClientFactory,
+        [FromServices] BlobServiceClient blobServiceClient,
         CancellationToken cancellationToken)
     {
         if (string.IsNullOrWhiteSpace(collectionName))
@@ -884,22 +997,14 @@ internal static class WebApiCollectionEndpoints
 
             var userInfo = await context.GetUserInfoAsync();
 
-            // Get the vector database endpoint from configuration
-            // TODO: Add configuration keys for vector database pipeline endpoint
-            var vectorDbEndpoint = configuration["VectorDatabaseEndpoint"];
-            var vectorDbApiKey = configuration["VectorDatabaseApiKey"];
+            // Get the Document Tools API endpoint from configuration (Agent Hub API)
+            var documentToolsEndpoint = configuration["DocumentToolsAPIEndpoint"];
+            var documentToolsApiKey = configuration["DocumentToolsAPIKey"];
 
-            if (string.IsNullOrEmpty(vectorDbEndpoint))
+            if (string.IsNullOrEmpty(documentToolsEndpoint))
             {
-                logger.LogWarning("VectorDatabaseEndpoint not configured - returning success for now");
-                // For now, return success to allow UI testing
-                // In production, this should fail if the endpoint is not configured
-                return TypedResults.Ok(new
-                {
-                    success = true,
-                    message = $"Indexing started for collection '{collectionName}' (mock mode - VectorDatabaseEndpoint not configured)",
-                    collection_name = collectionName
-                });
+                logger.LogWarning("DocumentToolsAPIEndpoint not configured");
+                return Results.BadRequest(new { success = false, message = "DocumentToolsAPIEndpoint is not configured" });
             }
 
             // Get all files in the collection
@@ -911,55 +1016,100 @@ internal static class WebApiCollectionEndpoints
                 return Results.BadRequest(new { success = false, message = $"No files found in collection '{collectionName}'" });
             }
 
-            logger.LogInformation("Triggering vector indexing for {FileCount} files in collection '{CollectionName}'",
-                collectionFiles.Count, collectionName);
+            // Filter to only PDF files
+            var pdfFiles = collectionFiles.Where(f => f.FileName.EndsWith(".pdf", StringComparison.OrdinalIgnoreCase)).ToList();
+
+            if (!pdfFiles.Any())
+            {
+                logger.LogWarning("No PDF files found in collection '{CollectionName}'", collectionName);
+                return Results.BadRequest(new { success = false, message = $"No PDF files found in collection '{collectionName}'" });
+            }
+
+            logger.LogInformation("Triggering vector indexing for {FileCount} PDF file(s) in collection '{CollectionName}'",
+                pdfFiles.Count, collectionName);
+
+            // Get storage account name for constructing blob paths
+            var storageAccountName = blobServiceClient.AccountName;
 
             // Fire and forget - start the indexing without waiting for completion
             _ = Task.Run(async () =>
             {
-                try
+                var successCount = 0;
+                var failureCount = 0;
+
+                foreach (var file in pdfFiles)
                 {
-                    using var httpClient = httpClientFactory.CreateClient();
-                    if (!string.IsNullOrEmpty(vectorDbApiKey))
+                    try
                     {
-                        httpClient.DefaultRequestHeaders.Add("X-API-Key", vectorDbApiKey);
+                        using var httpClient = httpClientFactory.CreateClient();
+                        httpClient.Timeout = TimeSpan.FromMinutes(5);
+
+                        if (!string.IsNullOrEmpty(documentToolsApiKey))
+                        {
+                            httpClient.DefaultRequestHeaders.Add("X-API-Key", documentToolsApiKey);
+                        }
+
+                        // Construct blob path (with folder if present)
+                        var blobPath = string.IsNullOrEmpty(file.FolderPath)
+                            ? file.FileName
+                            : $"{file.FolderPath}/{file.FileName}";
+
+                        // Extract metadata from file metadata if available
+                        var metadata = file.Metadata;
+
+                        var requestBody = new
+                        {
+                            file_name = file.FileName,
+                            blob_path = blobPath,
+                            equipment_category = metadata?.EquipmentCategory,
+                            equipment_subcategory = metadata?.EquipmentSubcategory,
+                            equipment_part = metadata?.EquipmentPart,
+                            equipment_part_subcategory = metadata?.EquipmentPartSubcategory,
+                            product = metadata?.Product,
+                            manufacturer = metadata?.Manufacturer,
+                            document_type = metadata?.DocumentType,
+                            is_required_for_cde = metadata?.IsRequiredForCde,
+                            added_to_index = "No"
+                        };
+
+                        var jsonContent = System.Text.Json.JsonSerializer.Serialize(requestBody);
+                        using var content = new StringContent(jsonContent, System.Text.Encoding.UTF8, "application/json");
+
+                        var response = await httpClient.PostAsync($"{documentToolsEndpoint}/knowledge-base/vectorize-document", content);
+
+                        if (response.IsSuccessStatusCode)
+                        {
+                            successCount++;
+                            logger.LogInformation("Successfully triggered vectorization for file '{FileName}' in collection '{CollectionName}'",
+                                file.FileName, collectionName);
+                        }
+                        else
+                        {
+                            failureCount++;
+                            var errorContent = await response.Content.ReadAsStringAsync();
+                            logger.LogError("Failed to trigger vectorization for file '{FileName}' in collection '{CollectionName}': {StatusCode} - {Error}",
+                                file.FileName, collectionName, response.StatusCode, errorContent);
+                        }
                     }
-
-                    var requestBody = new
+                    catch (Exception ex)
                     {
-                        collection_name = collectionName,
-                        file_count = collectionFiles.Count
-                    };
-
-                    var jsonContent = System.Text.Json.JsonSerializer.Serialize(requestBody);
-                    using var content = new StringContent(jsonContent, System.Text.Encoding.UTF8, "application/json");
-
-                    var response = await httpClient.PostAsync($"{vectorDbEndpoint}/index", content);
-
-                    if (response.IsSuccessStatusCode)
-                    {
-                        logger.LogInformation("Successfully triggered vector indexing for collection '{CollectionName}'", collectionName);
-                    }
-                    else
-                    {
-                        var errorContent = await response.Content.ReadAsStringAsync();
-                        logger.LogError("Failed to trigger vector indexing for collection '{CollectionName}': {StatusCode} - {Error}",
-                            collectionName, response.StatusCode, errorContent);
+                        failureCount++;
+                        logger.LogError(ex, "Error vectorizing file '{FileName}' in collection '{CollectionName}'",
+                            file.FileName, collectionName);
                     }
                 }
-                catch (Exception ex)
-                {
-                    logger.LogError(ex, "Background error indexing collection: {CollectionName}", collectionName);
-                }
+
+                logger.LogInformation("Completed vector indexing for collection '{CollectionName}': {SuccessCount} succeeded, {FailureCount} failed",
+                    collectionName, successCount, failureCount);
             });
 
             // Return immediately
             return TypedResults.Ok(new
             {
                 success = true,
-                message = $"Indexing started for {collectionFiles.Count} file(s) in collection '{collectionName}'",
+                message = $"Indexing started for {pdfFiles.Count} PDF file(s) in collection '{collectionName}'",
                 collection_name = collectionName,
-                file_count = collectionFiles.Count
+                file_count = pdfFiles.Count
             });
         }
         catch (Exception ex)
@@ -988,57 +1138,19 @@ internal static class WebApiCollectionEndpoints
 
             var userInfo = await context.GetUserInfoAsync();
 
-            // Get the vector database endpoint from configuration
-            var vectorDbEndpoint = configuration["VectorDatabaseEndpoint"];
-            var vectorDbApiKey = configuration["VectorDatabaseApiKey"];
-
-            if (string.IsNullOrEmpty(vectorDbEndpoint))
+            // Agent Hub API processes documents individually and doesn't provide workflow status
+            // Return a "complete" status since the indexing is fire-and-forget
+            logger.LogInformation("Returning complete status for collection '{CollectionName}' (Agent Hub API processes documents individually)", collectionName);
+            
+            return TypedResults.Ok(new
             {
-                logger.LogWarning("VectorDatabaseEndpoint not configured - returning mock status");
-                // Return mock status for testing UI
-                return TypedResults.Ok(new
+                stages = new
                 {
-                    stages = new
-                    {
-                        initialization = new { status = "Complete", message = "Mock initialization complete" },
-                        vectorization = new { status = "Complete", message = "Mock vectorization complete" },
-                        indexing = new { status = "Complete", message = "Mock indexing complete" }
-                    }
-                });
-            }
-
-            // Call the external vector database API to get workflow status
-            using var httpClient = httpClientFactory.CreateClient();
-            httpClient.Timeout = TimeSpan.FromSeconds(10);
-
-            if (!string.IsNullOrEmpty(vectorDbApiKey))
-            {
-                httpClient.DefaultRequestHeaders.Add("X-API-Key", vectorDbApiKey);
-            }
-
-            var statusUrl = $"{vectorDbEndpoint.TrimEnd('/')}/workflow/status/{collectionName}";
-            var response = await httpClient.GetAsync(statusUrl, cancellationToken);
-
-            if (response.IsSuccessStatusCode)
-            {
-                var responseContent = await response.Content.ReadAsStringAsync(cancellationToken);
-                logger.LogInformation("Successfully retrieved indexing workflow status for collection '{CollectionName}'", collectionName);
-
-                var statusData = System.Text.Json.JsonSerializer.Deserialize<System.Text.Json.JsonElement>(responseContent);
-                return TypedResults.Ok(statusData);
-            }
-            else if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
-            {
-                logger.LogWarning("Indexing workflow status not found for collection '{CollectionName}'", collectionName);
-                return Results.NotFound(new { success = false, message = $"Indexing workflow status not found for collection '{collectionName}'" });
-            }
-            else
-            {
-                var errorContent = await response.Content.ReadAsStringAsync(cancellationToken);
-                logger.LogError("Failed to get indexing workflow status for collection '{CollectionName}': {StatusCode} - {Error}",
-                    collectionName, response.StatusCode, errorContent);
-                return Results.Problem($"Failed to get indexing workflow status: {response.StatusCode} - {errorContent}");
-            }
+                    initialization = new { status = "Complete", message = "Document processing initiated" },
+                    vectorization = new { status = "Complete", message = "Files are being processed individually" },
+                    indexing = new { status = "Complete", message = "Vectorization in progress" }
+                }
+            });
         }
         catch (HttpRequestException ex)
         {
@@ -1076,57 +1188,15 @@ internal static class WebApiCollectionEndpoints
 
             var userInfo = await context.GetUserInfoAsync();
 
-            // Get the vector database endpoint from configuration
-            var vectorDbEndpoint = configuration["VectorDatabaseEndpoint"];
-            var vectorDbApiKey = configuration["VectorDatabaseApiKey"];
-
-            if (string.IsNullOrEmpty(vectorDbEndpoint))
+            // Agent Hub API doesn't maintain workflow state - documents are processed individually
+            // There's nothing to delete, so return success
+            logger.LogInformation("Delete workflow requested for collection '{CollectionName}' (Agent Hub API processes documents individually - no workflow to delete)", collectionName);
+            
+            return TypedResults.Ok(new
             {
-                logger.LogWarning("VectorDatabaseEndpoint not configured - returning success for mock mode");
-                return TypedResults.Ok(new
-                {
-                    success = true,
-                    message = $"Indexing workflow for collection '{collectionName}' deleted successfully (mock mode)"
-                });
-            }
-
-            // Call the external vector database API to delete workflow
-            using var httpClient = httpClientFactory.CreateClient();
-            httpClient.Timeout = TimeSpan.FromSeconds(10);
-
-            if (!string.IsNullOrEmpty(vectorDbApiKey))
-            {
-                httpClient.DefaultRequestHeaders.Add("X-API-Key", vectorDbApiKey);
-            }
-
-            var deleteUrl = $"{vectorDbEndpoint.TrimEnd('/')}/workflow/{collectionName}";
-            var response = await httpClient.DeleteAsync(deleteUrl, cancellationToken);
-
-            if (response.IsSuccessStatusCode)
-            {
-                logger.LogInformation("Successfully deleted indexing workflow for collection '{CollectionName}'", collectionName);
-                return TypedResults.Ok(new
-                {
-                    success = true,
-                    message = $"Indexing workflow for collection '{collectionName}' deleted successfully"
-                });
-            }
-            else if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
-            {
-                logger.LogWarning("Indexing workflow not found for collection '{CollectionName}'", collectionName);
-                return Results.NotFound(new
-                {
-                    success = false,
-                    message = $"Indexing workflow not found for collection '{collectionName}'"
-                });
-            }
-            else
-            {
-                var errorContent = await response.Content.ReadAsStringAsync(cancellationToken);
-                logger.LogError("Failed to delete indexing workflow for collection '{CollectionName}': {StatusCode} - {Error}",
-                    collectionName, response.StatusCode, errorContent);
-                return Results.Problem($"Failed to delete indexing workflow: {response.StatusCode} - {errorContent}");
-            }
+                success = true,
+                message = $"No workflow files to delete (Agent Hub API processes documents individually)"
+            });
         }
         catch (HttpRequestException ex)
         {

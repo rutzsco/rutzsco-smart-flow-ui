@@ -746,6 +746,7 @@ public sealed partial class Collections : IDisposable
                 PrependCollectionNameToFolderPaths(collectionNode, collection.Name);
 
                 Logger.LogInformation($"Collection: {collection.Name}, Children: {collectionNode.Children.Count}");
+            }
 
             // Recursively expand all folders in the tree
             foreach (var child in _folderStructure.Children)
