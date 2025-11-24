@@ -407,8 +407,7 @@ app/SmartFlowUI/frontend/wwwroot/appsettings.development.json
 app/SmartFlowUI/frontend/wwwroot/appsettings.json
 app/SmartFlowUI/backend/appsettings.Development-v1.json
 app/SmartFlowUI/backend/Properties/launchSettings.json
-app/SmartFlow.UI.API/appsettings.json
-app/SmartFlow.UI.API/appsettings.*.json
+
 
 infra/bicep/*.parameters.json
 !infra/bicep/main.parameters.json
