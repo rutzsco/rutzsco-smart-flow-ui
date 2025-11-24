@@ -250,7 +250,7 @@
                                     }
                                 </MudButton>
 
-                                <MudButton Color="Color.Secondary"
+                                <MudButton Color="Color.Primary"
                                            Variant="Variant.Outlined"
                                            Size="Size.Small"
                                            OnClick="@(async () => await AnalyzePlanSelectedProjectAsync())"
@@ -333,13 +333,13 @@
                                                         @if (!string.IsNullOrWhiteSpace(file.Description))
                                                         {
                                                             <MudText Typo="Typo.caption" Color="Color.Secondary" Style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
-                                                                — @file.Description
+                                                                - @file.Description
                                                             </MudText>
                                                         }
                                                         else
                                                         {
                                                             <MudText Typo="Typo.caption" Color="Color.Tertiary" Style="font-style: italic;">
-                                                                — No description
+                                                                - No description
                                                             </MudText>
                                                         }
                                                     }
