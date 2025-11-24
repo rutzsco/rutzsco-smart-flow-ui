@@ -59,6 +59,11 @@ internal static class WebApiCollectionEndpoints
         // Metadata configuration
         api.MapGet("metadata-configuration", OnGetMetadataConfigurationAsync);
 
+        // Collection indexing endpoints (vector database pipeline)
+        api.MapPost("{collectionName}/index", OnIndexCollectionAsync);
+        api.MapGet("{collectionName}/indexing-workflow/status", OnGetCollectionIndexingWorkflowStatusAsync);
+        api.MapDelete("{collectionName}/indexing-workflow", OnDeleteCollectionIndexingWorkflowAsync);
+
         return app;
     }
 
@@ -854,6 +859,289 @@ internal static class WebApiCollectionEndpoints
         {
             logger.LogError(ex, "Error getting metadata configuration");
             return Task.FromResult<IResult>(Results.Problem("Error retrieving metadata configuration"));
+        }
+    }
+
+    // Collection Indexing Endpoints (Vector Database Pipeline)
+
+    private static async Task<IResult> OnIndexCollectionAsync(
+        HttpContext context,
+        string collectionName,
+        [FromServices] DocumentService documentService,
+        [FromServices] IConfiguration configuration,
+        [FromServices] ILogger<WebApplication> logger,
+        [FromServices] IHttpClientFactory httpClientFactory,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(collectionName))
+        {
+            return Results.BadRequest(new { error = "Collection name is required" });
+        }
+
+        try
+        {
+            logger.LogInformation("Starting vector indexing for collection: {CollectionName}", collectionName);
+
+            var userInfo = await context.GetUserInfoAsync();
+
+            // Get the vector database endpoint from configuration
+            // TODO: Add configuration keys for vector database pipeline endpoint
+            var vectorDbEndpoint = configuration["VectorDatabaseEndpoint"];
+            var vectorDbApiKey = configuration["VectorDatabaseApiKey"];
+
+            if (string.IsNullOrEmpty(vectorDbEndpoint))
+            {
+                logger.LogWarning("VectorDatabaseEndpoint not configured - returning success for now");
+                // For now, return success to allow UI testing
+                // In production, this should fail if the endpoint is not configured
+                return TypedResults.Ok(new
+                {
+                    success = true,
+                    message = $"Indexing started for collection '{collectionName}' (mock mode - VectorDatabaseEndpoint not configured)",
+                    collection_name = collectionName
+                });
+            }
+
+            // Get all files in the collection
+            var collectionFiles = await documentService.GetFilesInContainerAsync(collectionName, cancellationToken);
+
+            if (!collectionFiles.Any())
+            {
+                logger.LogWarning("No files found in collection '{CollectionName}'", collectionName);
+                return Results.BadRequest(new { success = false, message = $"No files found in collection '{collectionName}'" });
+            }
+
+            logger.LogInformation("Triggering vector indexing for {FileCount} files in collection '{CollectionName}'",
+                collectionFiles.Count, collectionName);
+
+            // Fire and forget - start the indexing without waiting for completion
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    using var httpClient = httpClientFactory.CreateClient();
+                    if (!string.IsNullOrEmpty(vectorDbApiKey))
+                    {
+                        httpClient.DefaultRequestHeaders.Add("X-API-Key", vectorDbApiKey);
+                    }
+
+                    var requestBody = new
+                    {
+                        collection_name = collectionName,
+                        file_count = collectionFiles.Count
+                    };
+
+                    var jsonContent = System.Text.Json.JsonSerializer.Serialize(requestBody);
+                    using var content = new StringContent(jsonContent, System.Text.Encoding.UTF8, "application/json");
+
+                    var response = await httpClient.PostAsync($"{vectorDbEndpoint}/index", content);
+
+                    if (response.IsSuccessStatusCode)
+                    {
+                        logger.LogInformation("Successfully triggered vector indexing for collection '{CollectionName}'", collectionName);
+                    }
+                    else
+                    {
+                        var errorContent = await response.Content.ReadAsStringAsync();
+                        logger.LogError("Failed to trigger vector indexing for collection '{CollectionName}': {StatusCode} - {Error}",
+                            collectionName, response.StatusCode, errorContent);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    logger.LogError(ex, "Background error indexing collection: {CollectionName}", collectionName);
+                }
+            });
+
+            // Return immediately
+            return TypedResults.Ok(new
+            {
+                success = true,
+                message = $"Indexing started for {collectionFiles.Count} file(s) in collection '{collectionName}'",
+                collection_name = collectionName,
+                file_count = collectionFiles.Count
+            });
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error indexing collection: {CollectionName}", collectionName);
+            return Results.Problem($"Error indexing collection: {ex.Message}");
+        }
+    }
+
+    private static async Task<IResult> OnGetCollectionIndexingWorkflowStatusAsync(
+        HttpContext context,
+        string collectionName,
+        [FromServices] IConfiguration configuration,
+        [FromServices] ILogger<WebApplication> logger,
+        [FromServices] IHttpClientFactory httpClientFactory,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(collectionName))
+        {
+            return Results.BadRequest(new { error = "Collection name is required" });
+        }
+
+        try
+        {
+            logger.LogInformation("Getting indexing workflow status for collection: {CollectionName}", collectionName);
+
+            var userInfo = await context.GetUserInfoAsync();
+
+            // Get the vector database endpoint from configuration
+            var vectorDbEndpoint = configuration["VectorDatabaseEndpoint"];
+            var vectorDbApiKey = configuration["VectorDatabaseApiKey"];
+
+            if (string.IsNullOrEmpty(vectorDbEndpoint))
+            {
+                logger.LogWarning("VectorDatabaseEndpoint not configured - returning mock status");
+                // Return mock status for testing UI
+                return TypedResults.Ok(new
+                {
+                    stages = new
+                    {
+                        initialization = new { status = "Complete", message = "Mock initialization complete" },
+                        vectorization = new { status = "Complete", message = "Mock vectorization complete" },
+                        indexing = new { status = "Complete", message = "Mock indexing complete" }
+                    }
+                });
+            }
+
+            // Call the external vector database API to get workflow status
+            using var httpClient = httpClientFactory.CreateClient();
+            httpClient.Timeout = TimeSpan.FromSeconds(10);
+
+            if (!string.IsNullOrEmpty(vectorDbApiKey))
+            {
+                httpClient.DefaultRequestHeaders.Add("X-API-Key", vectorDbApiKey);
+            }
+
+            var statusUrl = $"{vectorDbEndpoint.TrimEnd('/')}/workflow/status/{collectionName}";
+            var response = await httpClient.GetAsync(statusUrl, cancellationToken);
+
+            if (response.IsSuccessStatusCode)
+            {
+                var responseContent = await response.Content.ReadAsStringAsync(cancellationToken);
+                logger.LogInformation("Successfully retrieved indexing workflow status for collection '{CollectionName}'", collectionName);
+
+                var statusData = System.Text.Json.JsonSerializer.Deserialize<System.Text.Json.JsonElement>(responseContent);
+                return TypedResults.Ok(statusData);
+            }
+            else if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+            {
+                logger.LogWarning("Indexing workflow status not found for collection '{CollectionName}'", collectionName);
+                return Results.NotFound(new { success = false, message = $"Indexing workflow status not found for collection '{collectionName}'" });
+            }
+            else
+            {
+                var errorContent = await response.Content.ReadAsStringAsync(cancellationToken);
+                logger.LogError("Failed to get indexing workflow status for collection '{CollectionName}': {StatusCode} - {Error}",
+                    collectionName, response.StatusCode, errorContent);
+                return Results.Problem($"Failed to get indexing workflow status: {response.StatusCode} - {errorContent}");
+            }
+        }
+        catch (HttpRequestException ex)
+        {
+            logger.LogError(ex, "HTTP error getting indexing workflow status for collection: {CollectionName}", collectionName);
+            return Results.Problem($"HTTP error getting indexing workflow status: {ex.Message}");
+        }
+        catch (TaskCanceledException ex)
+        {
+            logger.LogError(ex, "Timeout getting indexing workflow status for collection: {CollectionName}", collectionName);
+            return Results.Problem("Request timed out getting indexing workflow status");
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error getting indexing workflow status for collection: {CollectionName}", collectionName);
+            return Results.Problem($"Error getting indexing workflow status: {ex.Message}");
+        }
+    }
+
+    private static async Task<IResult> OnDeleteCollectionIndexingWorkflowAsync(
+        HttpContext context,
+        string collectionName,
+        [FromServices] IConfiguration configuration,
+        [FromServices] ILogger<WebApplication> logger,
+        [FromServices] IHttpClientFactory httpClientFactory,
+        CancellationToken cancellationToken)
+    {
+        if (string.IsNullOrWhiteSpace(collectionName))
+        {
+            return Results.BadRequest(new { error = "Collection name is required" });
+        }
+
+        try
+        {
+            logger.LogInformation("Deleting indexing workflow for collection: {CollectionName}", collectionName);
+
+            var userInfo = await context.GetUserInfoAsync();
+
+            // Get the vector database endpoint from configuration
+            var vectorDbEndpoint = configuration["VectorDatabaseEndpoint"];
+            var vectorDbApiKey = configuration["VectorDatabaseApiKey"];
+
+            if (string.IsNullOrEmpty(vectorDbEndpoint))
+            {
+                logger.LogWarning("VectorDatabaseEndpoint not configured - returning success for mock mode");
+                return TypedResults.Ok(new
+                {
+                    success = true,
+                    message = $"Indexing workflow for collection '{collectionName}' deleted successfully (mock mode)"
+                });
+            }
+
+            // Call the external vector database API to delete workflow
+            using var httpClient = httpClientFactory.CreateClient();
+            httpClient.Timeout = TimeSpan.FromSeconds(10);
+
+            if (!string.IsNullOrEmpty(vectorDbApiKey))
+            {
+                httpClient.DefaultRequestHeaders.Add("X-API-Key", vectorDbApiKey);
+            }
+
+            var deleteUrl = $"{vectorDbEndpoint.TrimEnd('/')}/workflow/{collectionName}";
+            var response = await httpClient.DeleteAsync(deleteUrl, cancellationToken);
+
+            if (response.IsSuccessStatusCode)
+            {
+                logger.LogInformation("Successfully deleted indexing workflow for collection '{CollectionName}'", collectionName);
+                return TypedResults.Ok(new
+                {
+                    success = true,
+                    message = $"Indexing workflow for collection '{collectionName}' deleted successfully"
+                });
+            }
+            else if (response.StatusCode == System.Net.HttpStatusCode.NotFound)
+            {
+                logger.LogWarning("Indexing workflow not found for collection '{CollectionName}'", collectionName);
+                return Results.NotFound(new
+                {
+                    success = false,
+                    message = $"Indexing workflow not found for collection '{collectionName}'"
+                });
+            }
+            else
+            {
+                var errorContent = await response.Content.ReadAsStringAsync(cancellationToken);
+                logger.LogError("Failed to delete indexing workflow for collection '{CollectionName}': {StatusCode} - {Error}",
+                    collectionName, response.StatusCode, errorContent);
+                return Results.Problem($"Failed to delete indexing workflow: {response.StatusCode} - {errorContent}");
+            }
+        }
+        catch (HttpRequestException ex)
+        {
+            logger.LogError(ex, "HTTP error deleting indexing workflow for collection: {CollectionName}", collectionName);
+            return Results.Problem($"HTTP error deleting indexing workflow: {ex.Message}");
+        }
+        catch (TaskCanceledException ex)
+        {
+            logger.LogError(ex, "Timeout deleting indexing workflow for collection: {CollectionName}", collectionName);
+            return Results.Problem("Request timed out deleting indexing workflow");
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error deleting indexing workflow for collection: {CollectionName}", collectionName);
+            return Results.Problem($"Error deleting indexing workflow: {ex.Message}");
         }
     }
 }

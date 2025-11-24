@@ -462,6 +462,54 @@ public sealed class ApiClient(HttpClient httpClient)
         }
     }
 
+    // Collection Indexing APIs
+    public async Task<bool> IndexCollectionAsync(string collectionName)
+    {
+        try
+        {
+            var response = await httpClient.PostAsync($"api/collections/{collectionName}/index", null);
+            return response.IsSuccessStatusCode;
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Error indexing collection: {ex.Message}");
+            return false;
+        }
+    }
+
+    public async Task<bool> DeleteCollectionIndexingWorkflowAsync(string collectionName)
+    {
+        try
+        {
+            var response = await httpClient.DeleteAsync($"api/collections/{collectionName}/indexing-workflow");
+            return response.IsSuccessStatusCode;
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Error deleting collection indexing workflow: {ex.Message}");
+            return false;
+        }
+    }
+
+    public async Task<System.Text.Json.JsonElement?> GetCollectionIndexingWorkflowStatusAsync(string collectionName)
+    {
+        try
+        {
+            var response = await httpClient.GetAsync($"api/collections/{collectionName}/indexing-workflow/status");
+            if (response.IsSuccessStatusCode)
+            {
+                var content = await response.Content.ReadAsStringAsync();
+                return System.Text.Json.JsonSerializer.Deserialize<System.Text.Json.JsonElement>(content);
+            }
+            return null;
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Error fetching collection indexing workflow status: {ex.Message}");
+            return null;
+        }
+    }
+
     public async Task<bool> DeleteProjectWorkflowAsync(string projectName)
     {
         try

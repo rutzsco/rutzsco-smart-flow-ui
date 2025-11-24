@@ -20,6 +20,11 @@ public sealed partial class Collections : IDisposable
     private string _filter = "";
     private HashSet<string> _processingFiles = new(); // Track files being processed
     private HashSet<string> _deletingFiles = new(); // Track files being deleted
+    private bool _isIndexing = false; // Track if vector indexing is in progress
+    private System.Text.Json.JsonElement? _indexingWorkflowStatus = null; // Store indexing workflow status
+    private System.Threading.Timer? _indexingStatusPollTimer = null; // Timer for polling indexing status
+    private bool _isPollingIndexing = false; // Track if polling is active to prevent concurrent polls
+    private const int IndexingStatusPollIntervalMs = 10000; // Poll every 10 seconds
 
     // Store a cancelation token that will be used to cancel if the user disposes of this component.
     private readonly CancellationTokenSource _cancellationTokenSource = new();
@@ -106,6 +111,11 @@ public sealed partial class Collections : IDisposable
     {
         if (_selectedCollection != collectionName)
         {
+            // Stop any existing indexing status polling when switching collections
+            StopIndexingStatusPolling();
+            _isIndexing = false;
+            _indexingWorkflowStatus = null;
+
             _selectedCollection = collectionName;
             _selectedCollectionInfo = _collections.FirstOrDefault(c => c.Name == collectionName);
             _fileUploads.Clear(); // Clear any selected files when switching collections
@@ -117,6 +127,9 @@ public sealed partial class Collections : IDisposable
                 LoadCollectionFilesAsync(),
                 LoadFolderStructureAsync()
             );
+
+            // Check for existing indexing workflow status
+            await CheckIndexingWorkflowStatusAsync();
         }
     }
 
@@ -1030,9 +1043,244 @@ public sealed partial class Collections : IDisposable
         }
     }
 
+    private async Task CheckIndexingWorkflowStatusAsync()
+    {
+        if (string.IsNullOrEmpty(_selectedCollection))
+            return;
+
+        try
+        {
+            var status = await Client.GetCollectionIndexingWorkflowStatusAsync(_selectedCollection);
+
+            if (status.HasValue)
+            {
+                _indexingWorkflowStatus = status.Value;
+
+                // Check if workflow is still in progress
+                if (status.Value.TryGetProperty("stages", out var stages))
+                {
+                    var hasIncomplete = false;
+                    foreach (var stage in stages.EnumerateObject())
+                    {
+                        if (stage.Value.TryGetProperty("status", out var stageStatus))
+                        {
+                            var statusStr = stageStatus.GetString();
+                            if (statusStr != "Complete" && statusStr != "Failed")
+                            {
+                                hasIncomplete = true;
+                                break;
+                            }
+                        }
+                    }
+
+                    if (hasIncomplete)
+                    {
+                        _isIndexing = true;
+                        StartIndexingStatusPolling();
+                    }
+                }
+
+                StateHasChanged();
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error checking indexing workflow status for collection {CollectionName}", _selectedCollection);
+        }
+    }
+
+    private async Task IndexSelectedCollectionAsync()
+    {
+        if (string.IsNullOrEmpty(_selectedCollection))
+        {
+            SnackBarError("No collection selected");
+            return;
+        }
+
+        _isIndexing = true;
+        _indexingWorkflowStatus = null;
+        StateHasChanged();
+
+        try
+        {
+            Logger.LogInformation("Starting vector indexing for collection {Collection}", _selectedCollection);
+
+            var success = await Client.IndexCollectionAsync(_selectedCollection);
+
+            if (success)
+            {
+                SnackBarMessage($"Vector indexing started for collection '{_selectedCollection}'");
+
+                // Start polling for status
+                StartIndexingStatusPolling();
+            }
+            else
+            {
+                _isIndexing = false;
+                SnackBarError($"Failed to start vector indexing for collection '{_selectedCollection}'");
+            }
+        }
+        catch (Exception ex)
+        {
+            _isIndexing = false;
+            Logger.LogError(ex, "Error starting vector indexing for collection {CollectionName}", _selectedCollection);
+            SnackBarError($"Error starting vector indexing: {ex.Message}");
+        }
+        finally
+        {
+            StateHasChanged();
+        }
+    }
+
+    private void StartIndexingStatusPolling()
+    {
+        StopIndexingStatusPolling(); // Ensure any existing timer is stopped
+
+        // Start a new timer to poll the status periodically
+        _indexingStatusPollTimer = new System.Threading.Timer(async _ =>
+        {
+            await PollIndexingWorkflowStatusAsync();
+        }, null, IndexingStatusPollIntervalMs, IndexingStatusPollIntervalMs);
+    }
+
+    private async Task PollIndexingWorkflowStatusAsync()
+    {
+        // Prevent concurrent polling
+        if (_isPollingIndexing || string.IsNullOrEmpty(_selectedCollection))
+            return;
+
+        _isPollingIndexing = true;
+
+        try
+        {
+            var status = await Client.GetCollectionIndexingWorkflowStatusAsync(_selectedCollection);
+
+            if (status.HasValue)
+            {
+                _indexingWorkflowStatus = status.Value;
+
+                // Check if all stages are complete or failed
+                var allComplete = true;
+                if (status.Value.TryGetProperty("stages", out var stages))
+                {
+                    foreach (var stage in stages.EnumerateObject())
+                    {
+                        if (stage.Value.TryGetProperty("status", out var stageStatus))
+                        {
+                            var statusStr = stageStatus.GetString();
+                            if (statusStr != "Complete" && statusStr != "Failed")
+                            {
+                                allComplete = false;
+                                break;
+                            }
+                        }
+                    }
+                }
+
+                // Update UI on the Blazor render thread
+                await InvokeAsync(async () =>
+                {
+                    await LoadCollectionFilesAsync();
+
+                    if (allComplete)
+                    {
+                        Logger.LogInformation("Vector indexing workflow completed for collection {CollectionName}", _selectedCollection);
+                        _isIndexing = false;
+                        StopIndexingStatusPolling();
+                        SnackBarMessage($"Vector indexing completed for collection '{_selectedCollection}'");
+                    }
+
+                    StateHasChanged();
+                });
+            }
+            else
+            {
+                // No status found - might be too early or workflow doesn't exist
+                Logger.LogDebug("No indexing workflow status found for collection {CollectionName}", _selectedCollection);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error polling indexing workflow status for collection {CollectionName}", _selectedCollection);
+        }
+        finally
+        {
+            _isPollingIndexing = false;
+        }
+    }
+
+    private void StopIndexingStatusPolling()
+    {
+        _indexingStatusPollTimer?.Dispose();
+        _indexingStatusPollTimer = null;
+    }
+
+    private async Task ShowDeleteIndexingWorkflowDialogAsync()
+    {
+        if (string.IsNullOrEmpty(_selectedCollection))
+        {
+            SnackBarError("No collection selected");
+            return;
+        }
+
+        // Show confirmation dialog
+        var parameters = new DialogParameters
+        {
+            { "ContentText", $"Are you sure you want to delete the vector indexing workflow for collection '{_selectedCollection}'? This action cannot be undone. All workflow files will be permanently deleted." },
+            { "ButtonText", "Delete Indexing Workflow" },
+            { "Color", Color.Error }
+        };
+
+        var dialog = await DialogService.ShowAsync<ConfirmationDialog>("Confirm Workflow Deletion", parameters);
+        var result = await dialog.Result;
+
+        if (result!.Canceled)
+            return;
+
+        await DeleteCollectionIndexingWorkflowAsync();
+    }
+
+    private async Task DeleteCollectionIndexingWorkflowAsync()
+    {
+        if (string.IsNullOrEmpty(_selectedCollection))
+        {
+            SnackBarError("No collection selected");
+            return;
+        }
+
+        try
+        {
+            Logger.LogInformation("Deleting indexing workflow files for collection {Collection}", _selectedCollection!);
+
+            var success = await Client.DeleteCollectionIndexingWorkflowAsync(_selectedCollection);
+
+            if (success)
+            {
+                SnackBarMessage($"Indexing workflow for collection '{_selectedCollection}' deleted successfully");
+                _indexingWorkflowStatus = null;
+                _isIndexing = false;
+                StopIndexingStatusPolling();
+                await LoadCollectionFilesAsync();
+            }
+            else
+            {
+                SnackBarError($"Failed to delete indexing workflow for collection '{_selectedCollection}'");
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error deleting indexing workflow for collection {CollectionName}", _selectedCollection);
+            SnackBarError($"Error deleting indexing workflow: {ex.Message}");
+        }
+    }
+
     public void Dispose()
     {
+        // Cancel any ongoing operations and timers
         _cancellationTokenSource.Cancel();
         _cancellationTokenSource.Dispose();
+
+        // Ensure indexing timers are stopped
+        StopIndexingStatusPolling();
     }
 }
