@@ -1271,4 +1271,35 @@ public sealed partial class Collections : IDisposable
         // Ensure indexing timers are stopped
         StopIndexingStatusPolling();
     }
+
+    private string _collectionFilter = "";
+
+    private bool OnCollectionFilter(CollectionInfo collection)
+    {
+        if (string.IsNullOrWhiteSpace(_collectionFilter))
+            return true;
+
+        var filter = _collectionFilter.ToLower();
+        
+        return collection.Name.Contains(filter, StringComparison.OrdinalIgnoreCase) ||
+               (!string.IsNullOrWhiteSpace(collection.Type) && 
+                collection.Type.Contains(filter, StringComparison.OrdinalIgnoreCase)) ||
+               (!string.IsNullOrWhiteSpace(collection.Description) && 
+                collection.Description.Contains(filter, StringComparison.OrdinalIgnoreCase));
+    }
+
+    private string GetCollectionItemClass(CollectionInfo collection)
+    {
+        var baseClass = "collection-item";
+        return collection.Name == _selectedCollection 
+            ? $"{baseClass} collection-item-selected" 
+            : baseClass;
+    }
+
+    private string GetCollectionTextStyle(CollectionInfo collection)
+    {
+        return collection.Name == _selectedCollection 
+            ? "font-weight: 500;" 
+            : "font-weight: 400;";
+    }
 }
