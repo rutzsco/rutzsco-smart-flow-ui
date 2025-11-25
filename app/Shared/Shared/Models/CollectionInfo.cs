@@ -3,35 +3,35 @@
 namespace Shared.Models;
 
 /// <summary>
-/// Represents metadata information for a collection
+/// Represents metadata information for a blob container
 /// </summary>
-public class CollectionInfo
+public class ContainerInfo
 {
     /// <summary>
-    /// The name of the collection (container name)
+    /// The name of the blob container
     /// </summary>
     public string Name { get; set; } = string.Empty;
 
     /// <summary>
-    /// Optional description of the collection
+    /// Optional description of the container
     /// </summary>
     public string? Description { get; set; }
 
     /// <summary>
-    /// Optional type/category of the collection
+    /// Optional type/category of the container
     /// </summary>
     public string? Type { get; set; }
 
     /// <summary>
-    /// Optional Azure AI Search index name associated with this collection
+    /// Optional Azure AI Search index name associated with this container
     /// </summary>
     public string? IndexName { get; set; }
 
-    public CollectionInfo()
+    public ContainerInfo()
     {
     }
 
-    public CollectionInfo(string name, string? description = null, string? type = null, string? indexName = null)
+    public ContainerInfo(string name, string? description = null, string? type = null, string? indexName = null)
     {
         Name = name;
         Description = description;
@@ -41,27 +41,44 @@ public class CollectionInfo
 }
 
 /// <summary>
-/// Request model for creating a collection with metadata
+/// Request model for creating a blob container with metadata
 /// </summary>
-public class CreateCollectionRequest
+public class CreateContainerRequest
 {
     /// <summary>
-    /// The name of the collection to create
+    /// The name of the blob container to create
     /// </summary>
     public string Name { get; set; } = string.Empty;
 
     /// <summary>
-    /// Optional description of the collection
+    /// Optional description of the container
     /// </summary>
     public string? Description { get; set; }
 
     /// <summary>
-    /// Optional type/category of the collection
+    /// Optional type/category of the container
     /// </summary>
     public string? Type { get; set; }
 
     /// <summary>
-    /// Optional Azure AI Search index name to associate with this collection
+    /// Optional Azure AI Search index name to associate with this container
     /// </summary>
     public string? IndexName { get; set; }
 }
+
+// Backwards compatibility aliases - UI displays "Collection" to users
+// but internal code uses "Container" to align with Azure Blob Storage terminology
+/// <summary>
+/// Alias for ContainerInfo for backwards compatibility. UI displays "Collection" to users.
+/// </summary>
+public class CollectionInfo : ContainerInfo
+{
+    public CollectionInfo() : base() { }
+    public CollectionInfo(string name, string? description = null, string? type = null, string? indexName = null)
+        : base(name, description, type, indexName) { }
+}
+
+/// <summary>
+/// Alias for CreateContainerRequest for backwards compatibility. UI displays "Collection" to users.
+/// </summary>
+public class CreateCollectionRequest : CreateContainerRequest { }
