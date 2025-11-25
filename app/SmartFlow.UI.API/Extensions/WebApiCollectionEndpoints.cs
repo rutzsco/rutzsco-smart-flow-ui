@@ -59,6 +59,9 @@ internal static class WebApiCollectionEndpoints
         // Metadata configuration
         api.MapGet("metadata-configuration", OnGetMetadataConfigurationAsync);
 
+        // Document processing/indexing endpoint
+        api.MapPost("{containerName}/process/{*fileName}", OnProcessDocumentAsync);
+
         return app;
     }
 
@@ -714,6 +717,109 @@ internal static class WebApiCollectionEndpoints
         {
             logger.LogError(ex, "Error getting metadata configuration");
             return Task.FromResult<IResult>(Results.Problem("Error retrieving metadata configuration"));
+        }
+    }
+
+    private static async Task<IResult> OnProcessDocumentAsync(
+        HttpContext context,
+        string containerName,
+        string fileName,
+        [FromServices] DocumentService documentService,
+        [FromServices] IHttpClientFactory httpClientFactory,
+        [FromServices] IConfiguration configuration,
+        [FromServices] ILogger<WebApplication> logger,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            // URL decode the filename
+            fileName = Uri.UnescapeDataString(fileName);
+            
+            logger.LogInformation("Processing document {FileName} from container {ContainerName} for indexing", 
+                fileName, containerName);
+
+            var userInfo = await context.GetUserInfoAsync();
+            
+            // Get file metadata
+            var metadata = await documentService.GetFileMetadataAsync(containerName, fileName, cancellationToken);
+            
+            // Construct blob path - BlobPath contains the full path within the storage container
+            // Agent-Hub API expects blob_path to be the full path (directory + filename)
+            var blobPath = !string.IsNullOrEmpty(metadata?.BlobPath) ? metadata.BlobPath : fileName;
+            
+            logger.LogInformation("File metadata retrieved: BlobPath={BlobPath}, HasMetadata={HasMetadata}", 
+                blobPath, metadata != null);
+            
+            // Get the Agent-Hub-JCI API endpoint from configuration
+            var agentHubEndpoint = configuration["DocumentToolsAPIEndpoint"];
+            if (string.IsNullOrEmpty(agentHubEndpoint))
+            {
+                logger.LogError("DocumentToolsAPIEndpoint not configured in appsettings");
+                return Results.Problem("Document processing service endpoint not configured");
+            }
+            
+            // Extract just the filename without path for the file_name field
+            var fileNameOnly = Path.GetFileName(blobPath);
+            
+            // Prepare request for Agent-Hub-JCI
+            var vectorizeRequest = new
+            {
+                file_name = fileNameOnly,
+                blob_path = blobPath,
+                equipment_category = metadata?.EquipmentCategory,
+                equipment_subcategory = metadata?.EquipmentSubcategory,
+                equipment_part = metadata?.EquipmentPart,
+                equipment_part_subcategory = metadata?.EquipmentPartSubcategory,
+                product = metadata?.Product,
+                manufacturer = metadata?.Manufacturer,
+                document_type = metadata?.DocumentType,
+                is_required_for_cde = metadata?.IsRequiredForCde,
+                added_to_index = "No"
+            };
+            
+            var targetUrl = $"{agentHubEndpoint}/knowledge-base/vectorize-document";
+            logger.LogInformation("Calling Agent-Hub API at {Url} for file {FileName} with blob_path {BlobPath}", 
+                targetUrl, fileNameOnly, blobPath);
+            
+            // Call Agent-Hub-JCI API
+            var httpClient = httpClientFactory.CreateClient();
+            httpClient.Timeout = TimeSpan.FromMinutes(5); // Set a longer timeout for document processing
+            
+            var response = await httpClient.PostAsJsonAsync(
+                targetUrl,
+                vectorizeRequest,
+                cancellationToken);
+            
+            if (response.IsSuccessStatusCode)
+            {
+                var responseContent = await response.Content.ReadAsStringAsync(cancellationToken);
+                logger.LogInformation("Successfully initiated vectorization for {FileName}: {Response}", 
+                    fileName, responseContent);
+                return TypedResults.Ok(new 
+                { 
+                    success = true, 
+                    message = $"Document '{fileName}' indexing started successfully" 
+                });
+            }
+            else
+            {
+                var errorContent = await response.Content.ReadAsStringAsync(cancellationToken);
+                logger.LogError("Failed to vectorize document {FileName}: Status={Status}, Error={Error}", 
+                    fileName, response.StatusCode, errorContent);
+                return Results.Problem($"Failed to start document indexing: {response.StatusCode} - {errorContent}");
+            }
+        }
+        catch (HttpRequestException ex)
+        {
+            logger.LogError(ex, "HTTP error calling Agent-Hub API for {FileName} from container {ContainerName}", 
+                fileName, containerName);
+            return Results.Problem("Error connecting to document processing service");
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error processing document {FileName} from container {ContainerName}", 
+                fileName, containerName);
+            return Results.Problem("Error initiating document indexing");
         }
     }
 }
