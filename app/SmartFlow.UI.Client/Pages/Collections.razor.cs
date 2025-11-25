@@ -1302,4 +1302,104 @@ public sealed partial class Collections : IDisposable
             ? "font-weight: 500;" 
             : "font-weight: 400;";
     }
+
+    // Combined item class for unified folder/file view
+    private class CombinedItem
+    {
+        public string Name { get; set; } = "";
+        public bool IsFolder { get; set; }
+        public FolderNode? FolderNode { get; set; }
+        public ContainerFileInfo? FileInfo { get; set; }
+    }
+
+    private IEnumerable<CombinedItem> GetCombinedItems()
+    {
+        var items = new List<CombinedItem>();
+
+        // Add folders first
+        if (_folderStructure?.Children?.Any() == true)
+        {
+            var folders = string.IsNullOrEmpty(_currentFolderPath)
+                ? _folderStructure.Children
+                : GetCurrentFolderNode()?.Children ?? new List<FolderNode>();
+
+            foreach (var folder in folders)
+            {
+                if (string.IsNullOrWhiteSpace(_filter) || folder.Name.Contains(_filter, StringComparison.OrdinalIgnoreCase))
+                {
+                    items.Add(new CombinedItem
+                    {
+                        Name = folder.Name,
+                        IsFolder = true,
+                        FolderNode = folder
+                    });
+                }
+            }
+        }
+
+        // Add files
+        var files = GetFilteredFiles();
+        foreach (var file in files)
+        {
+            items.Add(new CombinedItem
+            {
+                Name = Path.GetFileName(file.FileName),
+                IsFolder = false,
+                FileInfo = file
+            });
+        }
+
+        return items;
+    }
+
+    private FolderNode? GetCurrentFolderNode()
+    {
+        if (string.IsNullOrEmpty(_currentFolderPath) || _folderStructure == null)
+            return _folderStructure;
+
+        var pathParts = _currentFolderPath.Split('/', StringSplitOptions.RemoveEmptyEntries);
+        FolderNode? current = _folderStructure;
+
+        foreach (var part in pathParts)
+        {
+            current = current?.Children.FirstOrDefault(c => c.Name.Equals(part, StringComparison.OrdinalIgnoreCase));
+            if (current == null)
+                break;
+        }
+
+        return current;
+    }
+
+    private async Task NavigateToFolder(FolderNode folder)
+    {
+        _selectedFolder = folder;
+        _currentFolderPath = folder.Path;
+        
+        Logger.LogInformation($"Navigating to folder: {folder.Path}");
+        
+        await LoadCollectionFilesAsync();
+    }
+
+    private void NavigateToParentFolder()
+    {
+        if (string.IsNullOrEmpty(_currentFolderPath))
+            return;
+
+        var pathParts = _currentFolderPath.Split('/', StringSplitOptions.RemoveEmptyEntries);
+        
+        if (pathParts.Length == 1)
+        {
+            // Go to root
+            _currentFolderPath = "";
+            _selectedFolder = null;
+        }
+        else
+        {
+            // Go to parent folder
+            _currentFolderPath = string.Join("/", pathParts.Take(pathParts.Length - 1));
+            _selectedFolder = GetCurrentFolderNode();
+        }
+
+        StateHasChanged();
+    }
 }

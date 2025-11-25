@@ -237,184 +237,180 @@
     <!-- Collection Details -->
     @if (!string.IsNullOrEmpty(_selectedCollection))
     {
-        <MudGrid>
-            <!-- Folder Tree View -->
-            <MudItem xs="12" md="3">
-                <MudCard Elevation="1" Class="rounded-lg">
-                    <MudCardContent Class="pa-4">
-                        <MudStack Spacing="2">
-                            <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
-                                <MudText Typo="Typo.h6" Style="font-weight: 500;">
-                                    <MudIcon Icon="@Icons.Material.Filled.FolderOpen" Size="Size.Small" Class="mr-1" />
-                                    Folders
-                                </MudText>
-                                <MudIconButton Icon="@Icons.Material.Filled.CreateNewFolder" 
-                                              Color="Color.Primary" 
-                                              Size="Size.Small"
-                                              OnClick="@(() => ShowCreateFolderDialogAsync(_selectedFolder))"
-                                              Title="Create Folder" />
-                            </MudStack>
-
-                            @if (!string.IsNullOrEmpty(_currentFolderPath))
-                            {
-                                <MudChip T="string" 
-                                         Icon="@Icons.Material.Filled.Folder" 
-                                         Color="Color.Info" 
-                                         Size="Size.Small">
-                                    @_currentFolderPath
-                                </MudChip>
-                            }
-
-                            <MudDivider />
-
-                            <div Style="max-height: 500px; overflow-y: auto;">
-                                @if (_folderStructure?.Children?.Any() == true)
+        <MudCard Elevation="1" Class="rounded-lg">
+            <MudCardContent Class="pa-4">
+                <MudStack Spacing="3">
+                    <!-- Files Header with Search and Actions -->
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+                        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                            <MudText Typo="Typo.body1" Style="font-weight: 500;">
+                                @if (!string.IsNullOrEmpty(_currentFolderPath))
                                 {
-                                    <FolderTreeView Items="@_folderStructure.Children"
-                                                   SelectedNode="@_selectedFolder"
-                                                   OnFolderSelected="@OnFolderSelectedAsync"
-                                                   OnUploadDocuments="@((folder) => _showUploadSection = true)"
-                                                   OnDeleteFolder="@DeleteFolderAsync"
-                                                   ShowFolderActions="true" />
+                                    <span>@_currentFolderPath</span>
                                 }
                                 else
                                 {
-                                    <MudText Typo="Typo.body2" Color="Color.Secondary" Class="py-4">
-                                        No folders yet. Click the + button above to create one.
-                                    </MudText>
+                                    <span>@_selectedCollection</span>
                                 }
-                            </div>
-                        </MudStack>
-                    </MudCardContent>
-                </MudCard>
-            </MudItem>
-
-            <!-- Files Table -->
-            <MudItem xs="12" md="9">
-                <MudCard Elevation="1" Class="rounded-lg">
-                    <MudCardContent Class="pa-4">
-                        <MudStack Spacing="3">
-                            <!-- Files Header with Search and Actions -->
-                            <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
-                                <MudText Typo="Typo.body1" Style="font-weight: 500;">
-                                    Files (@_collectionFiles.Count)
-                                </MudText>
-                                
-                                <MudStack Row="true" Spacing="2">
-                                    <MudTextField @bind-Value="@_filter" 
-                                                  Placeholder="Filter files" 
-                                                  Variant="Variant.Outlined"
-                                                  Adornment="Adornment.Start"
-                                                  AdornmentIcon="@Icons.Material.Filled.Search" 
-                                                  Margin="Margin.Dense"
-                                                  DebounceInterval="300"
-                                                  Style="max-width: 300px;">
-                                    </MudTextField>
-                                    
-                                    <MudIconButton Icon="@Icons.Material.Filled.Refresh" 
-                                                  Size="Size.Small"
-                                                  OnClick="RefreshAsync"
-                                                  Title="Refresh" />
-                                    
-                                    <MudButton StartIcon="@Icons.Material.Filled.Upload"
-                                               Color="Color.Primary"
-                                               Variant="Variant.Filled"
-                                               Size="Size.Small"
-                                               OnClick="@(() => _showUploadSection = true)">
-                                        Upload
-                                    </MudButton>
-                                </MudStack>
-                            </MudStack>
-
-                            <MudDivider />
-
-                            <!-- Files Table -->
-                            @if (!_collectionFiles.Any())
+                            </MudText>
+                            
+                            @if (!string.IsNullOrEmpty(_currentFolderPath))
                             {
-                                <MudText Typo="Typo.body2" Color="Color.Secondary" Class="py-4">
-                                    No files uploaded yet. Upload a file to get started.
-                                </MudText>
-                            }
-                            else
-                            {
-                                <MudTable Items="@GetFilteredFiles()" 
-                                          Dense="true" 
-                                          Hover="true" 
-                                          Bordered="false" 
-                                          FixedHeader="true" 
-                                          Elevation="0">
-                                    <HeaderContent>
-                                        <MudTh>File Name</MudTh>
-                                        <MudTh>Equipment Category</MudTh>
-                                        <MudTh>Document Type</MudTh>
-                                        <MudTh>Manufacturer</MudTh>
-                                        <MudTh Style="text-align: center; width: 150px;">Actions</MudTh>
-                                    </HeaderContent>
-                                    <RowTemplate>
-                                        <MudTd DataLabel="Name">
-                                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
-                                                @if (CanViewFile(context.FileName))
-                                                {
-                                                    <MudIconButton Icon="@Icons.Material.Filled.RemoveRedEye"
-                                                                   Size="Size.Small"
-                                                                   OnClick="@(async () => await ViewFileAsync(context.FileName, false))"
-                                                                   Title="View file"
-                                                                   Style="color: #1976d2;" />
-                                                }
-                                                <MudText Typo="Typo.body2">@context.FileName</MudText>
-                                            </MudStack>
-                                        </MudTd>
-                                        <MudTd DataLabel="Equipment Category">
-                                            <MudText Typo="Typo.body2">
-                                                @(context.Metadata?.EquipmentCategory ?? "-")
-                                            </MudText>
-                                        </MudTd>
-                                        <MudTd DataLabel="Document Type">
-                                            <MudText Typo="Typo.body2">
-                                                @(context.Metadata?.DocumentType ?? "-")
-                                            </MudText>
-                                        </MudTd>
-                                        <MudTd DataLabel="Manufacturer">
-                                            <MudText Typo="Typo.body2">
-                                                @(context.Metadata?.Manufacturer ?? "-")
-                                            </MudText>
-                                        </MudTd>
-                                        <MudTd DataLabel="Actions" Style="text-align: center;">
-                                            <MudStack Row="true" Justify="Justify.Center" Spacing="1">
-                                                @if (_processingFiles.Contains(context.FileName))
-                                                {
-                                                    <MudProgressCircular Size="Size.Small" Indeterminate="true" />
-                                                }
-                                                else if (_deletingFiles.Contains(context.FileName))
-                                                {
-                                                    <MudProgressCircular Size="Size.Small" Indeterminate="true" Color="Color.Error" />
-                                                }
-                                                else
-                                                {
-                                                    <MudIconButton Icon="@Icons.Material.Filled.CloudSync"
-                                                                   Color="Color.Primary"
-                                                                   Size="Size.Small"
-                                                                   OnClick="@(async () => await ProcessDocumentLayoutAsync(context.FileName))"
-                                                                   Title="Index Document" />
-                                                    <MudIconButton Icon="@Icons.Material.Filled.Edit"
-                                                                   Color="Color.Default"
-                                                                   Size="Size.Small"
-                                                                   OnClick="@(async () => await ShowEditFileMetadataDialogAsync(context))"
-                                                                   Title="Edit Metadata" />
-                                                }
-                                            </MudStack>
-                                        </MudTd>
-                                    </RowTemplate>
-                                    <PagerContent>
-                                        <MudTablePager PageSizeOptions="new int[] { 10, 25, 50, 100 }" />
-                                    </PagerContent>
-                                </MudTable>
+                                <MudIconButton Icon="@Icons.Material.Filled.ArrowUpward" 
+                                              Size="Size.Small"
+                                              OnClick="NavigateToParentFolder"
+                                              Title="Go to parent folder" />
                             }
                         </MudStack>
-                    </MudCardContent>
-                </MudCard>
-            </MudItem>
-        </MudGrid>
+                        
+                        <MudStack Row="true" Spacing="2">
+                            <MudTextField @bind-Value="@_filter" 
+                                          Placeholder="Search" 
+                                          Variant="Variant.Outlined"
+                                          Adornment="Adornment.Start"
+                                          AdornmentIcon="@Icons.Material.Filled.Search" 
+                                          Margin="Margin.Dense"
+                                          DebounceInterval="300"
+                                          Style="max-width: 300px;">
+                            </MudTextField>
+                            
+                            <MudIconButton Icon="@Icons.Material.Filled.Refresh" 
+                                          Size="Size.Small"
+                                          OnClick="RefreshAsync"
+                                          Title="Refresh" />
+                            
+                            <MudIconButton Icon="@Icons.Material.Filled.CreateNewFolder" 
+                                          Color="Color.Primary" 
+                                          Size="Size.Small"
+                                          OnClick="@(() => ShowCreateFolderDialogAsync(_selectedFolder))"
+                                          Title="New Folder" />
+                            
+                            <MudIconButton Icon="@Icons.Material.Filled.Upload"
+                                           Color="Color.Primary"
+                                           Size="Size.Small"
+                                           OnClick="@(() => _showUploadSection = true)"
+                                           Title="Upload" />
+                        </MudStack>
+                    </MudStack>
+
+                    <MudDivider />
+
+                    <!-- Combined Folders and Files Table -->
+                    @if (!GetCombinedItems().Any())
+                    {
+                        <MudText Typo="Typo.body2" Color="Color.Secondary" Class="py-4">
+                            No items found. Upload a file or create a folder to get started.
+                        </MudText>
+                    }
+                    else
+                    {
+                        <MudTable Items="@GetCombinedItems()" 
+                                  Dense="true" 
+                                  Hover="true" 
+                                  Bordered="false" 
+                                  FixedHeader="true" 
+                                  Elevation="0"
+                                  Style="cursor: pointer;">
+                            <HeaderContent>
+                                <MudTh>Name</MudTh>
+                                <MudTh>Last Modified</MudTh>
+                                <MudTh>Type</MudTh>
+                                <MudTh>Size</MudTh>
+                                <MudTh Style="text-align: center; width: 150px;">Actions</MudTh>
+                            </HeaderContent>
+                            <RowTemplate>
+                                <MudTd DataLabel="Name">
+                                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="1">
+                                        @if (context.IsFolder)
+                                        {
+                                            <MudIcon Icon="@Icons.Material.Filled.Folder" 
+                                                     Color="Color.Primary" 
+                                                     Size="Size.Small" />
+                                            <MudLink Typo="Typo.body2" 
+                                                     OnClick="@(async () => await NavigateToFolder(context.FolderNode!))"
+                                                     Style="cursor: pointer;">
+                                                @context.Name
+                                            </MudLink>
+                                        }
+                                        else
+                                        {
+                                            @if (CanViewFile(context.Name))
+                                            {
+                                                <MudIconButton Icon="@Icons.Material.Filled.RemoveRedEye"
+                                                               Size="Size.Small"
+                                                               OnClick="@(async () => await ViewFileAsync(context.FileInfo!.FileName, false))"
+                                                               Title="View file"
+                                                               Style="color: #1976d2;" />
+                                            }
+                                            else
+                                            {
+                                                <MudIcon Icon="@Icons.Material.Filled.InsertDriveFile" 
+                                                         Size="Size.Small" />
+                                            }
+                                            <MudText Typo="Typo.body2">@context.Name</MudText>
+                                        }
+                                    </MudStack>
+                                </MudTd>
+                                <MudTd DataLabel="Last Modified">
+                                    <MudText Typo="Typo.body2">
+                                        @(context.IsFolder ? "-" : "")
+                                    </MudText>
+                                </MudTd>
+                                <MudTd DataLabel="Type">
+                                    <MudText Typo="Typo.body2">
+                                        @(context.IsFolder ? "Folder" : context.FileInfo?.Metadata?.DocumentType ?? "File")
+                                    </MudText>
+                                </MudTd>
+                                <MudTd DataLabel="Size">
+                                    <MudText Typo="Typo.body2">
+                                        @(context.IsFolder ? "-" : "")
+                                    </MudText>
+                                </MudTd>
+                                <MudTd DataLabel="Actions" Style="text-align: center;">
+                                    <MudStack Row="true" Justify="Justify.Center" Spacing="1">
+                                        @if (context.IsFolder)
+                                        {
+                                            <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                                           Color="Color.Default"
+                                                           Size="Size.Small"
+                                                           OnClick="@(async () => await DeleteFolderAsync(context.FolderNode!))"
+                                                           Title="Delete Folder" />
+                                        }
+                                        else
+                                        {
+                                            @if (_processingFiles.Contains(context.FileInfo!.FileName))
+                                            {
+                                                <MudProgressCircular Size="Size.Small" Indeterminate="true" />
+                                            }
+                                            else if (_deletingFiles.Contains(context.FileInfo!.FileName))
+                                            {
+                                                <MudProgressCircular Size="Size.Small" Indeterminate="true" Color="Color.Error" />
+                                            }
+                                            else
+                                            {
+                                                <MudIconButton Icon="@Icons.Material.Filled.CloudSync"
+                                                               Color="Color.Primary"
+                                                               Size="Size.Small"
+                                                               OnClick="@(async () => await ProcessDocumentLayoutAsync(context.FileInfo!.FileName))"
+                                                               Title="Index Document" />
+                                                <MudIconButton Icon="@Icons.Material.Filled.Edit"
+                                                               Color="Color.Default"
+                                                               Size="Size.Small"
+                                                               OnClick="@(async () => await ShowEditFileMetadataDialogAsync(context.FileInfo!))"
+                                                               Title="Edit Metadata" />
+                                            }
+                                        }
+                                    </MudStack>
+                                </MudTd>
+                            </RowTemplate>
+                            <PagerContent>
+                                <MudTablePager PageSizeOptions="new int[] { 10, 25, 50, 100 }" />
+                            </PagerContent>
+                        </MudTable>
+                    }
+                </MudStack>
+            </MudCardContent>
+        </MudCard>
     }
 </MudContainer>
 
