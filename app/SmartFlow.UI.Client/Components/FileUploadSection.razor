@@ -86,7 +86,7 @@
     public string TargetName { get; set; } = string.Empty;
 
     [Parameter]
-    public long MaxIndividualFileSize { get; set; } = 1_024 * 1_024 * 50; // 50MB default
+    public long MaxIndividualFileSize { get; set; } = 1_024 * 1_024 * 250; // 250MB default
 
     [Parameter]
     public IList<IBrowserFile> SelectedFiles { get; set; } = new List<IBrowserFile>();

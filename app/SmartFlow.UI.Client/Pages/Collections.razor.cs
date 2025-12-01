@@ -6,7 +6,7 @@ namespace SmartFlow.UI.Client.Pages;
 
 public sealed partial class Collections : IDisposable
 {
-    private const long MaxIndividualFileSize = 1_024 * 1_024 * 500; // 500MB
+    private const long MaxIndividualFileSize = 1_024 * 1_024 * 250; // 250MB
 
     private MudForm _form = null!;
     private MudForm _createCollectionForm = null!;
