@@ -30,7 +30,6 @@
     <PackageReference Include="Markdig" />
     <PackageReference Include="Microsoft.Extensions.Http" />
     <PackageReference Include="MudBlazor" />
-    <PackageReference Include="System.Linq.Async" />
     <PackageReference Include="Newtonsoft.Json" />
   </ItemGroup>
 
