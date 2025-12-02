@@ -1,7 +1,7 @@
 <Project Sdk="Microsoft.NET.Sdk.Web">
 
   <PropertyGroup>
-    <TargetFramework>net8.0</TargetFramework>
+    <TargetFramework>net10.0</TargetFramework>
     <Nullable>enable</Nullable>
     <ImplicitUsings>enable</ImplicitUsings>
     <LangVersion>preview</LangVersion>
@@ -33,7 +33,6 @@
     <PackageReference Include="Microsoft.Extensions.Azure" />
     <PackageReference Include="Microsoft.SemanticKernel" />
     <PackageReference Include="Microsoft.SemanticKernel.Agents.AzureAI" />
-    <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" />
     <PackageReference Include="PdfPig" />
     <PackageReference Include="Swashbuckle.AspNetCore" />
     <PackageReference Include="TiktokenSharp" />
@@ -68,6 +67,10 @@
     <EmbeddedResource Include="Services\Profile\Prompts\RAGChatUserPrompt.txt" />
     <EmbeddedResource Include="Services\Profile\Prompts\RAGSearchQuerySystemPrompt.txt" />
     <EmbeddedResource Include="Services\Profile\Prompts\RAGSearchUserPrompt.txt" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="Components\" />
   </ItemGroup>
 
 </Project>

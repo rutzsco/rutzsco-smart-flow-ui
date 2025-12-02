@@ -1,4 +1,4 @@
-﻿// Copyright (c) Microsoft. All rights reserved.
+// Copyright (c) Microsoft. All rights reserved.
 
 using static MudBlazor.Colors;
 using System;
@@ -40,7 +40,7 @@ public sealed partial class History : IDisposable
 
         try
         {
-            var history = await Client.GetHistoryV2Async(_cancellationTokenSource.Token).ToListAsync();
+            var history = await System.Linq.AsyncEnumerable.ToListAsync(Client.GetHistoryV2Async(_cancellationTokenSource.Token), _cancellationTokenSource.Token);
             foreach (var item in history)
             {
                 _chatSessions.Add(item);
