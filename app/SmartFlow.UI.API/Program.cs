@@ -8,6 +8,8 @@ using Azure.Identity;
 using Azure.AI.Agents.Persistent;
 using Microsoft.SemanticKernel.Agents.AzureAI;
 using MinimalApi.M365;
+using Microsoft.AspNetCore.Server.Kestrel.Core;
+using Microsoft.AspNetCore.Http.Features;
 
 #pragma warning disable SKEXP0110
 
@@ -15,6 +17,26 @@ Console.WriteLine("Starting SmartFlowUI backend... {0}", BuildInfo.Instance);
 
 var builder = WebApplication.CreateBuilder(args);
 builder.Configuration.AddJsonFile("appsettings.local.json", optional: true, reloadOnChange: true);
+
+// Configure Kestrel to accept larger request bodies (500MB)
+builder.Services.Configure<KestrelServerOptions>(options =>
+{
+    options.Limits.MaxRequestBodySize = 524_288_000; // 500 MB
+});
+
+// Configure IIS to accept larger request bodies (500MB)
+builder.Services.Configure<IISServerOptions>(options =>
+{
+    options.MaxRequestBodySize = 524_288_000; // 500 MB
+});
+
+// Configure form options for multipart form data (500MB)
+builder.Services.Configure<FormOptions>(options =>
+{
+    options.MultipartBodyLengthLimit = 524_288_000; // 500 MB
+    options.ValueLengthLimit = 524_288_000; // 500 MB
+    options.MultipartHeadersLengthLimit = 524_288_000; // 500 MB
+});
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
@@ -133,6 +155,11 @@ app.MapM365AgentEndpoints();
 app.MapCustomHealthChecks();
 
 app.Run();
+
+
+
+
+
 
 
 

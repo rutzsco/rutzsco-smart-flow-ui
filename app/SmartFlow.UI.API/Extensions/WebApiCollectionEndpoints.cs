@@ -1,6 +1,7 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 
 using MinimalApi.Services.Search;
+using Microsoft.AspNetCore.Http.Features;
 
 namespace MinimalApi.Extensions;
 
@@ -31,8 +32,10 @@ internal static class WebApiCollectionEndpoints
         // Get all files in a container
         api.MapGet("{containerName}/files", OnGetFilesInContainerAsync);
 
-        // Upload files to a specific container
-        api.MapPost("{containerName}/upload", OnUploadFilesToContainerAsync);
+        // Upload files to a specific container - disable request size limit for large file uploads
+        api.MapPost("{containerName}/upload", OnUploadFilesToContainerAsync)
+            .DisableAntiforgery()
+            .WithMetadata(new DisableRequestSizeLimitAttribute());
 
         // Download a file from a container
         api.MapGet("{containerName}/download/{*fileName}", OnDownloadFileAsync);

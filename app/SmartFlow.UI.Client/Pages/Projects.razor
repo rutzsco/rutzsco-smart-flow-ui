@@ -176,24 +176,26 @@
                 }
                 else
                 {
-                    <MudStack Spacing="0">
-                        @foreach (var project in _projects.Where(p => OnProjectFilter(p)))
-                        {
-                            <MudPaper Elevation="0" 
-                                      Class="@GetProjectItemClass(project)"
-                                      Style="cursor: pointer; border-radius: 4px;"
-                                      @onclick="@(async () => await OnProjectSelectionChangedAsync(project))">
-                                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="pa-3">
-                                    <MudIcon Icon="@Icons.Material.Filled.Folder" 
-                                             Color="@(project.Name == _selectedProject ? Color.Primary : Color.Default)" 
-                                             Size="Size.Medium" />
-                                    <MudText Typo="Typo.body1" Style="@GetProjectTextStyle(project)">
-                                        @project.Name
-                                    </MudText>
-                                </MudStack>
-                            </MudPaper>
-                        }
-                    </MudStack>
+                    <div class="projects-list-container">
+                        <MudStack Spacing="0">
+                            @foreach (var project in _projects.Where(p => OnProjectFilter(p)))
+                            {
+                                <MudPaper Elevation="0" 
+                                          Class="@GetProjectItemClass(project)"
+                                          Style="cursor: pointer; border-radius: 4px;"
+                                          @onclick="@(async () => await OnProjectSelectionChangedAsync(project))">
+                                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Class="pa-3">
+                                        <MudIcon Icon="@Icons.Material.Filled.Folder" 
+                                                 Color="@(project.Name == _selectedProject ? Color.Primary : Color.Default)" 
+                                                 Size="Size.Medium" />
+                                        <MudText Typo="Typo.body1" Style="@GetProjectTextStyle(project)">
+                                            @project.Name
+                                        </MudText>
+                                    </MudStack>
+                                </MudPaper>
+                            }
+                        </MudStack>
+                    </div>
                 }
             </MudStack>
         </MudCardContent>
@@ -488,6 +490,30 @@
     
     .search-input .mud-input-root {
         background-color: #f5f5f5;
+    }
+    
+    .projects-list-container {
+        max-height: 320px; /* Approximately 5 items at ~64px each */
+        overflow-y: auto;
+        overflow-x: hidden;
+    }
+    
+    .projects-list-container::-webkit-scrollbar {
+        width: 8px;
+    }
+    
+    .projects-list-container::-webkit-scrollbar-track {
+        background: #f1f1f1;
+        border-radius: 4px;
+    }
+    
+    .projects-list-container::-webkit-scrollbar-thumb {
+        background: #888;
+        border-radius: 4px;
+    }
+    
+    .projects-list-container::-webkit-scrollbar-thumb:hover {
+        background: #555;
     }
     
     .project-item {

@@ -1,5 +1,7 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 
+using Microsoft.AspNetCore.Http.Features;
+
 namespace MinimalApi.Extensions;
 
 internal static class WebApiProjectEndpoints
@@ -42,8 +44,10 @@ internal static class WebApiProjectEndpoints
         // Get all files in a project
         api.MapGet("{projectName}/files", OnGetFilesInProjectAsync);
 
-        // Upload files to a specific project
-        api.MapPost("{projectName}/upload", OnUploadFilesToProjectAsync);
+        // Upload files to a specific project - disable request size limit for large file uploads
+        api.MapPost("{projectName}/upload", OnUploadFilesToProjectAsync)
+            .DisableAntiforgery()
+            .WithMetadata(new DisableRequestSizeLimitAttribute());
 
         // Download a file from a project
         api.MapGet("{projectName}/download/{*fileName}", OnDownloadProjectFileAsync);
