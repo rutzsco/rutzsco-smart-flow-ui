@@ -274,7 +274,19 @@
                             <MudAlert Severity="Severity.Info" Dense="true" Class="mb-2">
                                 <MudStack Spacing="1">
                                     <MudText Typo="Typo.body2" Style="font-weight: 500;">
-                                        Processing Status (@(_isAnalyzing ? "Spec" : "Plan") Analysis)
+                                        Processing Status
+                                        @if (_isAnalyzing && _isAnalyzingPlan)
+                                        {
+                                            <span>(Spec & Plan Analysis)</span>
+                                        }
+                                        else if (_isAnalyzing)
+                                        {
+                                            <span>(Spec Analysis)</span>
+                                        }
+                                        else if (_isAnalyzingPlan)
+                                        {
+                                            <span>(Plan Analysis)</span>
+                                        }
                                     </MudText>
                                     @if (_workflowStatus.Value.TryGetProperty("stages", out var stages))
                                     {
