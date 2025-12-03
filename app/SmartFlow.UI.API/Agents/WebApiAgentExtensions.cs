@@ -25,23 +25,13 @@ internal static class WebApiAgentExtensions
         return app;
     }
 
-    private static async Task<IResult> OnGetAgentsAsync(HttpContext context, AzureAIAgentManagementService service)
+    private static async Task<IResult> OnGetAgentsAsync(HttpContext context, IAgentManagementService service)
     {
         var agents = await service.ListAgentsAsync();
-        var agentViewModels = agents.Select(agent => new AgentViewModel
-        {
-            Id = agent.Id,
-            Name = agent.Name,
-            Instructions = agent.Instructions,
-            Description = agent.Description,
-            Model = agent.Model,
-            CreatedAt = agent.CreatedAt.DateTime
-        });
-        return Results.Ok(agentViewModels);
+        return Results.Ok(agents);
     }
 
-    #pragma warning disable SKEXP0110
-    private static async Task<IResult> OnCreateAgentAsync(AgentViewModel agentViewModel, AzureAIAgentManagementService service, HttpContext context)
+    private static async Task<IResult> OnCreateAgentAsync(AgentViewModel agentViewModel, IAgentManagementService service, HttpContext context)
     {
         // Basic validation
         if (string.IsNullOrWhiteSpace(agentViewModel.Name))
@@ -56,21 +46,14 @@ internal static class WebApiAgentExtensions
 
         try
         {
-            var model = !string.IsNullOrWhiteSpace(agentViewModel.Model) ? agentViewModel.Model : "gpt-4.1";
-            var createdAgent = await service.CreateAgentAsync(agentViewModel.Name, agentViewModel.Instructions, model);
+            var model = !string.IsNullOrWhiteSpace(agentViewModel.Model) ? agentViewModel.Model : "gpt-4o";
+            var createdAgent = await service.CreateAgentAsync(
+                agentViewModel.Name, 
+                agentViewModel.Instructions, 
+                agentViewModel.Description,
+                model);
             
-            // Return the created agent information
-            var response = new AgentViewModel
-            {
-                Id = createdAgent.Definition.Id,
-                Name = createdAgent.Definition.Name,
-                Instructions = createdAgent.Definition.Instructions,
-                Description = createdAgent.Definition.Description,
-                Model = createdAgent.Definition.Model,
-                CreatedAt = createdAgent.Definition.CreatedAt.DateTime
-            };
-
-            return Results.Created($"/api/agents/{response.Id}", response);
+            return Results.Created($"/api/agents/{createdAgent.Id}", createdAgent);
         }
         catch (ArgumentException ex)
         {
@@ -82,10 +65,8 @@ internal static class WebApiAgentExtensions
             return Results.Problem($"An error occurred while creating the agent: {ex.Message}");
         }
     }
-    #pragma warning restore SKEXP0110
 
-    #pragma warning disable SKEXP0110
-    private static async Task<IResult> OnUpdateAgentAsync(string agentId, AgentViewModel agentViewModel, AzureAIAgentManagementService service, HttpContext context)
+    private static async Task<IResult> OnUpdateAgentAsync(string agentId, AgentViewModel agentViewModel, IAgentManagementService service, HttpContext context)
     {
         // Basic validation
         if (string.IsNullOrWhiteSpace(agentId))
@@ -106,20 +87,14 @@ internal static class WebApiAgentExtensions
         try
         {
             var model = !string.IsNullOrWhiteSpace(agentViewModel.Model) ? agentViewModel.Model : "gpt-4o";
-            var updatedAgent = await service.UpdateAgentAsync(agentId, agentViewModel.Name, agentViewModel.Instructions, agentViewModel.Description, model);
+            var updatedAgent = await service.UpdateAgentAsync(
+                agentId, 
+                agentViewModel.Name, 
+                agentViewModel.Instructions, 
+                agentViewModel.Description, 
+                model);
             
-            // Return the updated agent information
-            var response = new AgentViewModel
-            {
-                Id = updatedAgent.Definition.Id,
-                Name = updatedAgent.Definition.Name,
-                Instructions = updatedAgent.Definition.Instructions,
-                Description = updatedAgent.Definition.Description,
-                Model = updatedAgent.Definition.Model,
-                CreatedAt = updatedAgent.Definition.CreatedAt.DateTime
-            };
-
-            return Results.Ok(response);
+            return Results.Ok(updatedAgent);
         }
         catch (ArgumentException ex)
         {
@@ -131,7 +106,6 @@ internal static class WebApiAgentExtensions
             return Results.Problem($"An error occurred while updating the agent: {ex.Message}");
         }
     }
-    #pragma warning restore SKEXP0110
 
     #pragma warning disable SKEXP0110
     private static async Task<IResult> OnGetAgentImageAsync(string fileId, IConfiguration config, CancellationToken cancellationToken)
@@ -203,7 +177,7 @@ internal static class WebApiAgentExtensions
     }
     #pragma warning restore SKEXP0110
 
-    private static async Task<IResult> OnDeleteAgentsByNameAsync(string agentName, AzureAIAgentManagementService service, HttpContext context)
+    private static async Task<IResult> OnDeleteAgentsByNameAsync(string agentName, IAgentManagementService service, HttpContext context)
     {
         try
         {

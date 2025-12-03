@@ -160,10 +160,23 @@ internal static class ServiceCollectionExtensions
 
         services.AddSingleton<DocumentService>();
 
+        // Register both agent management service implementations
+        services.AddSingleton<AzureAIAgentManagementService>();
+        services.AddSingleton<CustomEndpointAgentManagementService>();
+        
+        // Register the factory
+        services.AddSingleton<AgentManagementServiceFactory>();
+        
+        // Register IAgentManagementService using the factory
+        services.AddSingleton<IAgentManagementService>(sp =>
+        {
+            var factory = sp.GetRequiredService<AgentManagementServiceFactory>();
+            return factory.CreateAgentManagementService();
+        });
+
         // Only register Azure AI Foundry-dependent services if endpoint is configured
         if (!string.IsNullOrEmpty(configuration.AzureAIFoundryProjectEndpoint))
         {
-            services.AddSingleton<AzureAIAgentManagementService>();
             services.AddSingleton<AzureAIAgentChatService>();
         }
         

@@ -137,8 +137,9 @@ app.Use(next => context =>
 });
 app.MapFallbackToFile("index.html");
 
-// Only map agent management API if Azure AI Foundry is configured
-if (!string.IsNullOrEmpty(appConfiguration.AzureAIFoundryProjectEndpoint))
+// Map agent management API if either Azure AI Foundry or Custom Agent Endpoint is configured
+if (!string.IsNullOrEmpty(appConfiguration.AzureAIFoundryProjectEndpoint) || 
+    !string.IsNullOrEmpty(builder.Configuration["CustomAgentEndpoint"]))
 {
     app.MapAgentManagementApi();
 }

@@ -3,17 +3,19 @@ using Azure.AI.Agents.Persistent;
 using Azure.Identity;
 using Microsoft.SemanticKernel;
 using Microsoft.SemanticKernel.Agents.AzureAI;
+using Shared.Models;
 using System.Reflection;
 
 namespace MinimalApi.Agents
 {        
     #pragma warning disable SKEXP0110
-    public class AzureAIAgentManagementService
+    public class AzureAIAgentManagementService : IAgentManagementService
     { 
 
         private readonly OpenAIClientFacade _openAIClientFacade;
         private readonly IConfiguration _configuration;
 
+        public string ProviderType => "AzureAI";
 
         public AzureAIAgentManagementService(OpenAIClientFacade openAIClientFacade, IConfiguration configuration)
         {    
@@ -45,7 +47,7 @@ namespace MinimalApi.Agents
             return agent;
         }
 
-        public async Task<AzureAIAgent> CreateAgentAsync(string name, string instructions, string model = "gpt-4.1")
+        public async Task<AgentViewModel> CreateAgentAsync(string name, string instructions, string? description = null, string model = "gpt-4o", CancellationToken cancellationToken = default)
         {
             if (string.IsNullOrWhiteSpace(name))
             {
@@ -71,14 +73,13 @@ namespace MinimalApi.Agents
                 model,
                 name: name,
                 instructions: instructions,
+                description: description,
                 tools: tools);
 
-            AzureAIAgent agent = new(definition, agentsClient, plugins: kernel.Plugins);
-
-            return agent;
+            return ConvertToAgentViewModel(definition);
         }
 
-        public async Task<AzureAIAgent> UpdateAgentAsync(string agentId, string name, string instructions, string? description = null, string model = "gpt-4o")
+        public async Task<AgentViewModel> UpdateAgentAsync(string agentId, string name, string instructions, string? description = null, string model = "gpt-4o", CancellationToken cancellationToken = default)
         {
             if (string.IsNullOrWhiteSpace(agentId))
             {
@@ -113,23 +114,21 @@ namespace MinimalApi.Agents
                 description: description,
                 tools: tools);
 
-            AzureAIAgent agent = new(definition, agentsClient, plugins: kernel.Plugins);
-
-            return agent;
+            return ConvertToAgentViewModel(definition);
         }
 
-        public async Task<IEnumerable<PersistentAgent>> ListAgentsAsync()
+        public async Task<IEnumerable<AgentViewModel>> ListAgentsAsync(CancellationToken cancellationToken = default)
         {
             var agentsClient = AzureAIAgent.CreateAgentsClient(_configuration["AzureAIFoundryProjectEndpoint"], new DefaultAzureCredential());
-            var agents = new List<PersistentAgent>();
+            var agents = new List<AgentViewModel>();
             await foreach (var agentDefinition in agentsClient.Administration.GetAgentsAsync())
             {
-                agents.Add(agentDefinition);
+                agents.Add(ConvertToAgentViewModel(agentDefinition));
             }
             return agents;
         }
 
-        public async Task<int> DeleteAgentsByNameAsync(string agentName)
+        public async Task<int> DeleteAgentsByNameAsync(string agentName, CancellationToken cancellationToken = default)
         {
             if (string.IsNullOrWhiteSpace(agentName))
             {
@@ -168,6 +167,20 @@ namespace MinimalApi.Agents
             return deletedCount;
         }
 
+        private AgentViewModel ConvertToAgentViewModel(PersistentAgent agent)
+        {
+            return new AgentViewModel
+            {
+                Id = agent.Id,
+                Name = agent.Name,
+                Instructions = agent.Instructions,
+                Description = agent.Description,
+                Model = agent.Model,
+                CreatedAt = agent.CreatedAt.DateTime,
+                Tools = agent.Tools?.Select(t => t.GetType().Name).ToList() ?? new List<string>()
+            };
+        }
+
         private string LoadEmbeddedResource(string resourceName)
         {
             var assembly = Assembly.GetExecutingAssembly();
@@ -177,5 +190,5 @@ namespace MinimalApi.Agents
         }
     }
 
-    #pragma warning disable SKEXP0110
+    #pragma warning restore SKEXP0110
 }
