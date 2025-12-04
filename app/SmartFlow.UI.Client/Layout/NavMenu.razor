@@ -27,6 +27,11 @@
         <MudNavLink Href="projects" aria-label="View projects." Icon="@Icons.Material.Filled.FolderSpecial">Projects</MudNavLink>
     }
 
+    @if (IsPathEnabled("agent-management"))
+    {
+        <MudNavLink Href="agent-management" aria-label="Manage AI agents." Icon="@Icons.Material.Filled.SmartToy">Agent Management</MudNavLink>
+    }
+
     @if (IsPathEnabled("history"))
     {
         <MudNavLink Href="history" aria-label="View chat history." Icon="@Icons.Material.Filled.List">History</MudNavLink>

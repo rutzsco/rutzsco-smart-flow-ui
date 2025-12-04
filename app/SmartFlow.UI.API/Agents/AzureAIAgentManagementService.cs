@@ -47,6 +47,19 @@ namespace MinimalApi.Agents
             return agent;
         }
 
+        public async Task<AgentViewModel> GetAgentAsync(string agentId, CancellationToken cancellationToken = default)
+        {
+            if (string.IsNullOrWhiteSpace(agentId))
+            {
+                throw new ArgumentException("Agent ID cannot be null or empty.", nameof(agentId));
+            }
+
+            var agentsClient = AzureAIAgent.CreateAgentsClient(_configuration["AzureAIFoundryProjectEndpoint"], new DefaultAzureCredential());
+            var agentDefinition = await agentsClient.Administration.GetAgentAsync(agentId);
+            
+            return ConvertToAgentViewModel(agentDefinition.Value);
+        }
+
         public async Task<AgentViewModel> CreateAgentAsync(string name, string instructions, string? description = null, string model = "gpt-4o", CancellationToken cancellationToken = default)
         {
             if (string.IsNullOrWhiteSpace(name))

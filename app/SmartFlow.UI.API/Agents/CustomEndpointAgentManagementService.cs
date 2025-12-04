@@ -48,7 +48,7 @@ public class CustomEndpointAgentManagementService : IAgentManagementService
         try
         {
             using var httpClient = CreateHttpClient();
-            var response = await httpClient.GetAsync($"{_endpointUrl}/Agents", cancellationToken);
+            var response = await httpClient.GetAsync($"{_endpointUrl}/agent-management/agents", cancellationToken);
             response.EnsureSuccessStatusCode();
 
             var content = await response.Content.ReadAsStringAsync(cancellationToken);
@@ -66,48 +66,30 @@ public class CustomEndpointAgentManagementService : IAgentManagementService
         }
     }
 
-    public async Task<AgentViewModel> CreateAgentAsync(
-        string name,
-        string instructions,
-        string? description = null,
-        string model = "gpt-4o",
-        CancellationToken cancellationToken = default)
+    public async Task<AgentViewModel> GetAgentAsync(string agentId, CancellationToken cancellationToken = default)
     {
         if (string.IsNullOrWhiteSpace(_endpointUrl))
         {
             throw new InvalidOperationException("CustomAgentEndpoint is not configured.");
         }
 
-        if (string.IsNullOrWhiteSpace(name))
+        if (string.IsNullOrWhiteSpace(agentId))
         {
-            throw new ArgumentException("Agent name cannot be null or empty.", nameof(name));
-        }
-
-        if (string.IsNullOrWhiteSpace(instructions))
-        {
-            throw new ArgumentException("Agent instructions cannot be null or empty.", nameof(instructions));
+            throw new ArgumentException("Agent ID cannot be null or empty.", nameof(agentId));
         }
 
         try
         {
             using var httpClient = CreateHttpClient();
             
-            var agentData = new
-            {
-                name = name,
-                instructions = instructions,
-                description = description,
-                model = model
-            };
+            // Get agent metadata
+            var agentResponse = await httpClient.GetAsync(
+                $"{_endpointUrl}/agent-management/agents/{Uri.EscapeDataString(agentId)}", 
+                cancellationToken);
+            agentResponse.EnsureSuccessStatusCode();
 
-            var jsonContent = JsonSerializer.Serialize(agentData);
-            using var content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
-
-            var response = await httpClient.PostAsync($"{_endpointUrl}/Agent", content, cancellationToken);
-            response.EnsureSuccessStatusCode();
-
-            var responseContent = await response.Content.ReadAsStringAsync(cancellationToken);
-            var agent = JsonSerializer.Deserialize<AgentViewModel>(responseContent, new JsonSerializerOptions
+            var agentContent = await agentResponse.Content.ReadAsStringAsync(cancellationToken);
+            var agent = JsonSerializer.Deserialize<AgentViewModel>(agentContent, new JsonSerializerOptions
             {
                 PropertyNameCaseInsensitive = true
             });
@@ -117,11 +99,37 @@ public class CustomEndpointAgentManagementService : IAgentManagementService
                 throw new InvalidOperationException("Failed to deserialize agent response from custom endpoint.");
             }
 
+            // Get system prompt
+            try
+            {
+                var promptResponse = await httpClient.GetAsync(
+                    $"{_endpointUrl}/agent-management/agents/{Uri.EscapeDataString(agentId)}/system-prompt", 
+                    cancellationToken);
+                
+                if (promptResponse.IsSuccessStatusCode)
+                {
+                    var promptContent = await promptResponse.Content.ReadAsStringAsync(cancellationToken);
+                    var promptData = JsonSerializer.Deserialize<SystemPromptResponse>(promptContent, new JsonSerializerOptions
+                    {
+                        PropertyNameCaseInsensitive = true
+                    });
+                    
+                    if (promptData != null && !string.IsNullOrWhiteSpace(promptData.SystemPrompt))
+                    {
+                        agent.Instructions = promptData.SystemPrompt;
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "Failed to get system prompt for agent {AgentId}, using default", agentId);
+            }
+
             return agent;
         }
         catch (HttpRequestException ex)
         {
-            _logger.LogError(ex, "Failed to create agent at custom endpoint: {Endpoint}", _endpointUrl);
+            _logger.LogError(ex, "Failed to get agent from custom endpoint: {Endpoint}", _endpointUrl);
             throw new InvalidOperationException($"Failed to communicate with custom agent endpoint: {ex.Message}", ex);
         }
     }
@@ -144,11 +152,6 @@ public class CustomEndpointAgentManagementService : IAgentManagementService
             throw new ArgumentException("Agent ID cannot be null or empty.", nameof(agentId));
         }
 
-        if (string.IsNullOrWhiteSpace(name))
-        {
-            throw new ArgumentException("Agent name cannot be null or empty.", nameof(name));
-        }
-
         if (string.IsNullOrWhiteSpace(instructions))
         {
             throw new ArgumentException("Agent instructions cannot be null or empty.", nameof(instructions));
@@ -158,32 +161,23 @@ public class CustomEndpointAgentManagementService : IAgentManagementService
         {
             using var httpClient = CreateHttpClient();
             
-            var agentData = new
+            // Update system prompt using the dedicated endpoint
+            var promptData = new
             {
-                name = name,
-                instructions = instructions,
-                description = description,
-                model = model
+                system_prompt = instructions
             };
 
-            var jsonContent = JsonSerializer.Serialize(agentData);
+            var jsonContent = JsonSerializer.Serialize(promptData);
             using var content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
 
-            var response = await httpClient.PutAsync($"{_endpointUrl}/Agent/{agentId}", content, cancellationToken);
+            var response = await httpClient.PutAsync(
+                $"{_endpointUrl}/agent-management/agents/{Uri.EscapeDataString(agentId)}/system-prompt", 
+                content, 
+                cancellationToken);
             response.EnsureSuccessStatusCode();
 
-            var responseContent = await response.Content.ReadAsStringAsync(cancellationToken);
-            var agent = JsonSerializer.Deserialize<AgentViewModel>(responseContent, new JsonSerializerOptions
-            {
-                PropertyNameCaseInsensitive = true
-            });
-
-            if (agent == null)
-            {
-                throw new InvalidOperationException("Failed to deserialize agent response from custom endpoint.");
-            }
-
-            return agent;
+            // Fetch the updated agent to return
+            return await GetAgentAsync(agentId, cancellationToken);
         }
         catch (HttpRequestException ex)
         {
@@ -206,17 +200,41 @@ public class CustomEndpointAgentManagementService : IAgentManagementService
 
         try
         {
-            using var httpClient = CreateHttpClient();
-            var response = await httpClient.DeleteAsync($"{_endpointUrl}/Agents/{Uri.EscapeDataString(agentName)}", cancellationToken);
-            response.EnsureSuccessStatusCode();
+            // For the custom endpoint, we'll delete the custom prompt for agents matching the name
+            // First, get all agents
+            var agents = await ListAgentsAsync(cancellationToken);
+            var matchingAgents = agents.Where(a => 
+                string.Equals(a.Name, agentName, StringComparison.OrdinalIgnoreCase)).ToList();
 
-            var content = await response.Content.ReadAsStringAsync(cancellationToken);
-            var result = JsonSerializer.Deserialize<DeleteAgentsResponse>(content, new JsonSerializerOptions
+            if (!matchingAgents.Any())
             {
-                PropertyNameCaseInsensitive = true
-            });
+                return 0;
+            }
 
-            return result?.DeletedCount ?? 0;
+            using var httpClient = CreateHttpClient();
+            int deletedCount = 0;
+
+            // Delete custom prompt for each matching agent
+            foreach (var agent in matchingAgents)
+            {
+                try
+                {
+                    var response = await httpClient.DeleteAsync(
+                        $"{_endpointUrl}/agent-management/agents/{Uri.EscapeDataString(agent.Id)}/system-prompt", 
+                        cancellationToken);
+                    
+                    if (response.IsSuccessStatusCode)
+                    {
+                        deletedCount++;
+                    }
+                }
+                catch (Exception ex)
+                {
+                    _logger.LogWarning(ex, "Failed to delete custom prompt for agent {AgentId}", agent.Id);
+                }
+            }
+
+            return deletedCount;
         }
         catch (HttpRequestException ex)
         {
@@ -225,21 +243,32 @@ public class CustomEndpointAgentManagementService : IAgentManagementService
         }
     }
 
+    // Not implemented for custom endpoint
+    public Task<AgentViewModel> CreateAgentAsync(
+        string name,
+        string instructions,
+        string? description = null,
+        string model = "gpt-4o",
+        CancellationToken cancellationToken = default)
+    {
+        throw new NotSupportedException("Creating agents is not supported for custom endpoints.");
+    }
+
     private HttpClient CreateHttpClient()
     {
         var httpClient = _httpClientFactory.CreateClient();
         
         if (!string.IsNullOrWhiteSpace(_apiKey))
         {
-            httpClient.DefaultRequestHeaders.Add("X-API-Key", _apiKey);
+            httpClient.DefaultRequestHeaders.Add("api-key", _apiKey);
         }
 
         return httpClient;
     }
 
-    private class DeleteAgentsResponse
+    private class SystemPromptResponse
     {
-        public int DeletedCount { get; set; }
-        public string? Message { get; set; }
+        [System.Text.Json.Serialization.JsonPropertyName("system_prompt")]
+        public string? SystemPrompt { get; set; }
     }
 }

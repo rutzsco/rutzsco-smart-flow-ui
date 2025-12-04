@@ -13,8 +13,9 @@ internal static class WebApiAgentExtensions
     {
         var api = app.MapGroup("api");
 
-        // Process chat turn
+        // Agent endpoints
         api.MapGet("agents", OnGetAgentsAsync);
+        api.MapGet("agents/{agentId}", OnGetAgentAsync);
         api.MapPost("agent", OnCreateAgentAsync);
         api.MapPut("agent/{agentId}", OnUpdateAgentAsync);
         api.MapDelete("agents/{agentName}", OnDeleteAgentsByNameAsync);
@@ -29,6 +30,23 @@ internal static class WebApiAgentExtensions
     {
         var agents = await service.ListAgentsAsync();
         return Results.Ok(agents);
+    }
+
+    private static async Task<IResult> OnGetAgentAsync(HttpContext context, string agentId, IAgentManagementService service)
+    {
+        try
+        {
+            var agent = await service.GetAgentAsync(agentId);
+            return Results.Ok(agent);
+        }
+        catch (ArgumentException ex)
+        {
+            return Results.BadRequest(ex.Message);
+        }
+        catch (Exception ex)
+        {
+            return Results.Problem($"An error occurred while retrieving the agent: {ex.Message}");
+        }
     }
 
     private static async Task<IResult> OnCreateAgentAsync(AgentViewModel agentViewModel, IAgentManagementService service, HttpContext context)

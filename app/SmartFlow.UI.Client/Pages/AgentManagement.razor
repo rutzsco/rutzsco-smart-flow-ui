@@ -1,0 +1,202 @@
+@page "/agent-management"
+@using Shared
+
+<PageTitle>Agent Management</PageTitle>
+
+<MudContainer MaxWidth="MaxWidth.Large" Class="pt-2 pb-6">
+    <!-- Header Section -->
+    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3" Class="mb-4">
+        <MudText Typo="Typo.h5">Agent Management</MudText>
+        <MudSpacer />
+        
+        @if (_isLoading)
+        {
+            <MudProgressCircular Indeterminate="true" Size="Size.Small" />
+            <MudText Typo="Typo.body2" Color="Color.Secondary">Loading...</MudText>
+        }
+        else if (_agents != null && _agents.Any())
+        {
+            <MudChip T="string" Size="Size.Small" Color="Color.Primary">
+                @_agents.Length agent@(_agents.Length != 1 ? "s" : "")
+            </MudChip>
+                     
+            <MudMenu Label="@(_selectedAgentId != null ? _agents.FirstOrDefault(a => a.Id == _selectedAgentId)?.Name ?? "Select Agent" : "Select Agent")" Color="Color.Primary">
+                <ActivatorContent>
+                    <MudButton Color="Color.Primary" 
+                               Variant="Variant.Outlined" 
+                               StartIcon="@Icons.Material.Filled.SmartToy" 
+                               EndIcon="@Icons.Material.Filled.KeyboardArrowDown">
+                        @(_selectedAgentId != null ? _agents.FirstOrDefault(a => a.Id == _selectedAgentId)?.Name ?? "Select Agent" : "Select Agent")
+                    </MudButton>
+                </ActivatorContent>
+                <ChildContent>
+                    @foreach (var agent in _agents.OrderBy(a => a.Name))
+                    {
+                        <MudMenuItem OnClick="@(() => SelectAgentAsync(agent.Id))">
+                            <MudStack Spacing="0">
+                                <MudText Typo="Typo.body1">@agent.Name</MudText>
+                                <MudText Typo="Typo.caption" Color="Color.Primary">Model: @agent.Model</MudText>
+                                @if (!string.IsNullOrWhiteSpace(agent.Description))
+                                {
+                                    <MudText Typo="Typo.caption" Color="Color.Default">@agent.Description</MudText>
+                                }
+                            </MudStack>
+                        </MudMenuItem>
+                    }
+                </ChildContent>
+            </MudMenu>
+        }
+        
+        <MudIconButton Icon="@Icons.Material.Filled.Refresh" 
+                       Color="Color.Default" 
+                       Variant="Variant.Filled"
+                       OnClick="RefreshAgentsAsync"
+                       Disabled="_isLoading"
+                       Title="Refresh Agents" />
+    </MudStack>
+
+    <!-- Empty State Messages -->
+    @if (_loadError != null)
+    {
+        <MudAlert Severity="Severity.Error">
+            <MudText Typo="Typo.body1">@_loadError</MudText>
+            <MudButton Variant="Variant.Text" Color="Color.Error" OnClick="RefreshAgentsAsync" Class="mt-2">
+                Try Again
+            </MudButton>
+        </MudAlert>
+    }
+    else if (!_isLoading && (_agents == null || !_agents.Any()))
+    {
+        <MudAlert Severity="Severity.Info">No agents found. Check your agent endpoint configuration.</MudAlert>
+    }
+    else if (string.IsNullOrEmpty(_selectedAgentId) && _agents != null && _agents.Any())
+    {
+        <MudAlert Severity="Severity.Info">
+            <MudText Typo="Typo.h6">Select an agent to continue</MudText>
+            <MudText>Choose an agent from the dropdown above to view and edit its system prompt.</MudText>
+        </MudAlert>
+    }
+
+    <!-- Agent Details -->
+    @if (!string.IsNullOrEmpty(_selectedAgentId) && _selectedAgent != null)
+    {
+        <MudCard Elevation="1" Class="rounded-lg">
+            <MudCardContent Class="pa-4">
+                <MudStack Spacing="3">
+                    <!-- Agent Info Header -->
+                    <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+                        <MudStack Spacing="1">
+                            <MudText Typo="Typo.h6">@_selectedAgent.Name</MudText>
+                            <MudStack Row="true" Spacing="2">
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                    ID: @_selectedAgent.Id
+                                </MudText>
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                    Created: @_selectedAgent.CreatedAt.ToString("MMM dd, yyyy HH:mm")
+                                </MudText>
+                            </MudStack>
+                        </MudStack>
+                        
+                        @if (_isLoadingAgent)
+                        {
+                            <MudProgressCircular Indeterminate="true" Size="Size.Small" />
+                        }
+                        else
+                        {
+                            <MudStack Row="true" Spacing="2">
+                                <MudButton Color="Color.Primary" 
+                                           Variant="Variant.Filled" 
+                                           StartIcon="@Icons.Material.Filled.Edit"
+                                           OnClick="@(() => _isEditingPrompt = !_isEditingPrompt)"
+                                           Disabled="_isSaving">
+                                    @(_isEditingPrompt ? "Cancel Edit" : "Edit System Prompt")
+                                </MudButton>
+                                <MudButton Color="Color.Error" 
+                                           Variant="Variant.Outlined" 
+                                           StartIcon="@Icons.Material.Filled.Delete"
+                                           OnClick="DeleteCustomPromptAsync"
+                                           Disabled="_isDeleting || _isEditingPrompt">
+                                    @(_isDeleting ? "Deleting..." : "Delete Custom Prompt")
+                                </MudButton>
+                            </MudStack>
+                        }
+                    </MudStack>
+
+                    <MudDivider />
+
+                    <!-- System Prompt Section -->
+                    @if (_isEditingPrompt)
+                    {
+                        <!-- Edit Mode -->
+                        <MudStack Spacing="3">
+                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                                <MudIcon Icon="@Icons.Material.Filled.Description" Color="Color.Primary" />
+                                <MudText Typo="Typo.h6">Edit System Prompt</MudText>
+                            </MudStack>
+                            
+                            <MudForm>
+                                <MudTextField @bind-Value="_editedInstructions" 
+                                              Label="System Prompt" 
+                                              Variant="Variant.Outlined"
+                                              Lines="15"
+                                              AutoGrow
+                                              MaxLength="4000"
+                                              Counter="4000"
+                                              Immediate="true"
+                                              HelperText="Define how the agent should behave and respond to users"
+                                              Class="mb-3" />
+                            </MudForm>
+                            
+                            <MudStack Row="true" Spacing="2" Justify="Justify.FlexEnd">
+                                <MudButton OnClick="CancelEdit" 
+                                           Variant="Variant.Text"
+                                           Disabled="_isSaving">
+                                    Cancel
+                                </MudButton>
+                                <MudButton Color="Color.Primary" 
+                                           Variant="Variant.Filled" 
+                                           OnClick="SaveChangesAsync"
+                                           Disabled="_isSaving"
+                                           StartIcon="@Icons.Material.Filled.Save">
+                                    @(_isSaving ? "Saving..." : "Save Changes")
+                                </MudButton>
+                            </MudStack>
+                        </MudStack>
+                    }
+                    else
+                    {
+                        <!-- View Mode -->
+                        <MudStack Spacing="2">
+                            <MudText Typo="Typo.subtitle2" Style="font-weight: 600;">System Prompt</MudText>
+                            
+                            @if (_isLoadingAgent)
+                            {
+                                <MudSkeleton SkeletonType="SkeletonType.Rectangle" Height="400px" />
+                            }
+                            else
+                            {
+                                <MudPaper Elevation="0" Class="pa-4" Style="background-color: var(--mud-palette-background-grey); max-height: 600px; overflow-y: auto;">
+                                    <MudText Typo="Typo.body2" Style="white-space: pre-wrap; font-family: 'Consolas', 'Monaco', monospace;">
+                                        @(string.IsNullOrWhiteSpace(_selectedAgent.Instructions) ? "No system prompt defined" : _selectedAgent.Instructions)
+                                    </MudText>
+                                </MudPaper>
+                                @if (!string.IsNullOrWhiteSpace(_selectedAgent.Instructions))
+                                {
+                                    <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                        Character count: @_selectedAgent.Instructions.Length
+                                    </MudText>
+                                }
+                            }
+                        </MudStack>
+                    }
+                </MudStack>
+            </MudCardContent>
+        </MudCard>
+    }
+</MudContainer>
+
+<style>
+    .rounded-lg {
+        border-radius: 8px;
+    }
+</style>
