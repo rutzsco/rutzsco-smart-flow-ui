@@ -240,7 +240,7 @@
                                            Variant="Variant.Outlined"
                                            Size="Size.Small"
                                            OnClick="@(async () => await AnalyzeSelectedProjectAsync())"
-                                           Disabled="@(!_projectFiles.Any() || _isAnalyzing || _isAnalyzingPlan)">
+                                           Disabled="@(!_projectFiles.Any() || _isAnalyzing || _isAnalyzingSpecV2 || _isAnalyzingPlan)">
                                     @if (_isAnalyzing)
                                     {
                                         <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
@@ -255,8 +255,24 @@
                                 <MudButton Color="Color.Primary"
                                            Variant="Variant.Outlined"
                                            Size="Size.Small"
+                                           OnClick="@(async () => await AnalyzeSpecV2SelectedProjectAsync())"
+                                           Disabled="@(!_projectFiles.Any() || _isAnalyzing || _isAnalyzingSpecV2 || _isAnalyzingPlan)">
+                                    @if (_isAnalyzingSpecV2)
+                                    {
+                                        <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                                        <span>Analyzing Spec V2...</span>
+                                    }
+                                    else
+                                    {
+                                        <span>Analyze Spec V2</span>
+                                    }
+                                </MudButton>
+
+                                <MudButton Color="Color.Primary"
+                                           Variant="Variant.Outlined"
+                                           Size="Size.Small"
                                            OnClick="@(async () => await AnalyzePlanSelectedProjectAsync())"
-                                           Disabled="@(!_projectFiles.Any() || _isAnalyzing || _isAnalyzingPlan)">
+                                           Disabled="@(!_projectFiles.Any() || _isAnalyzing || _isAnalyzingSpecV2 || _isAnalyzingPlan)">
                                     @if (_isAnalyzingPlan)
                                     {
                                         <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
@@ -271,19 +287,35 @@
                         </MudStack>
 
                         <!-- Workflow Status Section -->
-                        @if ((_isAnalyzing || _isAnalyzingPlan) && _workflowStatus != null)
+                        @if ((_isAnalyzing || _isAnalyzingSpecV2 || _isAnalyzingPlan) && _workflowStatus != null)
                         {
                             <MudAlert Severity="Severity.Info" Dense="true" Class="mb-2">
                                 <MudStack Spacing="1">
                                     <MudText Typo="Typo.body2" Style="font-weight: 500;">
                                         Processing Status
-                                        @if (_isAnalyzing && _isAnalyzingPlan)
+                                        @if (_isAnalyzing && _isAnalyzingSpecV2 && _isAnalyzingPlan)
+                                        {
+                                            <span>(Spec, Spec V2 & Plan Analysis)</span>
+                                        }
+                                        else if (_isAnalyzing && _isAnalyzingSpecV2)
+                                        {
+                                            <span>(Spec & Spec V2 Analysis)</span>
+                                        }
+                                        else if (_isAnalyzing && _isAnalyzingPlan)
                                         {
                                             <span>(Spec & Plan Analysis)</span>
+                                        }
+                                        else if (_isAnalyzingSpecV2 && _isAnalyzingPlan)
+                                        {
+                                            <span>(Spec V2 & Plan Analysis)</span>
                                         }
                                         else if (_isAnalyzing)
                                         {
                                             <span>(Spec Analysis)</span>
+                                        }
+                                        else if (_isAnalyzingSpecV2)
+                                        {
+                                            <span>(Spec V2 Analysis)</span>
                                         }
                                         else if (_isAnalyzingPlan)
                                         {

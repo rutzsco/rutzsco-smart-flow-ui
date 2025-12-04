@@ -10,9 +10,11 @@ internal static class WebApiProjectEndpoints
     private const string DocumentToolsServiceName = "Document Tools API";
     private const string HealthCheckLivenessPath = "/healthz/live";
     private const string SpecExtractorPath = "/agent/spec-extractor";
+    private const string SpecExtractorV2Path = "/agent/spec-analyzer-workflow";
     private const string PlanExtractorPath = "/agent/plan-extractor";
     private const string WorkflowStatusPath = "/workflow/status";
     private const string DefaultAnalysisMessage = "Please extract the specification summary and explain the key sections.";
+    private const string DefaultSpecV2AnalysisMessage = "Analyze this specification document completely";
     private const string DefaultPlanAnalysisMessage = "Please extract the plan summary I uploaded and explain the key sections.";
     private const int HttpClientTimeoutSeconds = 10;
 
@@ -60,6 +62,9 @@ internal static class WebApiProjectEndpoints
 
         // Analyze a file in a project
         api.MapPost("{projectName}/analyze", OnAnalyzeProjectFileAsync);
+
+        // Analyze a file in a project using spec-extractor-v2
+        api.MapPost("{projectName}/analyze-spec-v2", OnAnalyzeProjectSpecV2Async);
 
         // Analyze a file in a project using plan-extractor
         api.MapPost("{projectName}/analyze-plan", OnAnalyzePlanProjectFileAsync);
@@ -264,6 +269,30 @@ internal static class WebApiProjectEndpoints
             SpecExtractorPath,
             DefaultAnalysisMessage,
             "spec");
+    }
+
+    private static async Task<IResult> OnAnalyzeProjectSpecV2Async(
+        HttpContext context,
+        string projectName,
+        [FromServices] ProjectService projectService,
+        [FromServices] IConfiguration configuration,
+        [FromServices] ILogger<WebApplication> logger,
+        [FromServices] IHttpClientFactory httpClientFactory,
+        [FromServices] BlobServiceClient blobServiceClient,
+        CancellationToken cancellationToken)
+    {
+        return await AnalyzeProjectAsync(
+            context, 
+            projectName, 
+            projectService, 
+            configuration, 
+            logger, 
+            httpClientFactory, 
+            blobServiceClient, 
+            cancellationToken,
+            SpecExtractorV2Path,
+            DefaultSpecV2AnalysisMessage,
+            "spec-v2");
     }
 
     private static async Task<IResult> OnAnalyzePlanProjectFileAsync(

@@ -25,6 +25,7 @@ public sealed partial class Projects : IDisposable
     private HashSet<string> _editingFileDescriptions = new(); // Track files being edited
     private Dictionary<string, string> _editingDescriptions = new(); // Track temporary description values during editing
     private bool _isAnalyzing = false; // Track if spec analysis is in progress
+    private bool _isAnalyzingSpecV2 = false; // Track if spec v2 analysis is in progress
     private bool _isAnalyzingPlan = false; // Track if plan analysis is in progress
     private System.Text.Json.JsonElement? _workflowStatus = null; // Store workflow status
     private System.Threading.Timer? _statusPollTimer = null; // Timer for polling status
@@ -109,6 +110,7 @@ public sealed partial class Projects : IDisposable
             // Stop any existing status polling when switching projects
             StopStatusPolling();
             _isAnalyzing = false;
+            _isAnalyzingSpecV2 = false;
             _isAnalyzingPlan = false;
             _workflowStatus = null;
             
@@ -143,6 +145,7 @@ public sealed partial class Projects : IDisposable
                 if (status.Value.TryGetProperty("stages", out var stages))
                 {
                     _isAnalyzing = false;
+                    _isAnalyzingSpecV2 = false;
                     _isAnalyzingPlan = false;
                     var hasIncomplete = false;
                     
@@ -155,6 +158,20 @@ public sealed partial class Projects : IDisposable
                             if (statusStr != "Complete" && statusStr != "Failed")
                             {
                                 _isAnalyzing = true;
+                                hasIncomplete = true;
+                            }
+                        }
+                    }
+                    
+                    // Check spec_extraction_v2 stage
+                    if (stages.TryGetProperty("spec_extraction_v2", out var specV2Stage))
+                    {
+                        if (specV2Stage.TryGetProperty("status", out var specV2Status))
+                        {
+                            var statusStr = specV2Status.GetString();
+                            if (statusStr != "Complete" && statusStr != "Failed")
+                            {
+                                _isAnalyzingSpecV2 = true;
                                 hasIncomplete = true;
                             }
                         }
@@ -611,6 +628,49 @@ public sealed partial class Projects : IDisposable
         }
     }
 
+    private async Task AnalyzeSpecV2SelectedProjectAsync()
+    {
+        if (string.IsNullOrEmpty(_selectedProject))
+        {
+            SnackBarError("No project selected");
+            return;
+        }
+
+        _isAnalyzingSpecV2 = true;
+        _workflowStatus = null;
+        StateHasChanged();
+
+        try
+        {
+            Logger.LogInformation("Analyzing project with Spec V2 {Project}", _selectedProject);
+            
+            var success = await Client.AnalyzeProjectSpecV2Async(_selectedProject);
+            
+            if (success)
+            {
+                SnackBarMessage($"Spec V2 analysis started for project '{_selectedProject}'");
+                
+                // Start polling for status
+                StartStatusPolling();
+            }
+            else
+            {
+                _isAnalyzingSpecV2 = false;
+                SnackBarError($"Failed to start spec V2 analysis for project '{_selectedProject}'");
+            }
+        }
+        catch (Exception ex)
+        {
+            _isAnalyzingSpecV2 = false;
+            Logger.LogError(ex, "Error analyzing project with Spec V2 {ProjectName}", _selectedProject);
+            SnackBarError($"Error analyzing project with Spec V2: {ex.Message}");
+        }
+        finally
+        {
+            StateHasChanged();
+        }
+    }
+
     private async Task AnalyzePlanSelectedProjectAsync()
     {
         if (string.IsNullOrEmpty(_selectedProject))
@@ -683,6 +743,7 @@ public sealed partial class Projects : IDisposable
                 
                 // Check workflow stages to determine which analysis is in progress
                 var specExtractionComplete = true;
+                var specV2ExtractionComplete = true;
                 var planExtractionComplete = true;
                 
                 if (status.Value.TryGetProperty("stages", out var stages))
@@ -696,6 +757,19 @@ public sealed partial class Projects : IDisposable
                             if (statusStr != "Complete" && statusStr != "Failed")
                             {
                                 specExtractionComplete = false;
+                            }
+                        }
+                    }
+                    
+                    // Check spec_extraction_v2 stage
+                    if (stages.TryGetProperty("spec_extraction_v2", out var specV2Stage))
+                    {
+                        if (specV2Stage.TryGetProperty("status", out var specV2Status))
+                        {
+                            var statusStr = specV2Status.GetString();
+                            if (statusStr != "Complete" && statusStr != "Failed")
+                            {
+                                specV2ExtractionComplete = false;
                             }
                         }
                     }
@@ -714,13 +788,14 @@ public sealed partial class Projects : IDisposable
                     }
                 }
                 
-                var allComplete = specExtractionComplete && planExtractionComplete;
+                var allComplete = specExtractionComplete && specV2ExtractionComplete && planExtractionComplete;
                 
                 // Update UI on the Blazor render thread
                 await InvokeAsync(async () =>
                 {
                     // Update the specific flags based on stage status
                     _isAnalyzing = !specExtractionComplete;
+                    _isAnalyzingSpecV2 = !specV2ExtractionComplete;
                     _isAnalyzingPlan = !planExtractionComplete;
                     
                     await LoadProjectFilesAsync();
@@ -729,6 +804,7 @@ public sealed partial class Projects : IDisposable
                     {
                         Logger.LogInformation("Workflow completed for project {ProjectName}", _selectedProject);
                         _isAnalyzing = false;
+                        _isAnalyzingSpecV2 = false;
                         _isAnalyzingPlan = false;
                         StopStatusPolling();
                         SnackBarMessage($"Analysis completed for project '{_selectedProject}'");

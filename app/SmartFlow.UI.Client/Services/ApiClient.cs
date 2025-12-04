@@ -497,6 +497,20 @@ public sealed class ApiClient(HttpClient httpClient)
         }
     }
 
+    public async Task<bool> AnalyzeProjectSpecV2Async(string projectName)
+    {
+        try
+        {
+            var response = await httpClient.PostAsync($"api/projects/{projectName}/analyze-spec-v2", null);
+            return response.IsSuccessStatusCode;
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Error analyzing project spec v2: {ex.Message}");
+            return false;
+        }
+    }
+
     public async Task<bool> AnalyzePlanProjectAsync(string projectName)
     {
         try
