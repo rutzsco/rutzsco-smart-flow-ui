@@ -240,88 +240,39 @@
                                            Variant="Variant.Outlined"
                                            Size="Size.Small"
                                            OnClick="@(async () => await AnalyzeSelectedProjectAsync())"
-                                           Disabled="@(!_projectFiles.Any() || _isAnalyzing || _isAnalyzingSpecV2 || _isAnalyzingPlan)">
-                                    @if (_isAnalyzing)
-                                    {
-                                        <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
-                                        <span>Analyzing Spec...</span>
-                                    }
-                                    else
-                                    {
-                                        <span>Analyze Spec</span>
-                                    }
+                                           Disabled="@(!_projectFiles.Any() || _isWorkflowProcessing)">
+                                    Analyze Spec
                                 </MudButton>
 
                                 <MudButton Color="Color.Primary"
                                            Variant="Variant.Outlined"
                                            Size="Size.Small"
                                            OnClick="@(async () => await AnalyzeSpecV2SelectedProjectAsync())"
-                                           Disabled="@(!_projectFiles.Any() || _isAnalyzing || _isAnalyzingSpecV2 || _isAnalyzingPlan)">
-                                    @if (_isAnalyzingSpecV2)
-                                    {
-                                        <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
-                                        <span>Analyzing Spec V2...</span>
-                                    }
-                                    else
-                                    {
-                                        <span>Analyze Spec V2</span>
-                                    }
+                                           Disabled="@(!_projectFiles.Any() || _isWorkflowProcessing)">
+                                    Analyze Spec V2
                                 </MudButton>
 
                                 <MudButton Color="Color.Primary"
                                            Variant="Variant.Outlined"
                                            Size="Size.Small"
                                            OnClick="@(async () => await AnalyzePlanSelectedProjectAsync())"
-                                           Disabled="@(!_projectFiles.Any() || _isAnalyzing || _isAnalyzingSpecV2 || _isAnalyzingPlan)">
-                                    @if (_isAnalyzingPlan)
-                                    {
-                                        <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
-                                        <span>Analyzing Plan...</span>
-                                    }
-                                    else
-                                    {
-                                        <span>Analyze Plan</span>
-                                    }
+                                           Disabled="@(!_projectFiles.Any() || _isWorkflowProcessing)">
+                                    Analyze Plan
                                 </MudButton>
                             </MudStack>
                         </MudStack>
 
                         <!-- Workflow Status Section -->
-                        @if ((_isAnalyzing || _isAnalyzingSpecV2 || _isAnalyzingPlan) && _workflowStatus != null)
+                        @if (_isWorkflowProcessing && _workflowStatus != null)
                         {
                             <MudAlert Severity="Severity.Info" Dense="true" Class="mb-2">
                                 <MudStack Spacing="1">
-                                    <MudText Typo="Typo.body2" Style="font-weight: 500;">
-                                        Processing Status
-                                        @if (_isAnalyzing && _isAnalyzingSpecV2 && _isAnalyzingPlan)
-                                        {
-                                            <span>(Spec, Spec V2 & Plan Analysis)</span>
-                                        }
-                                        else if (_isAnalyzing && _isAnalyzingSpecV2)
-                                        {
-                                            <span>(Spec & Spec V2 Analysis)</span>
-                                        }
-                                        else if (_isAnalyzing && _isAnalyzingPlan)
-                                        {
-                                            <span>(Spec & Plan Analysis)</span>
-                                        }
-                                        else if (_isAnalyzingSpecV2 && _isAnalyzingPlan)
-                                        {
-                                            <span>(Spec V2 & Plan Analysis)</span>
-                                        }
-                                        else if (_isAnalyzing)
-                                        {
-                                            <span>(Spec Analysis)</span>
-                                        }
-                                        else if (_isAnalyzingSpecV2)
-                                        {
-                                            <span>(Spec V2 Analysis)</span>
-                                        }
-                                        else if (_isAnalyzingPlan)
-                                        {
-                                            <span>(Plan Analysis)</span>
-                                        }
-                                    </MudText>
+                                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                                        <MudProgressCircular Size="Size.Small" Indeterminate="true" />
+                                        <MudText Typo="Typo.body2" Style="font-weight: 500;">
+                                            Processing Status
+                                        </MudText>
+                                    </MudStack>
                                     @if (_workflowStatus.Value.TryGetProperty("stages", out var stages))
                                     {
                                         <MudStack Spacing="1">
@@ -490,7 +441,6 @@
                                     <MudPaper Elevation="0" Class="file-item pa-2" Style="border-radius: 4px; background-color: #f5f5f5;">
                                         <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
                                             <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2" Style="flex: 1; min-width: 0;">
-                                                <MudIcon Icon="@GetFileIcon(processingFile)" Size="Size.Small" Color="Color.Info" />
                                                 @if (CanViewFile(processingFile))
                                                 {
                                                     <MudIconButton Icon="@Icons.Material.Filled.RemoveRedEye"
@@ -502,6 +452,7 @@
                                                 <MudText Typo="Typo.body2" Style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">
                                                     @processingFile
                                                 </MudText>
+                                                <MudIcon Icon="@GetFileIcon(processingFile)" Size="Size.Small" Color="Color.Info" />
                                             </MudStack>
                                         </MudStack>
                                     </MudPaper>
