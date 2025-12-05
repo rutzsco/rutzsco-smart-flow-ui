@@ -135,7 +135,6 @@ app.Use(next => context =>
     context.Response.Cookies.Append("XSRF-TOKEN", tokens?.RequestToken ?? string.Empty, new CookieOptions() { HttpOnly = false });
     return next(context);
 });
-app.MapFallbackToFile("index.html");
 
 // Map agent management API if either Azure AI Foundry or Custom Agent Endpoint is configured
 if (!string.IsNullOrEmpty(appConfiguration.AzureAIFoundryProjectEndpoint) || 
@@ -155,7 +154,85 @@ app.MapM365AgentEndpoints();
 
 app.MapCustomHealthChecks();
 
+// IMPORTANT: MapFallbackToFile must be LAST so it doesn't catch API routes
+app.MapFallbackToFile("index.html");
+
 app.Run();
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
