@@ -26,6 +26,13 @@ public sealed partial class Collections : IDisposable
     private bool _isPollingIndexing = false; // Track if polling is active to prevent concurrent polls
     private const int IndexingStatusPollIntervalMs = 10000; // Poll every 10 seconds
 
+    // Push indexing state (for Agent-Hub-JCI integration)
+    private bool _isPushIndexing = false;
+    private string? _pushIndexingCorrelationId = null;
+    private PushIndexingStatusResponse? _pushIndexingStatus = null;
+    private System.Threading.Timer? _pushIndexingStatusPollTimer = null;
+    private bool _isPollingPushIndexing = false;
+
     // Store a cancelation token that will be used to cancel if the user disposes of this component.
     private readonly CancellationTokenSource _cancellationTokenSource = new();
 
@@ -1270,6 +1277,7 @@ public sealed partial class Collections : IDisposable
 
         // Ensure indexing timers are stopped
         StopIndexingStatusPolling();
+        StopPushIndexingStatusPolling();
     }
 
     private string _collectionFilter = "";
@@ -1402,4 +1410,177 @@ public sealed partial class Collections : IDisposable
 
         StateHasChanged();
     }
+
+    #region Push Indexing (Agent-Hub-JCI Integration)
+
+    /// <summary>
+    /// Shows confirmation dialog and triggers push-based indexing for the selected collection.
+    /// This uses the Agent-Hub-JCI push indexing strategy which works with APIM and private endpoints.
+    /// </summary>
+    private async Task ShowPushIndexingDialogAsync()
+    {
+        if (string.IsNullOrEmpty(_selectedCollection))
+        {
+            SnackBarError("No collection selected");
+            return;
+        }
+
+        // Show confirmation dialog with option to recreate index
+        var parameters = new DialogParameters
+        {
+            { "ContentText", $"Start push-based vector indexing for collection '{_selectedCollection}'? This will index all documents using the Agent-Hub indexing service.\n\nNote: This operation processes documents in the background and may take several minutes depending on the number of files." },
+            { "ButtonText", "Start Indexing" },
+            { "Color", Color.Primary }
+        };
+
+        var dialog = await DialogService.ShowAsync<ConfirmationDialog>("Start Push Indexing", parameters);
+        var result = await dialog.Result;
+
+        if (result!.Canceled)
+            return;
+
+        await TriggerPushIndexingAsync(recreateIndex: false);
+    }
+
+    /// <summary>
+    /// Triggers push-based indexing for the selected collection.
+    /// </summary>
+    private async Task TriggerPushIndexingAsync(bool recreateIndex = false)
+    {
+        if (string.IsNullOrEmpty(_selectedCollection))
+        {
+            SnackBarError("No collection selected");
+            return;
+        }
+
+        _isPushIndexing = true;
+        _pushIndexingStatus = null;
+        StateHasChanged();
+
+        try
+        {
+            Logger.LogInformation("Starting push-based indexing for collection {Collection}, recreateIndex={RecreateIndex}", 
+                _selectedCollection, recreateIndex);
+
+            var response = await Client.TriggerPushIndexingAsync(_selectedCollection, recreateIndex);
+
+            if (response != null)
+            {
+                _pushIndexingCorrelationId = response.CorrelationId;
+                SnackBarMessage($"Push indexing started for collection '{_selectedCollection}'. Tracking ID: {response.CorrelationId}");
+
+                // Start polling for status
+                StartPushIndexingStatusPolling();
+            }
+            else
+            {
+                _isPushIndexing = false;
+                SnackBarError($"Failed to start push indexing for collection '{_selectedCollection}'");
+            }
+        }
+        catch (Exception ex)
+        {
+            _isPushIndexing = false;
+            Logger.LogError(ex, "Error starting push indexing for collection {CollectionName}", _selectedCollection);
+            SnackBarError($"Error starting push indexing: {ex.Message}");
+        }
+        finally
+        {
+            StateHasChanged();
+        }
+    }
+
+    /// <summary>
+    /// Starts polling for push indexing status.
+    /// </summary>
+    private void StartPushIndexingStatusPolling()
+    {
+        StopPushIndexingStatusPolling(); // Ensure any existing timer is stopped
+
+        // Start a new timer to poll the status periodically
+        _pushIndexingStatusPollTimer = new System.Threading.Timer(async _ =>
+        {
+            await PollPushIndexingStatusAsync();
+        }, null, 2000, IndexingStatusPollIntervalMs); // Start after 2 seconds, then poll every 10 seconds
+    }
+
+    /// <summary>
+    /// Polls the push indexing status endpoint.
+    /// </summary>
+    private async Task PollPushIndexingStatusAsync()
+    {
+        // Prevent concurrent polling
+        if (_isPollingPushIndexing || string.IsNullOrEmpty(_pushIndexingCorrelationId))
+            return;
+
+        _isPollingPushIndexing = true;
+
+        try
+        {
+            var status = await Client.GetPushIndexingStatusAsync(_pushIndexingCorrelationId);
+
+            if (status != null)
+            {
+                _pushIndexingStatus = status;
+                
+                Logger.LogInformation("Push indexing status received: Status='{Status}', Progress={Progress}/{Total}", 
+                    status.Status ?? "null", status.ProgressCount, status.TotalCount);
+
+                // Check if indexing is complete or failed (with null safety)
+                var statusValue = status.Status ?? "";
+                var isComplete = statusValue.Equals("completed", StringComparison.OrdinalIgnoreCase);
+                var isFailed = statusValue.Equals("failed", StringComparison.OrdinalIgnoreCase);
+
+                // Update UI on the Blazor render thread
+                await InvokeAsync(async () =>
+                {
+                    if (isComplete)
+                    {
+                        Logger.LogInformation("Push indexing completed for collection {CollectionName}. Processed: {Processed}/{Total}", 
+                            _selectedCollection, status.ProgressCount, status.TotalCount);
+                        _isPushIndexing = false;
+                        StopPushIndexingStatusPolling();
+                        SnackBarMessage($"Push indexing completed for collection '{_selectedCollection}'. Indexed {status.ProgressCount} documents.");
+                        
+                        // Refresh the file list
+                        await LoadCollectionFilesAsync();
+                    }
+                    else if (isFailed)
+                    {
+                        Logger.LogWarning("Push indexing failed for collection {CollectionName}: {Error}", 
+                            _selectedCollection, status.ErrorMessage);
+                        _isPushIndexing = false;
+                        StopPushIndexingStatusPolling();
+                        SnackBarError($"Push indexing failed: {status.ErrorMessage ?? "Unknown error"}");
+                    }
+
+                    StateHasChanged();
+                });
+            }
+            else
+            {
+                Logger.LogWarning("No push indexing status returned for correlation ID {CorrelationId}", _pushIndexingCorrelationId);
+            }
+        }
+        catch (Exception ex)
+        {
+            Logger.LogError(ex, "Error polling push indexing status for correlation ID {CorrelationId}", _pushIndexingCorrelationId);
+        }
+        finally
+        {
+            _isPollingPushIndexing = false;
+        }
+    }
+
+    /// <summary>
+    /// Stops polling for push indexing status.
+    /// </summary>
+    private void StopPushIndexingStatusPolling()
+    {
+        _pushIndexingStatusPollTimer?.Dispose();
+        _pushIndexingStatusPollTimer = null;
+    }
+
+    #endregion
 }
+

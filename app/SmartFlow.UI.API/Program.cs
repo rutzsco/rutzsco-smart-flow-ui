@@ -147,6 +147,7 @@ app.MapChatApi();
 app.MapApi();
 app.MapCollectionApi();
 app.MapProjectApi();
+app.MapSearchApi();
 app.MapVoiceLiveApi();
 
 // Map M365 Agent endpoints
