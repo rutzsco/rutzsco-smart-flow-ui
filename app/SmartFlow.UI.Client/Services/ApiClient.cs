@@ -1065,4 +1065,75 @@ public sealed class ApiClient(HttpClient httpClient)
             return false;
         }
     }
+
+    // Agent-Hub Push Indexing APIs
+    /// <summary>
+    /// Triggers push-based RAG indexing for a collection via Agent-Hub-JCI.
+    /// This approach uses APIM and works with private endpoints.
+    /// </summary>
+    /// <param name="containerName">Name of the container to index</param>
+    /// <param name="recreateIndex">Whether to recreate the index from scratch</param>
+    /// <returns>Response with correlation ID for tracking, or null on error</returns>
+    public async Task<PushIndexingResponse?> TriggerPushIndexingAsync(string containerName, bool recreateIndex = false)
+    {
+        try
+        {
+            var request = new PushIndexingRequest
+            {
+                ContainerName = containerName,
+                RecreateIndex = recreateIndex
+            };
+
+            var json = System.Text.Json.JsonSerializer.Serialize(request, SerializerOptions.Default);
+            using var content = new StringContent(json, Encoding.UTF8, "application/json");
+            var response = await httpClient.PostAsync("api/search/process", content);
+
+            if (response.IsSuccessStatusCode)
+            {
+                return await response.Content.ReadFromJsonAsync<PushIndexingResponse>();
+            }
+
+            Debug.WriteLine($"Push indexing trigger failed: {response.StatusCode}");
+            return null;
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Error triggering push indexing: {ex.Message}");
+            return null;
+        }
+    }
+
+    /// <summary>
+    /// Gets the status of a push indexing job.
+    /// </summary>
+    /// <param name="correlationId">Correlation ID from the initial trigger response</param>
+    /// <returns>Current status of the indexing job, or null on error</returns>
+    public async Task<PushIndexingStatusResponse?> GetPushIndexingStatusAsync(string correlationId)
+    {
+        try
+        {
+            var response = await httpClient.GetAsync($"api/search/status/{correlationId}");
+
+            if (response.IsSuccessStatusCode)
+            {
+                var content = await response.Content.ReadAsStringAsync();
+                Debug.WriteLine($"Push indexing status response: {content}");
+                
+                var result = System.Text.Json.JsonSerializer.Deserialize<PushIndexingStatusResponse>(
+                    content,
+                    new System.Text.Json.JsonSerializerOptions { PropertyNameCaseInsensitive = true });
+                
+                Debug.WriteLine($"Deserialized status: {result?.Status}, Progress: {result?.ProgressCount}/{result?.TotalCount}");
+                return result;
+            }
+
+            Debug.WriteLine($"Get push indexing status failed: {response.StatusCode}");
+            return null;
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Error getting push indexing status: {ex.Message}");
+            return null;
+        }
+    }
 }
