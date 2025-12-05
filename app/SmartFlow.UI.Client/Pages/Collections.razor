@@ -221,6 +221,27 @@
                          OnUpload="SubmitFilesForUploadAsync" />
     }
 
+    <!-- Push Indexing Status Panel -->
+    @if (_isPushIndexing && _pushIndexingStatus != null)
+    {
+        <MudAlert Severity="Severity.Info" Class="mb-4">
+            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3">
+                <MudProgressCircular Indeterminate="true" Size="Size.Small" Color="Color.Primary" />
+                <MudStack Spacing="0">
+                    <MudText Typo="Typo.body1" Style="font-weight: 500;">Push Indexing in Progress</MudText>
+                    <MudText Typo="Typo.body2">
+                        Status: @_pushIndexingStatus.Status | 
+                        Progress: @_pushIndexingStatus.ProgressCount / @(_pushIndexingStatus.TotalCount > 0 ? _pushIndexingStatus.TotalCount.ToString() : "calculating...")
+                    </MudText>
+                    @if (!string.IsNullOrEmpty(_pushIndexingCorrelationId))
+                    {
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">Tracking ID: @_pushIndexingCorrelationId</MudText>
+                    }
+                </MudStack>
+            </MudStack>
+        </MudAlert>
+    }
+
     <!-- Empty State Messages -->
     @if (!_collections.Any() && !_showCreateCollectionForm && !_isLoadingCollections)
     {
@@ -290,6 +311,27 @@
                                            Size="Size.Small"
                                            OnClick="@(() => _showUploadSection = true)"
                                            Title="Upload" />
+                            
+                            @if (_isPushIndexing)
+                            {
+                                <MudTooltip Text="@($"Indexing in progress... {(_pushIndexingStatus?.ProgressCount ?? 0)}/{(_pushIndexingStatus?.TotalCount ?? 0)} documents")">
+                                    <MudStack AlignItems="AlignItems.Center" Spacing="0">
+                                        <MudProgressCircular Indeterminate="true" Size="Size.Small" Color="Color.Primary" />
+                                        <MudText Typo="Typo.caption" Color="Color.Primary">Index</MudText>
+                                    </MudStack>
+                                </MudTooltip>
+                            }
+                            else
+                            {
+                                <MudButton Variant="Variant.Text"
+                                           Color="Color.Primary"
+                                           Size="Size.Small"
+                                           StartIcon="@Icons.Material.Filled.CloudSync"
+                                           OnClick="ShowPushIndexingDialogAsync"
+                                           Style="flex-direction: column; min-width: auto; padding: 4px 8px;">
+                                    <MudText Typo="Typo.caption">Index</MudText>
+                                </MudButton>
+                            }
                         </MudStack>
                     </MudStack>
 
@@ -388,11 +430,6 @@
                                             }
                                             else
                                             {
-                                                <MudIconButton Icon="@Icons.Material.Filled.CloudSync"
-                                                               Color="Color.Primary"
-                                                               Size="Size.Small"
-                                                               OnClick="@(async () => await ProcessDocumentLayoutAsync(context.FileInfo!.FileName))"
-                                                               Title="Index Document" />
                                                 <MudIconButton Icon="@Icons.Material.Filled.Edit"
                                                                Color="Color.Default"
                                                                Size="Size.Small"
