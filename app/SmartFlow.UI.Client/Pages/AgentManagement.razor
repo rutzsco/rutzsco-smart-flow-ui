@@ -85,25 +85,19 @@
                 <MudStack Spacing="3">
                     <!-- Agent Info Header -->
                     <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
-                        <MudStack Spacing="1">
-                            <MudText Typo="Typo.h6">@_selectedAgent.Name</MudText>
-                            <MudStack Row="true" Spacing="2">
-                                <MudText Typo="Typo.caption" Color="Color.Secondary">
-                                    ID: @_selectedAgent.Id
-                                </MudText>
-                                <MudText Typo="Typo.caption" Color="Color.Secondary">
-                                    Created: @_selectedAgent.CreatedAt.ToString("MMM dd, yyyy HH:mm")
-                                </MudText>
-                            </MudStack>
-                        </MudStack>
+                        <MudText Typo="Typo.h6">@_selectedAgent.Name</MudText>
                         
-                        @if (_isLoadingAgent)
-                        {
-                            <MudProgressCircular Indeterminate="true" Size="Size.Small" />
-                        }
-                        else
-                        {
-                            <MudStack Row="true" Spacing="2">
+                        <MudStack Row="true" Spacing="2" AlignItems="AlignItems.Center">
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                ID: @_selectedAgent.Id
+                            </MudText>
+                            
+                            @if (_isLoadingAgent)
+                            {
+                                <MudProgressCircular Indeterminate="true" Size="Size.Small" />
+                            }
+                            else
+                            {
                                 <MudButton Color="Color.Primary" 
                                            Variant="Variant.Filled" 
                                            StartIcon="@Icons.Material.Filled.Edit"
@@ -118,8 +112,8 @@
                                            Disabled="_isDeleting || _isEditingPrompt">
                                     @(_isDeleting ? "Deleting..." : "Delete Custom Prompt")
                                 </MudButton>
-                            </MudStack>
-                        }
+                            }
+                        </MudStack>
                     </MudStack>
 
                     <MudDivider />
@@ -134,31 +128,30 @@
                                 <MudText Typo="Typo.h6">Edit System Prompt</MudText>
                             </MudStack>
                             
-                            <MudForm Class="prompt-form-container">
-                                <MudTextField @bind-Value="_editedInstructions" 
-                                              Label="System Prompt" 
-                                              Variant="Variant.Outlined"
-                                              Lines="1"
-                                              MaxLength="12000"
-                                              Counter="12000"
-                                              Immediate="true"
-                                              HelperText="Define how the agent should behave and respond to users"
-                                              Class="mb-3 auto-height-textarea" />
-                            </MudForm>
+                            <textarea @bind="_editedInstructions" 
+                                      @bind:event="oninput"
+                                      class="system-prompt-textarea"
+                                      placeholder="Enter the system prompt for this agent..."
+                                      maxlength="12000"></textarea>
                             
-                            <MudStack Row="true" Spacing="2" Justify="Justify.FlexEnd">
-                                <MudButton OnClick="CancelEdit" 
-                                           Variant="Variant.Text"
-                                           Disabled="_isSaving">
-                                    Cancel
-                                </MudButton>
-                                <MudButton Color="Color.Primary" 
-                                           Variant="Variant.Filled" 
-                                           OnClick="SaveChangesAsync"
-                                           Disabled="_isSaving"
-                                           StartIcon="@Icons.Material.Filled.Save">
-                                    @(_isSaving ? "Saving..." : "Save Changes")
-                                </MudButton>
+                            <MudStack Row="true" Spacing="2" Justify="Justify.SpaceBetween" AlignItems="AlignItems.Center">
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                    @(_editedInstructions?.Length ?? 0) / 12000 characters
+                                </MudText>
+                                <MudStack Row="true" Spacing="2">
+                                    <MudButton OnClick="CancelEdit" 
+                                               Variant="Variant.Text"
+                                               Disabled="_isSaving">
+                                        Cancel
+                                    </MudButton>
+                                    <MudButton Color="Color.Primary" 
+                                               Variant="Variant.Filled" 
+                                               OnClick="SaveChangesAsync"
+                                               Disabled="_isSaving"
+                                               StartIcon="@Icons.Material.Filled.Save">
+                                        @(_isSaving ? "Saving..." : "Save Changes")
+                                    </MudButton>
+                                </MudStack>
                             </MudStack>
                         </MudStack>
                     }
@@ -202,46 +195,39 @@
     .edit-mode-container {
         display: flex;
         flex-direction: column;
-        height: calc(100vh - 400px);
-        min-height: 500px;
+        min-height: 400px;
     }
 
-    .prompt-form-container {
-        flex: 1;
-        display: flex;
-        flex-direction: column;
-        overflow: hidden;
+    .system-prompt-textarea {
+        width: 100%;
+        min-height: 400px;
+        padding: 16px;
+        font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+        font-size: 14px;
+        line-height: 1.5;
+        border: 1px solid var(--mud-palette-lines-default);
+        border-radius: 4px;
+        resize: vertical;
+        background-color: var(--mud-palette-surface);
+        color: var(--mud-palette-text-primary);
+        white-space: pre-wrap;
+        overflow-wrap: break-word;
     }
 
-    .auto-height-textarea {
-        flex: 1;
-        display: flex;
-        flex-direction: column;
+    .system-prompt-textarea:focus {
+        outline: none;
+        border-color: var(--mud-palette-primary);
+        box-shadow: 0 0 0 1px var(--mud-palette-primary);
     }
 
-    .auto-height-textarea .mud-input-control {
-        flex: 1;
-        display: flex;
-        flex-direction: column;
-    }
-
-    .auto-height-textarea .mud-input-control-input-container {
-        flex: 1;
-        display: flex;
-    }
-
-    .auto-height-textarea textarea {
-        flex: 1 !important;
-        height: 100% !important;
-        min-height: 100% !important;
-        resize: none !important;
+    .system-prompt-textarea::placeholder {
+        color: var(--mud-palette-text-secondary);
     }
 
     .view-mode-container {
         display: flex;
         flex-direction: column;
-        height: calc(100vh - 400px);
-        min-height: 500px;
+        min-height: 400px;
     }
 
     .auto-height-view-paper {
@@ -250,5 +236,6 @@
         overflow-y: auto;
         display: flex;
         flex-direction: column;
+        max-height: 500px;
     }
 </style>
