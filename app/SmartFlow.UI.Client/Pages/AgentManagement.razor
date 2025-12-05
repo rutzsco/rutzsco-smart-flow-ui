@@ -128,23 +128,22 @@
                     @if (_isEditingPrompt)
                     {
                         <!-- Edit Mode -->
-                        <MudStack Spacing="3">
+                        <MudStack Spacing="3" Class="edit-mode-container">
                             <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
                                 <MudIcon Icon="@Icons.Material.Filled.Description" Color="Color.Primary" />
                                 <MudText Typo="Typo.h6">Edit System Prompt</MudText>
                             </MudStack>
                             
-                            <MudForm>
+                            <MudForm Class="prompt-form-container">
                                 <MudTextField @bind-Value="_editedInstructions" 
                                               Label="System Prompt" 
                                               Variant="Variant.Outlined"
-                                              Lines="15"
-                                              AutoGrow
-                                              MaxLength="4000"
-                                              Counter="4000"
+                                              Lines="1"
+                                              MaxLength="12000"
+                                              Counter="12000"
                                               Immediate="true"
                                               HelperText="Define how the agent should behave and respond to users"
-                                              Class="mb-3" />
+                                              Class="mb-3 auto-height-textarea" />
                             </MudForm>
                             
                             <MudStack Row="true" Spacing="2" Justify="Justify.FlexEnd">
@@ -166,7 +165,7 @@
                     else
                     {
                         <!-- View Mode -->
-                        <MudStack Spacing="2">
+                        <MudStack Spacing="2" Class="view-mode-container">
                             <MudText Typo="Typo.subtitle2" Style="font-weight: 600;">System Prompt</MudText>
                             
                             @if (_isLoadingAgent)
@@ -175,7 +174,7 @@
                             }
                             else
                             {
-                                <MudPaper Elevation="0" Class="pa-4" Style="background-color: var(--mud-palette-background-grey); max-height: 600px; overflow-y: auto;">
+                                <MudPaper Elevation="0" Class="pa-4 auto-height-view-paper">
                                     <MudText Typo="Typo.body2" Style="white-space: pre-wrap; font-family: 'Consolas', 'Monaco', monospace;">
                                         @(string.IsNullOrWhiteSpace(_selectedAgent.Instructions) ? "No system prompt defined" : _selectedAgent.Instructions)
                                     </MudText>
@@ -198,5 +197,58 @@
 <style>
     .rounded-lg {
         border-radius: 8px;
+    }
+
+    .edit-mode-container {
+        display: flex;
+        flex-direction: column;
+        height: calc(100vh - 400px);
+        min-height: 500px;
+    }
+
+    .prompt-form-container {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        overflow: hidden;
+    }
+
+    .auto-height-textarea {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .auto-height-textarea .mud-input-control {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+    }
+
+    .auto-height-textarea .mud-input-control-input-container {
+        flex: 1;
+        display: flex;
+    }
+
+    .auto-height-textarea textarea {
+        flex: 1 !important;
+        height: 100% !important;
+        min-height: 100% !important;
+        resize: none !important;
+    }
+
+    .view-mode-container {
+        display: flex;
+        flex-direction: column;
+        height: calc(100vh - 400px);
+        min-height: 500px;
+    }
+
+    .auto-height-view-paper {
+        flex: 1;
+        background-color: var(--mud-palette-background-grey);
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
     }
 </style>
