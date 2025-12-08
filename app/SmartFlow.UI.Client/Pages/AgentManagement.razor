@@ -124,8 +124,8 @@
                         {
                             <!-- Edit Mode -->
                             <MudStack Spacing="2">
-                                <div class="editor-wrapper">
-                                    <div class="line-numbers">
+                                <div class="editor-wrapper" @onscroll="OnEditorScroll">
+                                    <div class="line-numbers" @ref="_lineNumbersRef">
                                         @for (int i = 1; i <= GetLineCount(_editedInstructions); i++)
                                         {
                                             <div class="line-number">@i</div>
@@ -133,6 +133,7 @@
                                     </div>
                                     <textarea @bind="_editedInstructions" 
                                               @bind:event="oninput"
+                                              @ref="_textareaRef"
                                               class="system-prompt-textarea"
                                               placeholder="Enter the system prompt for this agent..."
                                               maxlength="12000"></textarea>
@@ -169,8 +170,8 @@
                                 }
                                 else
                                 {
-                                    <div class="editor-wrapper">
-                                        <div class="line-numbers">
+                                    <div class="editor-wrapper" @onscroll="OnEditorScroll">
+                                        <div class="line-numbers" @ref="_lineNumbersRef">
                                             @{
                                                 var content = string.IsNullOrWhiteSpace(_selectedAgent.Instructions) ? "No system prompt defined" : _selectedAgent.Instructions;
                                                 var lineCount = GetLineCount(content);
@@ -180,7 +181,7 @@
                                                 <div class="line-number">@i</div>
                                             }
                                         </div>
-                                        <pre class="system-prompt-view">@content</pre>
+                                        <pre class="system-prompt-view" @ref="_preRef">@content</pre>
                                     </div>
                                     
                                     <MudStack Row="true" Justify="Justify.FlexEnd">
@@ -207,10 +208,10 @@
         display: flex;
         border: 1px solid #e0e0e0;
         border-radius: 4px;
-        overflow: hidden;
         background-color: #ffffff;
-        min-height: 400px;
-        max-height: 600px;
+        height: calc(100vh - 320px);
+        min-height: 300px;
+        overflow: hidden;
     }
 
     .line-numbers {
@@ -220,12 +221,8 @@
         padding: 12px 0;
         text-align: right;
         user-select: none;
-        overflow-y: auto;
         flex-shrink: 0;
-    }
-
-    .line-numbers::-webkit-scrollbar {
-        display: none;
+        overflow-y: hidden;
     }
 
     .line-number {
@@ -276,11 +273,20 @@
 </style>
 
 @code {
+    private ElementReference _lineNumbersRef;
+    private ElementReference _textareaRef;
+    private ElementReference _preRef;
+
     private int GetLineCount(string? text)
     {
         if (string.IsNullOrEmpty(text))
             return 1;
         
         return text.Split('\n').Length;
+    }
+
+    private void OnEditorScroll(EventArgs e)
+    {
+        // Scroll sync would require JS interop
     }
 }
