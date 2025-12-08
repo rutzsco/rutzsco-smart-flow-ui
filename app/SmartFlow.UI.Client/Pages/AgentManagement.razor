@@ -8,19 +8,6 @@
     <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="3" Class="mb-4">
         <MudText Typo="Typo.h5">Agent Management</MudText>
         
-        @if (!_isLoading && _agents != null && _agents.Any())
-        {
-            <MudChip T="string" Size="Size.Small" Color="Color.Primary">
-                @_agents.Length agent@(_agents.Length != 1 ? "s" : "")
-            </MudChip>
-        }
-        
-        <MudIconButton Icon="@Icons.Material.Filled.Refresh" 
-                       Size="Size.Small"
-                       OnClick="RefreshAgentsAsync"
-                       Disabled="_isLoading"
-                       Title="Refresh Agents" />
-        
         @if (_isLoading)
         {
             <MudProgressCircular Indeterminate="true" Size="Size.Small" />
@@ -52,31 +39,52 @@
                 <MudStack Spacing="3">
                     <!-- Agent Selection Header -->
                     <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
-                        <MudMenu Color="Color.Primary">
-                            <ActivatorContent>
-                                <MudButton Color="Color.Primary" 
-                                           Variant="Variant.Outlined" 
-                                           StartIcon="@Icons.Material.Filled.SmartToy" 
-                                           EndIcon="@Icons.Material.Filled.KeyboardArrowDown">
-                                    @(_selectedAgentId != null ? _agents.FirstOrDefault(a => a.Id == _selectedAgentId)?.Name ?? "Select Agent" : "Select Agent")
-                                </MudButton>
-                            </ActivatorContent>
-                            <ChildContent>
-                                @foreach (var agent in _agents.OrderBy(a => a.Name))
-                                {
-                                    <MudMenuItem OnClick="@(() => SelectAgentAsync(agent.Id))">
-                                        <MudStack Spacing="0">
-                                            <MudText Typo="Typo.body1">@agent.Name</MudText>
-                                            <MudText Typo="Typo.caption" Color="Color.Primary">Model: @agent.Model</MudText>
-                                            @if (!string.IsNullOrWhiteSpace(agent.Description))
-                                            {
-                                                <MudText Typo="Typo.caption" Color="Color.Default">@agent.Description</MudText>
-                                            }
-                                        </MudStack>
-                                    </MudMenuItem>
-                                }
-                            </ChildContent>
-                        </MudMenu>
+                        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                            <MudMenu Color="Color.Primary">
+                                <ActivatorContent>
+                                    <MudButton Color="Color.Primary" 
+                                               Variant="Variant.Outlined" 
+                                               StartIcon="@Icons.Material.Filled.SmartToy" 
+                                               EndIcon="@Icons.Material.Filled.KeyboardArrowDown">
+                                        @(_selectedAgentId != null ? _agents.FirstOrDefault(a => a.Id == _selectedAgentId)?.Name ?? "Select Agent" : "Select Agent")
+                                    </MudButton>
+                                </ActivatorContent>
+                                <ChildContent>
+                                    @foreach (var agent in _agents.OrderBy(a => a.Name))
+                                    {
+                                        <MudMenuItem OnClick="@(() => SelectAgentAsync(agent.Id))">
+                                            <MudStack Spacing="0">
+                                                <MudText Typo="Typo.body1">@agent.Name</MudText>
+                                                <MudText Typo="Typo.caption" Color="Color.Secondary">ID: @agent.Id</MudText>
+                                                @if (!string.IsNullOrWhiteSpace(agent.Description))
+                                                {
+                                                    <MudText Typo="Typo.caption" Color="Color.Default">@agent.Description</MudText>
+                                                }
+                                            </MudStack>
+                                        </MudMenuItem>
+                                    }
+                                </ChildContent>
+                            </MudMenu>
+                            
+                            <MudChip T="string" Size="Size.Small" Color="Color.Primary">
+                                @_agents.Length agent@(_agents.Length != 1 ? "s" : "")
+                            </MudChip>
+                            
+                            <MudIconButton Icon="@Icons.Material.Filled.Refresh" 
+                                           Size="Size.Small"
+                                           OnClick="RefreshAgentsAsync"
+                                           Disabled="_isLoading"
+                                           Title="Refresh Agents" />
+                                            
+                            @if (!string.IsNullOrEmpty(_selectedAgentId) && _selectedAgent != null && !_isLoadingAgent)
+                            {
+                                <MudIconButton Icon="@Icons.Material.Filled.Delete"
+                                               Size="Size.Small"
+                                               OnClick="DeleteCustomPromptAsync"
+                                               Disabled="_isDeleting || _isEditingPrompt"
+                                               Title="Delete Custom Prompt" />
+                            }
+                        </MudStack>
                         
                         @if (!string.IsNullOrEmpty(_selectedAgentId) && _selectedAgent != null)
                         {
@@ -94,11 +102,6 @@
                                                Disabled="_isSaving">
                                         @(_isEditingPrompt ? "Cancel" : "Edit")
                                     </MudButton>
-                                    <MudIconButton Icon="@Icons.Material.Filled.Delete"
-                                                   Size="Size.Small"
-                                                   OnClick="DeleteCustomPromptAsync"
-                                                   Disabled="_isDeleting || _isEditingPrompt"
-                                                   Title="Delete Custom Prompt" />
                                 }
                             </MudStack>
                         }
