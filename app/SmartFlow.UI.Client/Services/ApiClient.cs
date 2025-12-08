@@ -1,5 +1,7 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
 
+using SmartFlow.UI.Client.Utilities;
+
 namespace SmartFlow.UI.Client.Services;
 
 public sealed class ApiClient(HttpClient httpClient)
@@ -205,14 +207,17 @@ public sealed class ApiClient(HttpClient httpClient)
 #pragma warning restore CA2000 // Dispose objects before losing scope
                 fileContent.Headers.ContentType = new MediaTypeHeaderValue(file.ContentType);
 
+                // Sanitize the file name to replace spaces and problematic characters
+                var sanitizedFileName = FileNameSanitizer.Sanitize(file.Name);
+                
                 // Prepend folder path to filename if specified
-                var fullPath = folderPrefix + file.Name;
+                var fullPath = folderPrefix + sanitizedFileName;
                 filePathMap[file.Name] = fullPath;
 
-                Console.WriteLine($"[CLIENT DEBUG] Creating path map: '{file.Name}' -> '{fullPath}'");
+                Console.WriteLine($"[CLIENT DEBUG] Creating path map: '{file.Name}' -> '{fullPath}' (sanitized from '{file.Name}')");
 
                 // Note: ASP.NET Core will strip path from filename for security, but we'll send full path in metadata
-                content.Add(fileContent, "files", file.Name);
+                content.Add(fileContent, "files", sanitizedFileName);
             }
 
             var tokenResponse = await httpClient.GetAsync("api/token/csrf");
@@ -439,13 +444,16 @@ public sealed class ApiClient(HttpClient httpClient)
 #pragma warning restore CA2000 // Dispose objects before losing scope
                 fileContent.Headers.ContentType = new MediaTypeHeaderValue(file.ContentType);
 
+                // Sanitize the file name to replace spaces and problematic characters
+                var sanitizedFileName = FileNameSanitizer.Sanitize(file.Name);
+                
                 // Prepend folder path to filename if specified
-                var fullPath = folderPrefix + file.Name;
+                var fullPath = folderPrefix + sanitizedFileName;
                 filePathMap[file.Name] = fullPath;
 
-                Console.WriteLine($"[CLIENT DEBUG] Creating path map for project: '{file.Name}' -> '{fullPath}'");
+                Console.WriteLine($"[CLIENT DEBUG] Creating path map for project: '{file.Name}' -> '{fullPath}' (sanitized)");
 
-                content.Add(fileContent, file.Name, file.Name);
+                content.Add(fileContent, sanitizedFileName, sanitizedFileName);
             }
 
             var tokenResponse = await httpClient.GetAsync("api/token/csrf");
@@ -673,7 +681,10 @@ public sealed class ApiClient(HttpClient httpClient)
 #pragma warning restore CA2000 // Dispose objects before losing scope
                 fileContent.Headers.ContentType = new MediaTypeHeaderValue(file.ContentType);
 
-                content.Add(fileContent, file.Name, file.Name);
+                // Sanitize the file name to replace spaces and problematic characters
+                var sanitizedFileName = FileNameSanitizer.Sanitize(file.Name);
+                
+                content.Add(fileContent, sanitizedFileName, sanitizedFileName);
             }
 
             var tokenResponse = await httpClient.GetAsync("api/token/csrf");
