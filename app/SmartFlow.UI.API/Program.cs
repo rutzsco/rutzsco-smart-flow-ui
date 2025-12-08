@@ -10,6 +10,7 @@ using Microsoft.SemanticKernel.Agents.AzureAI;
 using MinimalApi.M365;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.AspNetCore.Http.Features;
+using Microsoft.Net.Http.Headers;
 
 #pragma warning disable SKEXP0110
 
@@ -122,7 +123,56 @@ else
 app.UseHttpsRedirection();
 app.UseOutputCache();
 app.UseRouting();
-app.UseStaticFiles();
+
+// Configure static files with cache busting headers
+app.UseStaticFiles(new StaticFileOptions
+{
+    OnPrepareResponse = ctx =>
+    {
+        var headers = ctx.Context.Response.Headers;
+        var contentType = ctx.Context.Response.ContentType ?? string.Empty;
+        var path = ctx.File.Name ?? string.Empty;
+
+        // Blazor framework files and fingerprinted assets - cache for 1 year (immutable)
+        if (path.Contains(".dll") || 
+            path.Contains(".wasm") || 
+            path.Contains(".blat") || 
+            path.Contains(".dat") ||
+            ctx.Context.Request.Path.StartsWithSegments("/_framework") ||
+            ctx.Context.Request.Query.ContainsKey("v")) // versioned query string
+        {
+            headers[HeaderNames.CacheControl] = "public, max-age=31536000, immutable";
+        }
+        // HTML files - no cache to ensure fresh content on deployments
+        else if (contentType.Contains("text/html") || path.EndsWith(".html"))
+        {
+            headers[HeaderNames.CacheControl] = "no-cache, no-store, must-revalidate";
+            headers[HeaderNames.Pragma] = "no-cache";
+            headers[HeaderNames.Expires] = "0";
+        }
+        // CSS and JS files - short cache with revalidation
+        else if (contentType.Contains("text/css") || 
+                 contentType.Contains("application/javascript") ||
+                 contentType.Contains("text/javascript"))
+        {
+            headers[HeaderNames.CacheControl] = "public, max-age=3600, must-revalidate";
+        }
+        // Images and fonts - longer cache
+        else if (contentType.Contains("image/") || 
+                 contentType.Contains("font/") ||
+                 path.EndsWith(".woff") || 
+                 path.EndsWith(".woff2"))
+        {
+            headers[HeaderNames.CacheControl] = "public, max-age=86400";
+        }
+        // Default - short cache
+        else
+        {
+            headers[HeaderNames.CacheControl] = "public, max-age=600";
+        }
+    }
+});
+
 app.UseCors();
 app.UseBlazorFrameworkFiles();
 app.UseAntiforgery();
@@ -159,6 +209,92 @@ app.MapCustomHealthChecks();
 app.MapFallbackToFile("index.html");
 
 app.Run();
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
