@@ -968,6 +968,25 @@ public sealed partial class Projects : IDisposable
         };
     }
 
+    /// <summary>
+    /// Gets the display name for a file by removing the project name prefix if present.
+    /// Files are typically stored as "projectname/filename.ext" so this strips the prefix.
+    /// </summary>
+    private string GetFileDisplayName(string fileName)
+    {
+        if (string.IsNullOrEmpty(fileName))
+            return fileName;
+
+        // Check if the file has a path prefix (e.g., "projectname/filename.ext")
+        var lastSlashIndex = fileName.LastIndexOf('/');
+        if (lastSlashIndex >= 0 && lastSlashIndex < fileName.Length - 1)
+        {
+            return fileName.Substring(lastSlashIndex + 1);
+        }
+
+        return fileName;
+    }
+
     private void StartEditingDescription(ContainerFileInfo file)
     {
         _editingFileDescriptions.Add(file.FileName);
