@@ -68,7 +68,7 @@
                        Color="Color.Primary" 
                        Variant="Variant.Filled"
                        OnClick="ShowCreateCollectionForm"
-                       Title="Create Collection" />
+                       title="Create Collection" />
         
         @if (!string.IsNullOrEmpty(_selectedCollection))
         {
@@ -76,7 +76,7 @@
                            Color="Color.Default" 
                            Variant="Variant.Filled"
                            OnClick="ShowEditMetadataForm"
-                           Title="Edit Collection Metadata" />
+                           title="Edit Collection Metadata" />
         }
     </MudStack>
 
@@ -280,7 +280,7 @@
                                 <MudIconButton Icon="@Icons.Material.Filled.ArrowUpward" 
                                               Size="Size.Small"
                                               OnClick="NavigateToParentFolder"
-                                              Title="Go to parent folder" />
+                                               title="Go to parent folder" />
                             }
                         </MudStack>
                         
@@ -298,19 +298,19 @@
                             <MudIconButton Icon="@Icons.Material.Filled.Refresh" 
                                           Size="Size.Small"
                                           OnClick="RefreshAsync"
-                                          Title="Refresh" />
+                                           title="Refresh" />
                             
                             <MudIconButton Icon="@Icons.Material.Filled.CreateNewFolder" 
                                           Color="Color.Primary" 
                                           Size="Size.Small"
                                           OnClick="@(() => ShowCreateFolderDialogAsync(_selectedFolder))"
-                                          Title="New Folder" />
+                                          title="New Folder" />
                             
                             <MudIconButton Icon="@Icons.Material.Filled.Upload"
                                            Color="Color.Primary"
                                            Size="Size.Small"
                                            OnClick="@(() => _showUploadSection = true)"
-                                           Title="Upload" />
+                                           title="Upload" />
                             
                             @if (_isPushIndexing)
                             {
@@ -381,7 +381,7 @@
                                                 <MudIconButton Icon="@Icons.Material.Filled.RemoveRedEye"
                                                                Size="Size.Small"
                                                                OnClick="@(async () => await ViewFileAsync(context.FileInfo!.FileName, false))"
-                                                               Title="View file"
+                                                               title="View file"
                                                                Style="color: #1976d2;" />
                                             }
                                             else
@@ -416,7 +416,7 @@
                                                            Color="Color.Default"
                                                            Size="Size.Small"
                                                            OnClick="@(async () => await DeleteFolderAsync(context.FolderNode!))"
-                                                           Title="Delete Folder" />
+                                                           title="Delete Folder" />
                                         }
                                         else
                                         {
@@ -434,7 +434,7 @@
                                                                Color="Color.Default"
                                                                Size="Size.Small"
                                                                OnClick="@(async () => await ShowEditFileMetadataDialogAsync(context.FileInfo!))"
-                                                               Title="Edit Metadata" />
+                                                               title="Edit Metadata" />
                                             }
                                         }
                                     </MudStack>

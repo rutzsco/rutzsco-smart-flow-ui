@@ -13,8 +13,8 @@
             <MudIconButton Icon="@Icons.Material.Filled.Add" 
                            Color="Color.Primary" 
                            Variant="Variant.Filled"
-                           OnClick="ShowCreateProjectForm"
-                           Title="Create Project" />
+                           OnClick="ShowCreateProjectForm" 
+                           title="Create Project" />
             
             @if (!string.IsNullOrEmpty(_selectedProject))
             {
@@ -22,13 +22,13 @@
                                Color="Color.Default" 
                                Variant="Variant.Filled"
                                OnClick="ShowEditMetadataForm"
-                               Title="Edit Project Metadata" />
+                               title="Edit Project Metadata" />
                 
                 <MudIconButton Icon="@Icons.Material.Filled.Delete" 
                                Color="Color.Default" 
                                Variant="Variant.Filled"
                                OnClick="ShowDeleteProjectDialogAsync"
-                               Title="Delete Project" />
+                               title="Delete Project" />
             }
         }
     </MudStack>
@@ -226,7 +226,7 @@
                                         <MudIconButton Icon="@Icons.Material.Filled.Refresh" 
                                                        Size="Size.Small"
                                                        OnClick="RefreshAsync"
-                                                       Title="Refresh" />
+                                                       title="Refresh" />
                                     </MudStack>
                                 </MudStack>
 
@@ -342,7 +342,7 @@
                                                                     <MudIconButton Icon="@Icons.Material.Filled.RemoveRedEye"
                                                                                    Size="Size.Small"
                                                                                    OnClick="@(async () => await ViewFileAsync(file.FileName, false))"
-                                                                                   Title="View file"
+                                                                                   title="View file"
                                                                                    Style="color: #1976d2;" />
                                                                 }
                                                                 <MudText Typo="Typo.body2" Style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 500;">
@@ -371,7 +371,7 @@
                                                                     <MudIconButton Icon="@Icons.Material.Filled.Edit"
                                                                                    Size="Size.Small"
                                                                                    OnClick="@(() => StartEditingDescription(file))"
-                                                                                   Title="Edit Description"
+                                                                                   title="Edit Description"
                                                                                    Color="Color.Default" />
                                                                 }
                                                                 
@@ -384,7 +384,7 @@
                                                                     <MudIconButton Icon="@Icons.Material.Filled.Delete"
                                                                                    Size="Size.Small"
                                                                                    OnClick="@(async () => await DeleteFileAsync(file.FileName))"
-                                                                                   Title="Delete File"
+                                                                                   title="Delete File"
                                                                                    Color="Color.Default" />
                                                                 }
                                                             </MudStack>
@@ -403,12 +403,12 @@
                                                                                Size="Size.Small"
                                                                                Color="Color.Success"
                                                                                OnClick="@(async () => await SaveFileDescriptionAsync(file))"
-                                                                               Title="Save" />
+                                                                               title="Save" />
                                                                 <MudIconButton Icon="@Icons.Material.Filled.Close"
                                                                                Size="Size.Small"
                                                                                Color="Color.Default"
                                                                                OnClick="@(() => CancelEditingDescription(file.FileName))"
-                                                                               Title="Cancel" />
+                                                                               title="Cancel" />
                                                             </MudStack>
                                                         }
                                                     </MudStack>
@@ -439,7 +439,7 @@
                                                            Size="Size.Small"
                                                            Color="Color.Default"
                                                            OnClick="@(async () => await ShowDeleteWorkflowDialogAsync())"
-                                                           Title="Delete All Workflow Files" />
+                                                           title="Delete All Workflow Files" />
                                         }
                                     </MudStack>
 
@@ -469,7 +469,7 @@
                                                                 <MudIconButton Icon="@Icons.Material.Filled.RemoveRedEye"
                                                                                Size="Size.Small"
                                                                                OnClick="@(async () => await ViewFileAsync(processingFile, true))"
-                                                                               Title="View processing file"
+                                                                               title="View processing file"
                                                                                Style="color: #1976d2;" />
                                                             }
                                                             <MudText Typo="Typo.body2" Style="white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">

@@ -133,6 +133,15 @@ app.UseStaticFiles(new StaticFileOptions
         var contentType = ctx.Context.Response.ContentType ?? string.Empty;
         var path = ctx.File.Name ?? string.Empty;
 
+        // Don't cache debug symbols (.pdb files) in development
+        if (path.EndsWith(".pdb") || path.EndsWith(".pdb.gz"))
+        {
+            headers[HeaderNames.CacheControl] = "no-cache, no-store, must-revalidate";
+            headers[HeaderNames.Pragma] = "no-cache";
+            headers[HeaderNames.Expires] = "0";
+            return;
+        }
+
         // Blazor framework files and fingerprinted assets - cache for 1 year (immutable)
         if (path.Contains(".dll") || 
             path.Contains(".wasm") || 
@@ -209,6 +218,176 @@ app.MapCustomHealthChecks();
 app.MapFallbackToFile("index.html");
 
 app.Run();
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 
