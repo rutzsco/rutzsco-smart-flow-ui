@@ -27,7 +27,6 @@ public sealed partial class MainLayout
 
     private bool _drawerOpen = false;
     private bool _settingsOpen = false;
-    private SettingsPanel? _settingsPanel;
 
     private bool _isDarkTheme
     {
