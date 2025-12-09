@@ -10,12 +10,8 @@ using MinimalApi.Services.HealthChecks;
 using System.ClientModel.Primitives;
 using Microsoft.Extensions.Azure;
 using MinimalApi.Agents;
-using Azure.AI.Agents.Persistent;
-using Microsoft.SemanticKernel.Agents.AzureAI;
 
 namespace MinimalApi.Extensions;
-
-#pragma warning disable SKEXP0110
 
 internal static class ServiceCollectionExtensions
 {
@@ -36,13 +32,6 @@ internal static class ServiceCollectionExtensions
         // Register OpenAI and Search clients - use keys if provided, otherwise use credential
         RegisterOpenAIServices(services, configuration, azureCredential);
         RegisterSearchServices(services, configuration, azureCredential);
-
-        // Register PersistentAgentsClient if endpoint is configured
-        if (!string.IsNullOrEmpty(configuration.AzureAIFoundryProjectEndpoint))
-        {
-            services.AddSingleton<PersistentAgentsClient>(sp =>
-                AzureAIAgent.CreateAgentsClient(configuration.AzureAIFoundryProjectEndpoint, azureCredential));
-        }
 
         RegisterDomainServices(services, configuration);
 

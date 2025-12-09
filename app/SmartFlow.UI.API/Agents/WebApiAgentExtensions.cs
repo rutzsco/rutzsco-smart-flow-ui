@@ -1,9 +1,8 @@
 ﻿// Copyright (c) Microsoft. All rights reserved.
-using MinimalApi.Agents;
 using Shared.Models;
 using Azure;
 using Azure.Identity;
-using Microsoft.SemanticKernel.Agents.AzureAI;
+using Azure.AI.OpenAI;
 
 namespace MinimalApi.Extensions;
 
@@ -26,13 +25,13 @@ internal static class WebApiAgentExtensions
         return app;
     }
 
-    private static async Task<IResult> OnGetAgentsAsync(HttpContext context, IAgentManagementService service)
+    private static async Task<IResult> OnGetAgentsAsync(HttpContext context, MinimalApi.Agents.IAgentManagementService service)
     {
         var agents = await service.ListAgentsAsync();
         return Results.Ok(agents);
     }
 
-    private static async Task<IResult> OnGetAgentAsync(HttpContext context, string agentId, IAgentManagementService service)
+    private static async Task<IResult> OnGetAgentAsync(HttpContext context, string agentId, MinimalApi.Agents.IAgentManagementService service)
     {
         try
         {
@@ -49,7 +48,7 @@ internal static class WebApiAgentExtensions
         }
     }
 
-    private static async Task<IResult> OnCreateAgentAsync(AgentViewModel agentViewModel, IAgentManagementService service, HttpContext context)
+    private static async Task<IResult> OnCreateAgentAsync(AgentViewModel agentViewModel, MinimalApi.Agents.IAgentManagementService service, HttpContext context)
     {
         // Basic validation
         if (string.IsNullOrWhiteSpace(agentViewModel.Name))
@@ -79,12 +78,11 @@ internal static class WebApiAgentExtensions
         }
         catch (Exception ex)
         {
-            // Log the exception details (not shown here for brevity)
             return Results.Problem($"An error occurred while creating the agent: {ex.Message}");
         }
     }
 
-    private static async Task<IResult> OnUpdateAgentAsync(string agentId, AgentViewModel agentViewModel, IAgentManagementService service, HttpContext context)
+    private static async Task<IResult> OnUpdateAgentAsync(string agentId, AgentViewModel agentViewModel, MinimalApi.Agents.IAgentManagementService service, HttpContext context)
     {
         // Basic validation
         if (string.IsNullOrWhiteSpace(agentId))
@@ -120,61 +118,18 @@ internal static class WebApiAgentExtensions
         }
         catch (Exception ex)
         {
-            // Log the exception details (not shown here for brevity)
             return Results.Problem($"An error occurred while updating the agent: {ex.Message}");
         }
     }
 
-    #pragma warning disable SKEXP0110
-    private static async Task<IResult> OnGetAgentImageAsync(string fileId, IConfiguration config, CancellationToken cancellationToken)
+    private static Task<IResult> OnGetAgentImageAsync(string fileId, IConfiguration config, CancellationToken cancellationToken)
     {
-        var endpoint = config["AzureAIFoundryProjectEndpoint"];
-        if (string.IsNullOrWhiteSpace(endpoint))
-        {
-            return Results.Problem("AzureAIFoundryProjectEndpoint is not configured.", statusCode: 500);
-        }
-
-        var client = AzureAIAgent.CreateAgentsClient(endpoint, new DefaultAzureCredential());
-
-        // Try to get file name to infer content type
-        string? fileName = null;
-        try
-        {
-            var fileInfo = await client.Files.GetFileAsync(fileId, cancellationToken);
-            fileName = fileInfo.Value?.Filename;
-        }
-        catch (RequestFailedException)
-        {
-            // ignore and fallback
-        }
-
-        // Retry fetch to avoid eventual consistency races
-        const int maxRetries = 3;
-        const int baseDelayMs = 500;
-        BinaryData? fileContent = null;
-
-        for (int attempt = 1; attempt <= maxRetries; attempt++)
-        {
-            try
-            {
-                var content = await client.Files.GetFileContentAsync(fileId, cancellationToken);
-                fileContent = content;
-                break;
-            }
-            catch (RequestFailedException ex) when (attempt < maxRetries && (ex.Status == 404 || ex.ErrorCode == "NotFound"))
-            {
-                var delay = baseDelayMs * attempt;
-                await Task.Delay(delay, cancellationToken);
-            }
-        }
-
-        if (fileContent is null)
-        {
-            return Results.NotFound();
-        }
-
-        var contentType = GuessContentType(fileName) ?? "image/png";
-        return Results.File(fileContent.ToArray(), contentType);
+        // For Microsoft Agent Framework, images are typically returned as URLs or base64 directly
+        // This endpoint is a placeholder - actual implementation depends on how images are stored
+        
+        // Return a not implemented response for now
+        // In production, you would integrate with your blob storage or image service
+        return Task.FromResult(Results.NotFound($"Image with fileId '{fileId}' not found. Agent Framework uses direct image URLs."));
     }
 
     private static string? GuessContentType(string? fileName)
@@ -193,9 +148,8 @@ internal static class WebApiAgentExtensions
             _ => null
         };
     }
-    #pragma warning restore SKEXP0110
 
-    private static async Task<IResult> OnDeleteAgentsByNameAsync(string agentName, IAgentManagementService service, HttpContext context)
+    private static async Task<IResult> OnDeleteAgentsByNameAsync(string agentName, MinimalApi.Agents.IAgentManagementService service, HttpContext context)
     {
         try
         {

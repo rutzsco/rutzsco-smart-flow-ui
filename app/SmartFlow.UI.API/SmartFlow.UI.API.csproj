@@ -33,8 +33,13 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="Microsoft.Agents.AI" />
+    <PackageReference Include="Microsoft.Extensions.AI.OpenAI" />
+    <PackageReference Include="OpenAI" />
     <ProjectReference Include="..\shared\Shared\Shared.csproj" />
     <ProjectReference Include="..\SmartFlow.UI.Client\SmartFlow.UI.Client.csproj" />
+    <PackageReference Include="Azure.AI.OpenAI" />
+    <PackageReference Include="Microsoft.Agents.AI.OpenAI" />
     <PackageReference Include="Microsoft.Agents.Authentication.Msal" />
     <PackageReference Include="Microsoft.Agents.Hosting.AspNetCore" />
     <PackageReference Include="Microsoft.AspNetCore.Components.WebAssembly.Server" />
@@ -44,8 +49,6 @@
     <PackageReference Include="Microsoft.ApplicationInsights.AspNetCore" />
     <PackageReference Include="Microsoft.Azure.Cosmos" />
     <PackageReference Include="Microsoft.Extensions.Azure" />
-    <PackageReference Include="Microsoft.SemanticKernel" />
-    <PackageReference Include="Microsoft.SemanticKernel.Agents.AzureAI" />
     <PackageReference Include="PdfPig" />
     <PackageReference Include="Swashbuckle.AspNetCore" />
     <PackageReference Include="TiktokenSharp" />

@@ -5,14 +5,10 @@ using Microsoft.AspNetCore.DataProtection;
 using MinimalApi;
 using Azure;
 using Azure.Identity;
-using Azure.AI.Agents.Persistent;
-using Microsoft.SemanticKernel.Agents.AzureAI;
 using MinimalApi.M365;
 using Microsoft.AspNetCore.Server.Kestrel.Core;
 using Microsoft.AspNetCore.Http.Features;
 using Microsoft.Net.Http.Headers;
-
-#pragma warning disable SKEXP0110
 
 Console.WriteLine("Starting SmartFlowUI backend... {0}", BuildInfo.Instance);
 

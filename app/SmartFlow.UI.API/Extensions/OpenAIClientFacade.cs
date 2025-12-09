@@ -3,9 +3,14 @@ using Azure.Core;
 using Assistants.Hub.API.Assistants.RAG;
 using Azure.Core.Pipeline;
 using System.ClientModel.Primitives;
+using Microsoft.Extensions.AI;
+using OpenAI.Chat;
 
 namespace MinimalApi.Extensions;
 
+/// <summary>
+/// Facade for OpenAI client operations, migrated to Microsoft Agent Framework
+/// </summary>
 public class OpenAIClientFacade
 {
     private readonly AppConfiguration _config;
@@ -20,6 +25,7 @@ public class OpenAIClientFacade
 
     private readonly AzureOpenAIClient _standardChatGptClient;
     private readonly AzureOpenAIClient _standardEmbeddingsClient;
+    private readonly IChatClient _chatClient;
 
     public OpenAIClientFacade(AppConfiguration configuration, AzureKeyCredential azureKeyCredential, TokenCredential tokenCredential, IHttpClientFactory httpClientFactory, SearchClientFactory searchClientFactory, string apimKey = null)
     {
@@ -62,6 +68,10 @@ public class OpenAIClientFacade
                 _standardChatGptClient = new AzureOpenAIClient(new Uri(_standardServiceEndpoint), _tokenCredential);
         }
 
+        // Create the IChatClient for Agent Framework
+        ChatClient nativeChatClient = _standardChatGptClient.GetChatClient(_standardChatGptDeployment);
+        _chatClient = nativeChatClient.AsIChatClient();
+
         // Create embeddings client if key is configured
         if (!string.IsNullOrEmpty(_embeddingsDeploymentKey))
         {
@@ -86,143 +96,53 @@ public class OpenAIClientFacade
         }
     }
 
+    /// <summary>
+    /// Gets the deployment name for the chat model
+    /// </summary>
     public string GetKernelDeploymentName()
     {
         return _standardChatGptDeployment;
     }
 
+    /// <summary>
+    /// Gets the Azure OpenAI client for chat operations
+    /// </summary>
     public AzureOpenAIClient GetChatClient()
     {
         return _standardChatGptClient;
     }
 
+    /// <summary>
+    /// Gets the IChatClient for Microsoft Agent Framework operations
+    /// </summary>
+    public IChatClient GetAgentFrameworkChatClient()
+    {
+        return _chatClient;
+    }
+
+    /// <summary>
+    /// Gets the Azure OpenAI client for embeddings operations
+    /// </summary>
     public AzureOpenAIClient GetEmbeddingsClient()
     {
         return _standardEmbeddingsClient ?? _standardChatGptClient;
     }
 
-    public Kernel BuildKernel(string toolPackage)
+    /// <summary>
+    /// Gets the search client factory for RAG operations
+    /// </summary>
+    public SearchClientFactory GetSearchClientFactory()
     {
-        var kernel = BuildKernelBasedOnIdentity();
-        if (toolPackage == "RAG")
-        {
-            kernel.ImportPluginFromObject(new RAGRetrivalPlugins(_searchClientFactory, GetEmbeddingsClient()), "RAGChat");
-        }
-
-        if(toolPackage == "ImageGen")
-        {
-            kernel = BuildImageGenerationKernelBasedOnIdentity();
-        }
-        return kernel;
+        return _searchClientFactory;
     }
 
-    private Kernel BuildKernelBasedOnIdentity()
+    /// <summary>
+    /// Creates a new IChatClient instance for the specified deployment
+    /// </summary>
+    public IChatClient CreateChatClient(string? deploymentName = null)
     {
-        var kernelBuilder = Kernel.CreateBuilder();
-
-        if (_azureKeyCredential != null)
-        {
-            // Use key-based authentication
-            if (!string.IsNullOrEmpty(_apimKey))
-            {
-                // Create HttpClient with APIM key header
-                var httpClient = _httpClientFactory.CreateClient();
-                httpClient.DefaultRequestHeaders.Add("Ocp-Apim-Subscription-Key", _apimKey);
-                
-                kernelBuilder.AddAzureOpenAIChatCompletion(
-                    _standardChatGptDeployment, 
-                    _standardServiceEndpoint, 
-                    _config.AOAIStandardServiceKey,
-                    httpClient: httpClient);
-            }
-            else
-            {
-                kernelBuilder.AddAzureOpenAIChatCompletion(
-                    _standardChatGptDeployment, 
-                    _standardServiceEndpoint, 
-                    _config.AOAIStandardServiceKey);
-            }
-        }
-        else
-        {
-            // Use token-based authentication
-            if (!string.IsNullOrEmpty(_apimKey))
-            {
-                // Create HttpClient with APIM key header
-                var httpClient = _httpClientFactory.CreateClient();
-                httpClient.DefaultRequestHeaders.Add("Ocp-Apim-Subscription-Key", _apimKey);
-                
-                kernelBuilder.AddAzureOpenAIChatCompletion(
-                    _standardChatGptDeployment, 
-                    _standardServiceEndpoint, 
-                    _tokenCredential,
-                    httpClient: httpClient);
-            }
-            else
-            {
-                kernelBuilder.AddAzureOpenAIChatCompletion(
-                    _standardChatGptDeployment, 
-                    _standardServiceEndpoint, 
-                    _tokenCredential);
-            }
-        }
-
-        return kernelBuilder.Build();
+        var deployment = deploymentName ?? _standardChatGptDeployment;
+        ChatClient nativeChatClient = _standardChatGptClient.GetChatClient(deployment);
+        return nativeChatClient.AsIChatClient();
     }
-
-    #pragma warning disable SKEXP0010
-    private Kernel BuildImageGenerationKernelBasedOnIdentity()
-    {
-        var kernelBuilder = Kernel.CreateBuilder();
-
-        if (_azureKeyCredential != null)
-        {
-            // Use key-based authentication
-            if (!string.IsNullOrEmpty(_apimKey))
-            {
-                // Create HttpClient with APIM key header
-                var httpClient = _httpClientFactory.CreateClient();
-                httpClient.DefaultRequestHeaders.Add("Ocp-Apim-Subscription-Key", _apimKey);
-                
-                kernelBuilder.AddAzureOpenAITextToImage(
-                    _standardChatGptDeployment, 
-                    _standardServiceEndpoint,
-                    _config.AOAIStandardServiceKey,
-                    httpClient: httpClient);
-            }
-            else
-            {
-                kernelBuilder.AddAzureOpenAITextToImage(
-                    _standardChatGptDeployment, 
-                    _standardServiceEndpoint,
-                    _config.AOAIStandardServiceKey);
-            }
-        }
-        else
-        {
-            // Use token-based authentication
-            if (!string.IsNullOrEmpty(_apimKey))
-            {
-                // Create HttpClient with APIM key header
-                var httpClient = _httpClientFactory.CreateClient();
-                httpClient.DefaultRequestHeaders.Add("Ocp-Apim-Subscription-Key", _apimKey);
-                
-                kernelBuilder.AddAzureOpenAITextToImage(
-                    "dall-e-3", 
-                    _standardServiceEndpoint, 
-                    _tokenCredential,
-                    httpClient: httpClient);
-            }
-            else
-            {
-                kernelBuilder.AddAzureOpenAITextToImage(
-                    "dall-e-3", 
-                    _standardServiceEndpoint, 
-                    _tokenCredential);
-            }
-        }
-
-        return kernelBuilder.Build();
-    }
-    #pragma warning restore SKEXP0010
 }
