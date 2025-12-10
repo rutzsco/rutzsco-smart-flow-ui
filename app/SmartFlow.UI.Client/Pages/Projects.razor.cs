@@ -23,6 +23,7 @@ public sealed partial class Projects : IDisposable
     private HashSet<string> _deletingFiles = new(); // Track files being deleted
     private HashSet<string> _analyzingFiles = new(); // Track files being analyzed (project-level)
     private HashSet<string> _editingFileDescriptions = new(); // Track files being edited
+    private HashSet<string> _generatingCdeEquipmentTypes = new(); // Track equipment types being generated for CDE
     private Dictionary<string, string> _editingDescriptions = new(); // Track temporary description values during editing
     private bool _isWorkflowProcessing = false; // Unified flag for any workflow processing in progress
     private System.Text.Json.JsonElement? _workflowStatus = null; // Store workflow status
@@ -799,7 +800,10 @@ public sealed partial class Projects : IDisposable
         }
     }
 
-    private async Task AnalyzeCdeSelectedProjectAsync()
+    /// <summary>
+    /// Generates CDE for a specific equipment type by sending the corresponding package file.
+    /// </summary>
+    private async Task GenerateCdeForEquipmentTypeAsync(string equipmentType)
     {
         if (string.IsNullOrEmpty(_selectedProject))
         {
@@ -807,39 +811,56 @@ public sealed partial class Projects : IDisposable
             return;
         }
 
-        _isWorkflowProcessing = true;
-        _workflowStatus = null;
+        // Add to tracking set
+        _generatingCdeEquipmentTypes.Add(equipmentType);
         StateHasChanged();
 
         try
         {
-            Logger.LogInformation("Analyzing CDE for project {Project}", _selectedProject);
+            var packageFileName = GetPackageFileNameForEquipmentType(equipmentType);
+            Logger.LogInformation("Generating CDE for equipment type '{EquipmentType}' with package file '{PackageFile}' in project '{Project}'", 
+                equipmentType, packageFileName, _selectedProject);
             
-            var success = await Client.AnalyzeProjectCdeAsync(_selectedProject);
+            var success = await Client.AnalyzeProjectCdeWithPackageAsync(_selectedProject, packageFileName);
             
             if (success)
             {
-                SnackBarMessage($"CDE analysis started for project '{_selectedProject}'");
+                SnackBarMessage($"CDE generation started for '{equipmentType}' in project '{_selectedProject}'");
                 
                 // Start polling for status
+                _isWorkflowProcessing = true;
                 StartStatusPolling();
             }
             else
             {
-                _isWorkflowProcessing = false;
-                SnackBarError($"Failed to start CDE analysis for project '{_selectedProject}'");
+                SnackBarError($"Failed to start CDE generation for '{equipmentType}'");
             }
         }
         catch (Exception ex)
         {
-            _isWorkflowProcessing = false;
-            Logger.LogError(ex, "Error analyzing CDE for project {ProjectName}", _selectedProject);
-            SnackBarError($"Error analyzing CDE: {ex.Message}");
+            Logger.LogError(ex, "Error generating CDE for equipment type '{EquipmentType}' in project '{ProjectName}'", equipmentType, _selectedProject);
+            SnackBarError($"Error generating CDE: {ex.Message}");
         }
         finally
         {
+            // Remove from tracking set
+            _generatingCdeEquipmentTypes.Remove(equipmentType);
             StateHasChanged();
         }
+    }
+
+    /// <summary>
+    /// Converts an equipment type name to the corresponding package file name.
+    /// Format: {equipment}-package-v2.pdf where equipment is lowercase with spaces replaced by hyphens.
+    /// </summary>
+    private static string GetPackageFileNameForEquipmentType(string equipmentType)
+    {
+        // Convert to lowercase and replace spaces with hyphens
+        var normalizedName = equipmentType.ToLowerInvariant()
+            .Replace(" ", "-")
+            .Replace("_", "-");
+        
+        return $"{normalizedName}-package-v2.pdf";
     }
 
     private void StartStatusPolling()

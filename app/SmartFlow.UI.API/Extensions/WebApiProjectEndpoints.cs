@@ -7,6 +7,7 @@ namespace MinimalApi.Extensions;
 internal static class WebApiProjectEndpoints
 {
     private const string ProjectContainerName = "project-files";
+    private const string ProjectExtractContainerName = "project-files-extract";
     private const string DocumentToolsServiceName = "Document Tools API";
     private const string HealthCheckLivenessPath = "/healthz/live";
     private const string SpecExtractorPath = "/agent/spec-extractor";
@@ -327,6 +328,7 @@ internal static class WebApiProjectEndpoints
     private static async Task<IResult> OnAnalyzeProjectCdeAsync(
         HttpContext context,
         string projectName,
+        [FromBody] CdeAnalysisRequest? request,
         [FromServices] ProjectService projectService,
         [FromServices] IConfiguration configuration,
         [FromServices] ILogger<WebApplication> logger,
@@ -334,18 +336,161 @@ internal static class WebApiProjectEndpoints
         [FromServices] BlobServiceClient blobServiceClient,
         CancellationToken cancellationToken)
     {
-        return await AnalyzeProjectAsync(
+        return await AnalyzeProjectCdeWithPackageAsync(
             context, 
             projectName, 
+            request?.PackageFileName,
             projectService, 
             configuration, 
             logger, 
             httpClientFactory, 
             blobServiceClient, 
-            cancellationToken,
-            CdeAgentPath,
-            DefaultCdeAnalysisMessage,
-            "cde");
+            cancellationToken);
+    }
+
+    private static async Task<IResult> AnalyzeProjectCdeWithPackageAsync(
+        HttpContext context,
+        string projectName,
+        string? packageFileName,
+        ProjectService projectService,
+        IConfiguration configuration,
+        ILogger<WebApplication> logger,
+        IHttpClientFactory httpClientFactory,
+        BlobServiceClient blobServiceClient,
+        CancellationToken cancellationToken)
+    {
+        try
+        {
+            logger.LogInformation("Analyzing CDE for project: {ProjectName} with package: {PackageFileName}", 
+                projectName, packageFileName ?? "(none)");
+
+            var userInfo = await context.GetUserInfoAsync();
+            
+            // Get the document tools API endpoint and key from configuration
+            var documentToolsEndpoint = configuration[DocumentToolsEndpointKey];
+            var documentToolsApiKey = configuration[DocumentToolsApiKeyKey];
+            
+            if (string.IsNullOrEmpty(documentToolsEndpoint))
+            {
+                logger.LogError("{Service} endpoint not configured", DocumentToolsServiceName);
+                return Results.Problem($"{DocumentToolsServiceName} not configured");
+            }
+
+            // Get all input files for the project
+            var projectFiles = await projectService.GetProjectFilesAsync(projectName, cancellationToken);
+            
+            if (!projectFiles.Any())
+            {
+                logger.LogWarning("No files found in project '{ProjectName}'", projectName);
+                return Results.BadRequest(new { success = false, message = $"No files found in project '{projectName}'" });
+            }
+
+            // Build file URLs for all input files in the project
+            var baseUrl = GetStorageBaseUrl(configuration, logger);
+            if (baseUrl == null)
+            {
+                return Results.Problem("Storage account not configured");
+            }
+
+            // Get blob container client to read metadata
+            var extractContainerClient = blobServiceClient.GetBlobContainerClient(ProjectExtractContainerName);
+            
+            // Create file objects with url, filename, and description from metadata
+            var filesList = new List<object>();
+            
+            // Add the package file from the extract container if specified
+            if (!string.IsNullOrEmpty(packageFileName))
+            {
+                // Build the full blob path for the package file in the extract container
+                var packageBlobPath = $"{projectName}/{packageFileName}";
+                var packageBlobClient = extractContainerClient.GetBlobClient(packageBlobPath);
+                
+                // Verify the package file exists in the extract container
+                if (await packageBlobClient.ExistsAsync(cancellationToken))
+                {
+                    var packageUrl = $"{baseUrl}/{ProjectExtractContainerName}/{packageBlobPath}";
+                    filesList.Add(new
+                    {
+                        url = packageUrl,
+                        filename = packageFileName,
+                        description = "CDE package file"
+                    });
+                    logger.LogInformation("Added package file from extract container: {PackageFileName} with URL: {PackageUrl}", 
+                        packageFileName, packageUrl);
+                }
+                else
+                {
+                    logger.LogWarning("Package file '{PackageFileName}' not found in extract container for project '{ProjectName}'", 
+                        packageFileName, projectName);
+                    return Results.NotFound(new { success = false, message = $"Package file '{packageFileName}' not found in project '{projectName}'" });
+                }
+            }
+            
+            var files = filesList.ToArray();
+
+            logger.LogInformation("Analyzing {FileCount} files in project '{ProjectName}' using CDE", files.Length, projectName);
+
+            // Fire and forget - start the analysis without waiting for completion
+            _ = Task.Run(async () =>
+            {
+                try
+                {
+                    using var httpClient = httpClientFactory.CreateClient();
+                    if (!string.IsNullOrEmpty(documentToolsApiKey))
+                    {
+                        httpClient.DefaultRequestHeaders.Add("X-API-Key", documentToolsApiKey);
+                    }
+                    
+                    var requestBody = new
+                    {
+                        message = DefaultCdeAnalysisMessage,
+                        project_name = projectName,
+                        files = files
+                    };
+                    
+                    var jsonContent = System.Text.Json.JsonSerializer.Serialize(requestBody);
+                    using var content = new StringContent(jsonContent, System.Text.Encoding.UTF8, "application/json");
+                    
+                    var response = await httpClient.PostAsync($"{documentToolsEndpoint}{CdeAgentPath}", content);
+
+                    if (response.IsSuccessStatusCode)
+                    {
+                        logger.LogInformation("Successfully triggered CDE analysis for {FileCount} files in project '{ProjectName}' with package '{PackageFileName}'", 
+                            files.Length, projectName, packageFileName ?? "(none)");
+                    }
+                    else
+                    {
+                        var errorContent = await response.Content.ReadAsStringAsync();
+                        logger.LogError("Failed to trigger CDE analysis for project '{ProjectName}': {StatusCode} - {Error}", 
+                            projectName, response.StatusCode, errorContent);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    logger.LogError(ex, "Background error analyzing CDE for project: {ProjectName}", projectName);
+                }
+            });
+
+            // Return immediately
+            var responseMessage = !string.IsNullOrEmpty(packageFileName)
+                ? $"CDE analysis started for {files.Length} file(s) in project '{projectName}' using package '{packageFileName}'"
+                : $"CDE analysis started for {files.Length} file(s) in project '{projectName}'";
+                
+            return TypedResults.Ok(new 
+            { 
+                success = true, 
+                message = responseMessage,
+                project_name = projectName,
+                file_count = files.Length,
+                analysis_type = "cde",
+                package_file = packageFileName
+            });
+        }
+        catch (Exception ex)
+        {
+            logger.LogError(ex, "Error analyzing CDE for project: {ProjectName}", projectName);
+            return Results.Problem($"Error analyzing project: {ex.Message}");
+        }
     }
 
     private static async Task<IResult> AnalyzeProjectAsync(
@@ -977,3 +1122,5 @@ internal static class WebApiProjectEndpoints
 }
 
 public record UpdateFileDescriptionRequest(string? Description);
+
+public record CdeAnalysisRequest(string? PackageFileName);

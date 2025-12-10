@@ -270,13 +270,6 @@
                                                    Disabled="@(!_projectFiles.Any() || _isWorkflowProcessing)">
                                             Analyze Plan
                                         </MudButton>
-                                        <MudButton Color="Color.Primary" 
-                                                   Variant="Variant.Outlined" 
-                                                   Size="Size.Small"
-                                                   OnClick="@(async () => await AnalyzeCdeSelectedProjectAsync())"
-                                                   Disabled="@(!_projectFiles.Any() || _isWorkflowProcessing)">
-                                            CDE
-                                        </MudButton>
                                         <MudTooltip Text="Refresh" Arrow="true">
                                             <MudIconButton Icon="@Icons.Material.Filled.Refresh" 
                                                            Size="Size.Small"
@@ -509,20 +502,41 @@
                                                     
                                                     <MudPaper Elevation="0" Class="pa-3 mt-2" Style="background-color: #f5f5f5; border: 1px solid #e0e0e0; border-radius: 8px;">
                                                         <MudStack Spacing="2">
-                                                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
-                                                                <MudIcon Icon="@Icons.Material.Filled.Category" Size="Size.Small" Color="Color.Primary" />
-                                                                <MudText Typo="Typo.body2" Style="font-weight: 600;">@equipmentType</MudText>
+                                                            <MudStack Row="true" AlignItems="AlignItems.Center" Justify="Justify.SpaceBetween">
+                                                                <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                                                                    <MudIcon Icon="@Icons.Material.Filled.Category" Size="Size.Small" Color="Color.Primary" />
+                                                                    <MudText Typo="Typo.body2" Style="font-weight: 600;">@equipmentType</MudText>
+                                                                    @if (sections.Any())
+                                                                    {
+                                                                        <MudChip T="string" Size="Size.Small" Color="Color.Info" Variant="Variant.Outlined">
+                                                                            @sections.Count section(s)
+                                                                        </MudChip>
+                                                                    }
+                                                                    else
+                                                                    {
+                                                                        <MudChip T="string" Size="Size.Small" Color="Color.Warning" Variant="Variant.Outlined">
+                                                                            Not present in spec
+                                                                        </MudChip>
+                                                                    }
+                                                                </MudStack>
+                                                                
                                                                 @if (sections.Any())
                                                                 {
-                                                                    <MudChip T="string" Size="Size.Small" Color="Color.Info" Variant="Variant.Outlined">
-                                                                        @sections.Count section(s)
-                                                                    </MudChip>
-                                                                }
-                                                                else
-                                                                {
-                                                                    <MudChip T="string" Size="Size.Small" Color="Color.Warning" Variant="Variant.Outlined">
-                                                                        Not present in spec
-                                                                    </MudChip>
+                                                                    <MudButton Color="Color.Primary" 
+                                                                               Variant="Variant.Outlined" 
+                                                                               Size="Size.Small"
+                                                                               OnClick="@(async () => await GenerateCdeForEquipmentTypeAsync(equipmentType))"
+                                                                               Disabled="@(_isWorkflowProcessing || _generatingCdeEquipmentTypes.Contains(equipmentType))">
+                                                                        @if (_generatingCdeEquipmentTypes.Contains(equipmentType))
+                                                                        {
+                                                                            <MudProgressCircular Size="Size.Small" Indeterminate="true" Class="mr-2" />
+                                                                            <span>Generating...</span>
+                                                                        }
+                                                                        else
+                                                                        {
+                                                                            <span>Generate CDE</span>
+                                                                        }
+                                                                    </MudButton>
                                                                 }
                                                             </MudStack>
                                     

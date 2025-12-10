@@ -550,6 +550,23 @@ public sealed class ApiClient(HttpClient httpClient)
         }
     }
 
+    public async Task<bool> AnalyzeProjectCdeWithPackageAsync(string projectName, string packageFileName)
+    {
+        try
+        {
+            var request = new { PackageFileName = packageFileName };
+            var json = System.Text.Json.JsonSerializer.Serialize(request, SerializerOptions.Default);
+            using var content = new StringContent(json, Encoding.UTF8, "application/json");
+            var response = await httpClient.PostAsync($"api/projects/{projectName}/analyze-cde", content);
+            return response.IsSuccessStatusCode;
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Error analyzing project CDE with package: {ex.Message}");
+            return false;
+        }
+    }
+
     public async Task<EquipmentMapResult?> GetProjectEquipmentMapAsync(string projectName)
     {
         try
