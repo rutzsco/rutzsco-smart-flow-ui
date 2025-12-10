@@ -230,7 +230,10 @@ public sealed class ApiClient(HttpClient httpClient)
 
             if (metadata != null)
             {
+                // Serialize the dictionary to a JSON string
                 string serializedHeaders = System.Text.Json.JsonSerializer.Serialize(metadata);
+
+                // Add the serialized dictionary as a single header value
                 content.Headers.Add("X-FILE-METADATA", serializedHeaders);
             }
 
@@ -530,6 +533,102 @@ public sealed class ApiClient(HttpClient httpClient)
         {
             Debug.WriteLine($"Error analyzing project plan: {ex.Message}");
             return false;
+        }
+    }
+
+    public async Task<bool> AnalyzeProjectCdeAsync(string projectName)
+    {
+        try
+        {
+            var response = await httpClient.PostAsync($"api/projects/{projectName}/analyze-cde", null);
+            return response.IsSuccessStatusCode;
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Error analyzing project CDE: {ex.Message}");
+            return false;
+        }
+    }
+
+    public async Task<EquipmentMapResult?> GetProjectEquipmentMapAsync(string projectName)
+    {
+        try
+        {
+            // The processing files are stored with the project name prefix
+            // e.g., "projectname/equipment_map.json"
+            var fullFilePath = $"{projectName}/equipment_map.json";
+            
+            var fileUrl = await GetProjectFileUrlAsync(projectName, fullFilePath, isProcessingFile: true);
+            if (string.IsNullOrEmpty(fileUrl))
+            {
+                Debug.WriteLine($"GetProjectEquipmentMapAsync: fileUrl is null or empty for project {projectName}");
+                return null;
+            }
+
+            Debug.WriteLine($"GetProjectEquipmentMapAsync: Fetching from URL {fileUrl}");
+            var response = await httpClient.GetAsync(fileUrl);
+            
+            Debug.WriteLine($"GetProjectEquipmentMapAsync: Response status {response.StatusCode}");
+            
+            if (response.IsSuccessStatusCode)
+            {
+                var content = await response.Content.ReadAsStringAsync();
+                Debug.WriteLine($"GetProjectEquipmentMapAsync: Content length {content.Length}");
+                
+                var result = System.Text.Json.JsonSerializer.Deserialize<EquipmentMapResult>(content, new System.Text.Json.JsonSerializerOptions
+                {
+                    PropertyNameCaseInsensitive = true
+                });
+                
+                Debug.WriteLine($"GetProjectEquipmentMapAsync: Deserialized result, equipment types count: {result?.EquipmentTypes?.Count ?? 0}");
+                return result;
+            }
+            else
+            {
+                Debug.WriteLine($"GetProjectEquipmentMapAsync: Failed to fetch, status: {response.StatusCode}");
+            }
+            return null;
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Error fetching equipment map: {ex.Message}");
+            return null;
+        }
+    }
+
+    public async Task<string?> GetProjectReaderAgentResponseAsync(string projectName)
+    {
+        try
+        {
+            // The processing files are stored with the project name prefix
+            var fullFilePath = $"{projectName}/reader-agent-response.md";
+            
+            var fileUrl = await GetProjectFileUrlAsync(projectName, fullFilePath, isProcessingFile: true);
+            if (string.IsNullOrEmpty(fileUrl))
+            {
+                Debug.WriteLine($"GetProjectReaderAgentResponseAsync: fileUrl is null or empty for project {projectName}");
+                return null;
+            }
+
+            Debug.WriteLine($"GetProjectReaderAgentResponseAsync: Fetching from URL {fileUrl}");
+            var response = await httpClient.GetAsync(fileUrl);
+            
+            if (response.IsSuccessStatusCode)
+            {
+                var content = await response.Content.ReadAsStringAsync();
+                Debug.WriteLine($"GetProjectReaderAgentResponseAsync: Content length {content.Length}");
+                return content;
+            }
+            else
+            {
+                Debug.WriteLine($"GetProjectReaderAgentResponseAsync: Failed to fetch, status: {response.StatusCode}");
+            }
+            return null;
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Error fetching reader agent response: {ex.Message}");
+            return null;
         }
     }
 
