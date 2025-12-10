@@ -55,6 +55,10 @@ public sealed partial class Projects : IDisposable
     private string _editProjectDescription = "";
     private string _editProjectType = "";
 
+    // Equipment map results
+    private EquipmentMapResult? _equipmentMapResult = null;
+    private bool _isLoadingEquipmentMap = false;
+
     protected override async Task OnInitializedAsync()
     {
         // Load projects
@@ -189,6 +193,9 @@ public sealed partial class Projects : IDisposable
         try
         {
             _projectFiles = await Client.GetProjectFilesAsync(_selectedProject);
+            
+            // Check if equipment_map.json exists in workflow files and load it
+            await LoadEquipmentMapAsync();
         }
         catch (Exception ex)
         {
@@ -202,11 +209,69 @@ public sealed partial class Projects : IDisposable
         }
     }
 
+    private async Task LoadEquipmentMapAsync()
+    {
+        _equipmentMapResult = null;
+        
+        // Check if equipment_map.json exists in any of the workflow files
+        var hasEquipmentMap = false;
+        
+        foreach (var projectFile in _projectFiles)
+        {
+            if (projectFile.ProcessingFiles != null && projectFile.ProcessingFiles.Any())
+            {
+                var equipmentMapFile = projectFile.ProcessingFiles.FirstOrDefault(f => 
+                    GetFileDisplayName(f).Equals("equipment_map.json", StringComparison.OrdinalIgnoreCase));
+                
+                if (equipmentMapFile != null)
+                {
+                    hasEquipmentMap = true;
+                    Logger.LogInformation("Found equipment_map.json in workflow files: {FileName}", equipmentMapFile);
+                    break;
+                }
+            }
+        }
+        
+        if (hasEquipmentMap)
+        {
+            _isLoadingEquipmentMap = true;
+            StateHasChanged();
+            
+            try
+            {
+                Logger.LogInformation("Loading equipment map for project {Project}", _selectedProject);
+                _equipmentMapResult = await Client.GetProjectEquipmentMapAsync(_selectedProject);
+                
+                if (_equipmentMapResult != null)
+                {
+                    Logger.LogInformation("Equipment map loaded successfully with {Count} equipment types", 
+                        _equipmentMapResult.EquipmentTypes?.Count ?? 0);
+                }
+                else
+                {
+                    Logger.LogWarning("Equipment map result was null for project {Project}", _selectedProject);
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Error loading equipment map for project {Project}", _selectedProject);
+            }
+            finally
+            {
+                _isLoadingEquipmentMap = false;
+            }
+        }
+        else
+        {
+            Logger.LogDebug("No equipment_map.json found in workflow files for project {Project}", _selectedProject);
+        }
+    }
+
     private void ShowCreateProjectForm()
     {
-        _newProjectName = "";
-        _newProjectDescription = "";
-        _newProjectType = "";
+        _newProjectName = "_blank";
+        _newProjectDescription = "_blank";
+        _newProjectType = "_blank";
         _createProjectFormValid = false;
         _showCreateProjectForm = true;
         _showEditMetadataForm = false;
@@ -215,9 +280,9 @@ public sealed partial class Projects : IDisposable
     private void CancelCreateProject()
     {
         _showCreateProjectForm = false;
-        _newProjectName = "";
-        _newProjectDescription = "";
-        _newProjectType = "";
+        _newProjectName = "_blank";
+        _newProjectDescription = "_blank";
+        _newProjectType = "_blank";
         _createProjectFormValid = false;
     }
 
@@ -262,9 +327,9 @@ public sealed partial class Projects : IDisposable
                 SnackBarMessage($"Project '{_newProjectName}' created successfully");
                 _showCreateProjectForm = false;
                 var createdProjectName = _newProjectName;
-                _newProjectName = "";
-                _newProjectDescription = "";
-                _newProjectType = "";
+                _newProjectName = "_blank";
+                _newProjectDescription = "_blank";
+                _newProjectType = "_blank";
                 await LoadProjectsAsync();
                 // Auto-select the newly created project
                 await SelectProjectAsync(createdProjectName);
@@ -1078,6 +1143,46 @@ public sealed partial class Projects : IDisposable
             Logger.LogError(ex, "Error updating file description for {FileName}", file.FileName);
             SnackBarError($"Error updating description: {ex.Message}");
         }
+    }
+
+    /// <summary>
+    /// Gets the color for a match type badge in the equipment map display.
+    /// </summary>
+    private Color GetMatchTypeColor(string matchType)
+    {
+        return matchType.ToLowerInvariant() switch
+        {
+            "title" => Color.Primary,
+            "supporting_reference" => Color.Secondary,
+            "supporting_reference_chain" => Color.Tertiary,
+            _ => Color.Default
+        };
+    }
+
+    /// <summary>
+    /// Gets a friendly display name for the match type.
+    /// </summary>
+    private string GetMatchTypeDisplayName(string matchType)
+    {
+        return matchType.ToLowerInvariant() switch
+        {
+            "title" => "Primary",
+            "supporting_reference" => "Supporting",
+            "supporting_reference_chain" => "Chain Reference",
+            _ => matchType
+        };
+    }
+
+    /// <summary>
+    /// Gets the count of equipment types that are present in the spec (have sections).
+    /// </summary>
+    private int GetPresentEquipmentTypeCount()
+    {
+        if (_equipmentMapResult == null)
+            return 0;
+            
+        return _equipmentMapResult.EquipmentTypes.Count(et => 
+            _equipmentMapResult.SectionsByEquipment.GetValueOrDefault(et, new List<EquipmentSection>()).Any());
     }
 }
 
