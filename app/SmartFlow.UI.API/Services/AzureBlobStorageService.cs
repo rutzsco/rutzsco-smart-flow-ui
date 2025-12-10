@@ -52,16 +52,16 @@ public sealed class AzureBlobStorageService(BlobServiceClient blobServiceClient,
                 // Set metadata after upload
                 // Note: Azure blob metadata keys are automatically converted to lowercase
                 var uploadMetadata = new Dictionary<string, string>(metadata, StringComparer.OrdinalIgnoreCase);
-                uploadMetadata["filename"] = Path.GetFileName(blobName);
+                uploadMetadata["file_name"] = Path.GetFileName(blobName);
                 // Include container name in blobpath to show full path: containername/blobname
-                uploadMetadata["blobpath"] = $"{storageContainerName}/{blobClient.Name}";
+                uploadMetadata["blob_path"] = $"{storageContainerName}/{blobClient.Name}";
                 uploadMetadata.Remove("folderPath"); // Remove client-side routing metadata
 
                 Console.WriteLine($"[SAVE DEBUG] Saving metadata to Azure:");
                 Console.WriteLine($"[SAVE DEBUG]   Container = '{storageContainerName}'");
                 Console.WriteLine($"[SAVE DEBUG]   blobClient.Name = '{blobClient.Name}'");
-                Console.WriteLine($"[SAVE DEBUG]   filename = '{uploadMetadata["filename"]}'");
-                Console.WriteLine($"[SAVE DEBUG]   blobpath = '{uploadMetadata["blobpath"]}'");
+                Console.WriteLine($"[SAVE DEBUG]   file_name = '{uploadMetadata["file_name"]}'");
+                Console.WriteLine($"[SAVE DEBUG]   blob_path = '{uploadMetadata["blob_path"]}'");
                 Console.WriteLine($"[SAVE DEBUG]   All metadata keys being saved: {string.Join(", ", uploadMetadata.Keys)}");
 
                 await blobClient.SetMetadataAsync(uploadMetadata, cancellationToken: cancellationToken);
