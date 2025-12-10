@@ -58,3 +58,259 @@ h1:focus {
 .form-floating > .form-control-plaintext:focus::placeholder, .form-floating > .form-control:focus::placeholder {
     text-align: start;
 }
+
+/* ============================================
+   Styles from SmartFlow.UI.Client
+   ============================================ */
+
+pre {
+    padding-top: 1.2rem;
+    padding-bottom: 1.2rem;
+}
+
+div.mud-tabs-panels > div > pre {
+    padding-top: initial;
+    padding-bottom: initial;
+}
+
+blockquote:empty {
+    display: none;
+    pointer-events: none;
+}
+
+blockquote:not(:empty) {
+    padding: 1rem 1.5rem;
+    border-radius: 6px;
+    background: rgba(0,0,0,.2);
+    margin-top: 1.5rem;
+    margin-bottom: 1.5rem;
+}
+
+    blockquote:not(:empty) p::before {
+        content: '\201C';
+        font-size: 2rem;
+        padding-right: .5rem;
+    }
+
+ul, ol {
+    padding: 1.5rem;
+}
+
+    ul > li, ol > li {
+        padding-left: 1.2rem;
+        padding-bottom: .2rem;
+    }
+
+#blazor-error-ui {
+    background: lightyellow;
+    bottom: 0;
+    box-shadow: 0 -1px 2px rgba(0, 0, 0, 0.2);
+    display: none;
+    left: 0;
+    padding: 0.6rem 1.25rem 0.7rem 1.25rem;
+    position: fixed;
+    width: 100%;
+    z-index: 1000;
+}
+
+    #blazor-error-ui .dismiss {
+        cursor: pointer;
+        position: absolute;
+        right: 0.75rem;
+        top: 0.5rem;
+    }
+
+.loading-progress {
+    position: relative;
+    display: block;
+    width: 8rem;
+    height: 8rem;
+    margin: 20vh auto 1rem auto;
+}
+
+    .loading-progress circle {
+        fill: none;
+        stroke: #e0e0e0;
+        stroke-width: 0.6rem;
+        transform-origin: 50% 50%;
+        transform: rotate(-90deg);
+    }
+
+        .loading-progress circle:last-child {
+            stroke: #1b6ec2;
+            stroke-dasharray: calc(3.141 * var(--blazor-load-percentage, 0%) * 0.8), 500%;
+            transition: stroke-dasharray 0.05s ease-in-out;
+        }
+
+.loading-progress-text {
+    position: absolute;
+    text-align: center;
+    font-weight: bold;
+    inset: calc(20vh + 3.25rem) 0 auto 0.2rem;
+}
+
+    .loading-progress-text:after {
+        content: var(--blazor-load-percentage-text, "Loading");
+    }
+
+.rtl-lang {
+    direction: rtl;
+}
+
+.full-width {
+    width: 100% !important;
+}
+
+.full-height {
+    height: 100% !important;
+}
+
+.filter-shadow {
+    filter: drop-shadow(0px 0px 5px rbga(0,0,0,.5));
+}
+
+.clickable {
+    border: 3px solid transparent;
+    cursor: pointer;
+}
+
+    .clickable:hover {
+        border-width: 3px;
+        border-color: var(--mud-palette-primary-lighten);
+    }
+
+iframe {
+    min-height: 60vh;
+    min-width: 100%;
+}
+
+.icon-huge {
+    font-size: 4rem;
+}
+
+.dim {
+    filter: brightness(95%);
+}
+
+    .dim:hover {
+        transition: all 0.3s ease-out;
+        filter: brightness(90%);
+    }
+
+.text-align-center {
+    text-align: center;
+}
+
+button {
+    -moz-user-select: none;
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+.mud-tooltip-root {
+    width: -moz-fit-content;
+    width: -webkit-fit-content;
+    width: fit-content;
+}
+
+.ten-twelves {
+    min-width: calc(100% / 12 * 10) !important;
+    width: calc(100% / 12 * 10) !important;
+}
+
+.pdf-container {
+    min-height: 60vh;
+    max-height: 75vh;
+    overflow-y: scroll;
+}
+
+#toggle-mic > span.mud-badge-wrapper > span.mud-badge-icon {
+    width: 2rem;
+    height: 2rem;
+    border-radius: 2rem;
+    inset: auto auto calc(100% - 1.2rem) calc(100% - 1rem);
+}
+
+    #toggle-mic > span.mud-badge-wrapper > span.mud-badge-icon > svg {
+        font-size: 1.2rem;
+        margin-inline-start: 0;
+        margin-top: .1rem;
+    }
+
+#toggle-mic[mic="on"] > span.mud-badge-wrapper > span.mud-badge-icon {
+    animation: active 1.5s infinite;
+}
+
+@keyframes active {
+    0% {
+        -webkit-box-shadow: 0 0 0 0 rgba(118,106,231,0.4);
+    }
+
+    70% {
+        -webkit-box-shadow: 0 0 0 1.2rem rgba(118,106,231,0);
+    }
+
+    100% {
+        -webkit-box-shadow: 0 0 0 0 rgba(118,106,231,0);
+    }
+}
+
+/* Answer content styling for better readability */
+.answer-content {
+    line-height: 1.6;
+}
+
+.answer-content p {
+    margin-bottom: 1rem;
+    margin-top: 0;
+}
+
+.answer-content p:last-child {
+    margin-bottom: 0;
+}
+
+.answer-content h1, .answer-content h2, .answer-content h3, 
+.answer-content h4, .answer-content h5, .answer-content h6 {
+    margin-top: 1.5rem;
+    margin-bottom: 0.75rem;
+}
+
+.answer-content h1:first-child, .answer-content h2:first-child, 
+.answer-content h3:first-child, .answer-content h4:first-child, 
+.answer-content h5:first-child, .answer-content h6:first-child,
+.answer-content p:first-child {
+    margin-top: 0;
+}
+
+.answer-content ul, .answer-content ol {
+    margin-bottom: 1rem;
+    margin-top: 0.5rem;
+    padding-left: 1.5rem;
+}
+
+.answer-content li {
+    margin-bottom: 0.25rem;
+}
+
+.answer-content blockquote {
+    margin: 1rem 0;
+}
+
+.answer-content pre {
+    margin: 1rem 0;
+}
+
+.answer-content code {
+    background-color: rgba(0, 0, 0, 0.1);
+    padding: 0.2rem 0.4rem;
+    border-radius: 3px;
+    font-family: 'Courier New', monospace;
+}
+
+.answer-content strong, .answer-content b {
+    font-weight: 600;
+}
+
+.answer-content em, .answer-content i {
+    font-style: italic;
+}
