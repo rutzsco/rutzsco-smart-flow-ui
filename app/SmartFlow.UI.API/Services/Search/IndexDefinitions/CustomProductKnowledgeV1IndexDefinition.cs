@@ -8,7 +8,7 @@ public class CustomProductKnowledgeV1IndexDefinition : IKnowledgeSource
 
     public required string parent_id { get; set; }
 
-    public required string chunk_index { get; set; }
+    public required int chunk_index { get; set; }
 
     public required string content { get; set; }
 
@@ -25,7 +25,7 @@ public class CustomProductKnowledgeV1IndexDefinition : IKnowledgeSource
     public string? equipment_subcategory { get; set; }
 
     public string? equipment_part { get; set; }
-    
+
     public string? equipment_part_subcategory { get; set; }
 
     public string? product { get; set; }
