@@ -298,17 +298,17 @@ public class DocumentService
             {
                 metadata = new FileMetadata
                 {
-                    FileName = blobItem.Metadata.TryGetValue("filename", out var fn) ? fn : Path.GetFileName(blobItem.Name),
-                    BlobPath = blobItem.Metadata.TryGetValue("blobpath", out var bp) ? bp : blobItem.Name,
-                    EquipmentCategory = blobItem.Metadata.TryGetValue("equipmentcategory", out var ec) ? ec : "",
-                    EquipmentSubcategory = blobItem.Metadata.TryGetValue("equipmentsubcategory", out var es) ? es : "",
-                    EquipmentPart = blobItem.Metadata.TryGetValue("equipmentpart", out var ep) ? ep : "",
-                    EquipmentPartSubcategory = blobItem.Metadata.TryGetValue("equipmentpartsubcategory", out var eps) ? eps : "",
+                    FileName = blobItem.Metadata.TryGetValue("file_name", out var fn) ? fn : Path.GetFileName(blobItem.Name),
+                    BlobPath = blobItem.Metadata.TryGetValue("blob_path", out var bp) ? bp : blobItem.Name,
+                    EquipmentCategory = blobItem.Metadata.TryGetValue("equipment_category", out var ec) ? ec : "",
+                    EquipmentSubcategory = blobItem.Metadata.TryGetValue("equipment_subcategory", out var es) ? es : "",
+                    EquipmentPart = blobItem.Metadata.TryGetValue("equipment_part", out var ep) ? ep : "",
+                    EquipmentPartSubcategory = blobItem.Metadata.TryGetValue("equipment_part_subcategory", out var eps) ? eps : "",
                     Product = blobItem.Metadata.TryGetValue("product", out var p) ? p : "",
                     Manufacturer = blobItem.Metadata.TryGetValue("manufacturer", out var m) ? m : "",
-                    DocumentType = blobItem.Metadata.TryGetValue("documenttype", out var dt) ? dt : "",
-                    IsRequiredForCde = blobItem.Metadata.TryGetValue("isrequiredforcde", out var irc) ? irc : "No",
-                    AddedToIndex = blobItem.Metadata.TryGetValue("addedtoindex", out var ati) ? ati : "No"
+                    DocumentType = blobItem.Metadata.TryGetValue("document_type", out var dt) ? dt : "",
+                    IsRequiredForCde = blobItem.Metadata.TryGetValue("is_required_for_cde", out var irc) ? irc : "No",
+                    AddedToIndex = blobItem.Metadata.TryGetValue("added_to_index", out var ati) ? ati : "No"
                 };
             }
 
@@ -667,17 +667,17 @@ public class DocumentService
 
             var blobMetadata = new Dictionary<string, string>
             {
-                ["filename"] = metadata.FileName ?? "",
-                ["blobpath"] = metadata.BlobPath ?? "",
-                ["equipmentcategory"] = metadata.EquipmentCategory ?? "",
-                ["equipmentsubcategory"] = metadata.EquipmentSubcategory ?? "",
-                ["equipmentpart"] = metadata.EquipmentPart ?? "",
-                ["equipmentpartsubcategory"] = metadata.EquipmentPartSubcategory ?? "",
+                ["file_name"] = metadata.FileName ?? "",
+                ["blob_path"] = metadata.BlobPath ?? "",
+                ["equipment_category"] = metadata.EquipmentCategory ?? "",
+                ["equipment_subcategory"] = metadata.EquipmentSubcategory ?? "",
+                ["equipment_part"] = metadata.EquipmentPart ?? "",
+                ["equipment_part_subcategory"] = metadata.EquipmentPartSubcategory ?? "",
                 ["product"] = metadata.Product ?? "",
                 ["manufacturer"] = metadata.Manufacturer ?? "",
-                ["documenttype"] = metadata.DocumentType ?? "",
-                ["isrequiredforcde"] = metadata.IsRequiredForCde ?? "No",
-                ["addedtoindex"] = metadata.AddedToIndex ?? "No"
+                ["document_type"] = metadata.DocumentType ?? "",
+                ["is_required_for_cde"] = metadata.IsRequiredForCde ?? "No",
+                ["added_to_index"] = metadata.AddedToIndex ?? "No"
             };
 
             await blobClient.SetMetadataAsync(blobMetadata, cancellationToken: cancellationToken);
@@ -716,17 +716,17 @@ public class DocumentService
 
             return new FileMetadata
             {
-                FileName = metadata.TryGetValue("filename", out var fn) ? fn : Path.GetFileName(fileName),
-                BlobPath = metadata.TryGetValue("blobpath", out var bp) ? bp : fileName,
-                EquipmentCategory = metadata.TryGetValue("equipmentcategory", out var ec) ? ec : "",
-                EquipmentSubcategory = metadata.TryGetValue("equipmentsubcategory", out var es) ? es : "",
-                EquipmentPart = metadata.TryGetValue("equipmentpart", out var ep) ? ep : "",
-                EquipmentPartSubcategory = metadata.TryGetValue("equipmentpartsubcategory", out var eps) ? eps : "",
+                FileName = metadata.TryGetValue("file_name", out var fn) ? fn : Path.GetFileName(fileName),
+                BlobPath = metadata.TryGetValue("blob_path", out var bp) ? bp : fileName,
+                EquipmentCategory = metadata.TryGetValue("equipment_category", out var ec) ? ec : "",
+                EquipmentSubcategory = metadata.TryGetValue("equipment_subcategory", out var es) ? es : "",
+                EquipmentPart = metadata.TryGetValue("equipment_part", out var ep) ? ep : "",
+                EquipmentPartSubcategory = metadata.TryGetValue("equipment_part_subcategory", out var eps) ? eps : "",
                 Product = metadata.TryGetValue("product", out var p) ? p : "",
                 Manufacturer = metadata.TryGetValue("manufacturer", out var m) ? m : "",
-                DocumentType = metadata.TryGetValue("documenttype", out var dt) ? dt : "",
-                IsRequiredForCde = metadata.TryGetValue("isrequiredforcde", out var irc) ? irc : "No",
-                AddedToIndex = metadata.TryGetValue("addedtoindex", out var ati) ? ati : "No"
+                DocumentType = metadata.TryGetValue("document_type", out var dt) ? dt : "",
+                IsRequiredForCde = metadata.TryGetValue("is_required_for_cde", out var irc) ? irc : "No",
+                AddedToIndex = metadata.TryGetValue("added_to_index", out var ati) ? ati : "No"
             };
         }
         catch
