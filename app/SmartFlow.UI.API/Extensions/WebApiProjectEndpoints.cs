@@ -12,10 +12,12 @@ internal static class WebApiProjectEndpoints
     private const string SpecExtractorPath = "/agent/spec-extractor";
     private const string SpecExtractorV2Path = "/agent/spec-analyzer-workflow";
     private const string PlanExtractorPath = "/agent/plan-extractor";
+    private const string CdeAgentPath = "/agent/cde";
     private const string WorkflowStatusPath = "/workflow/status";
     private const string DefaultAnalysisMessage = "Please extract the specification summary and explain the key sections.";
     private const string DefaultSpecV2AnalysisMessage = "Analyze this specification document completely";
     private const string DefaultPlanAnalysisMessage = "Please extract the plan summary I uploaded and explain the key sections.";
+    private const string DefaultCdeAnalysisMessage = "Please check specification compliance against JCI products database.";
     private const int HttpClientTimeoutSeconds = 10;
 
     // Configuration keys
@@ -68,6 +70,9 @@ internal static class WebApiProjectEndpoints
 
         // Analyze a file in a project using plan-extractor
         api.MapPost("{projectName}/analyze-plan", OnAnalyzePlanProjectFileAsync);
+
+        // Analyze a file in a project using CDE agent
+        api.MapPost("{projectName}/analyze-cde", OnAnalyzeProjectCdeAsync);
 
         // Get workflow status for a project
         api.MapGet("{projectName}/workflow/status", OnGetWorkflowStatusAsync);
@@ -317,6 +322,30 @@ internal static class WebApiProjectEndpoints
             PlanExtractorPath,
             DefaultPlanAnalysisMessage,
             "plan");
+    }
+
+    private static async Task<IResult> OnAnalyzeProjectCdeAsync(
+        HttpContext context,
+        string projectName,
+        [FromServices] ProjectService projectService,
+        [FromServices] IConfiguration configuration,
+        [FromServices] ILogger<WebApplication> logger,
+        [FromServices] IHttpClientFactory httpClientFactory,
+        [FromServices] BlobServiceClient blobServiceClient,
+        CancellationToken cancellationToken)
+    {
+        return await AnalyzeProjectAsync(
+            context, 
+            projectName, 
+            projectService, 
+            configuration, 
+            logger, 
+            httpClientFactory, 
+            blobServiceClient, 
+            cancellationToken,
+            CdeAgentPath,
+            DefaultCdeAnalysisMessage,
+            "cde");
     }
 
     private static async Task<IResult> AnalyzeProjectAsync(

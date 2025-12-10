@@ -688,6 +688,49 @@ public sealed partial class Projects : IDisposable
         }
     }
 
+    private async Task AnalyzeCdeSelectedProjectAsync()
+    {
+        if (string.IsNullOrEmpty(_selectedProject))
+        {
+            SnackBarError("No project selected");
+            return;
+        }
+
+        _isWorkflowProcessing = true;
+        _workflowStatus = null;
+        StateHasChanged();
+
+        try
+        {
+            Logger.LogInformation("Analyzing CDE for project {Project}", _selectedProject);
+            
+            var success = await Client.AnalyzeProjectCdeAsync(_selectedProject);
+            
+            if (success)
+            {
+                SnackBarMessage($"CDE analysis started for project '{_selectedProject}'");
+                
+                // Start polling for status
+                StartStatusPolling();
+            }
+            else
+            {
+                _isWorkflowProcessing = false;
+                SnackBarError($"Failed to start CDE analysis for project '{_selectedProject}'");
+            }
+        }
+        catch (Exception ex)
+        {
+            _isWorkflowProcessing = false;
+            Logger.LogError(ex, "Error analyzing CDE for project {ProjectName}", _selectedProject);
+            SnackBarError($"Error analyzing CDE: {ex.Message}");
+        }
+        finally
+        {
+            StateHasChanged();
+        }
+    }
+
     private void StartStatusPolling()
     {
         StopStatusPolling(); // Ensure any existing timer is stopped

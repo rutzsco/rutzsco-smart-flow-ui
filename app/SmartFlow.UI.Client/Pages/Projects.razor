@@ -270,6 +270,13 @@
                                                    Disabled="@(!_projectFiles.Any() || _isWorkflowProcessing)">
                                             Analyze Plan
                                         </MudButton>
+                                        <MudButton Color="Color.Primary" 
+                                                   Variant="Variant.Outlined" 
+                                                   Size="Size.Small"
+                                                   OnClick="@(async () => await AnalyzeCdeSelectedProjectAsync())"
+                                                   Disabled="@(!_projectFiles.Any() || _isWorkflowProcessing)">
+                                            CDE
+                                        </MudButton>
                                         <MudTooltip Text="Refresh" Arrow="true">
                                             <MudIconButton Icon="@Icons.Material.Filled.Refresh" 
                                                            Size="Size.Small"
