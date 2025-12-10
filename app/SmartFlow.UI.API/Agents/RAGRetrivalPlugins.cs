@@ -68,13 +68,13 @@ public class RAGRetrivalPlugins
                 return async (query) => await customRutzscoLogic.SearchAsync(query);
 
             case "CustomProductKnowledgeV1":
-                var customRutzscoLogic = new SearchLogic<CustomProductKnowledgeV1IndexDefinition>(
+                var customProductKnowledgeLogic = new SearchLogic<CustomProductKnowledgeV1IndexDefinition>(
                     _azureOpenAIClient, 
                     _searchClientFactory, 
                     CustomProductKnowledgeV1IndexDefinition.SelectFieldNames, 
                     CustomProductKnowledgeV1IndexDefinition.EmbeddingsFieldName, 
                     settings);
-                return async (query) => await customRutzscoLogic.SearchAsync(query);
+                return async (query) => await customProductKnowledgeLogic.SearchAsync(query);
 
             default:
                 throw new ArgumentException($"Unsupported IndexSchemaDefinition: {settings.IndexSchemaDefinition}", 
