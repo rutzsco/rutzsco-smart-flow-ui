@@ -59,6 +59,10 @@ public sealed partial class Projects : IDisposable
     private EquipmentMapResult? _equipmentMapResult = null;
     private bool _isLoadingEquipmentMap = false;
 
+    // Reader agent response (markdown content)
+    private string? _readerAgentResponseHtml = null;
+    private bool _isLoadingReaderAgentResponse = false;
+
     protected override async Task OnInitializedAsync()
     {
         // Load projects
@@ -212,9 +216,11 @@ public sealed partial class Projects : IDisposable
     private async Task LoadEquipmentMapAsync()
     {
         _equipmentMapResult = null;
+        _readerAgentResponseHtml = null;
         
         // Check if equipment_map.json exists in any of the workflow files
         var hasEquipmentMap = false;
+        var hasReaderAgentResponse = false;
         
         foreach (var projectFile in _projectFiles)
         {
@@ -227,8 +233,19 @@ public sealed partial class Projects : IDisposable
                 {
                     hasEquipmentMap = true;
                     Logger.LogInformation("Found equipment_map.json in workflow files: {FileName}", equipmentMapFile);
-                    break;
                 }
+                
+                var readerAgentFile = projectFile.ProcessingFiles.FirstOrDefault(f => 
+                    GetFileDisplayName(f).Equals("reader-agent-response.md", StringComparison.OrdinalIgnoreCase));
+                
+                if (readerAgentFile != null)
+                {
+                    hasReaderAgentResponse = true;
+                    Logger.LogInformation("Found reader-agent-response.md in workflow files: {FileName}", readerAgentFile);
+                }
+                
+                if (hasEquipmentMap && hasReaderAgentResponse)
+                    break;
             }
         }
         
@@ -264,6 +281,35 @@ public sealed partial class Projects : IDisposable
         else
         {
             Logger.LogDebug("No equipment_map.json found in workflow files for project {Project}", _selectedProject);
+        }
+        
+        // Load reader agent response if present
+        if (hasReaderAgentResponse)
+        {
+            _isLoadingReaderAgentResponse = true;
+            StateHasChanged();
+            
+            try
+            {
+                Logger.LogInformation("Loading reader-agent-response.md for project {Project}", _selectedProject);
+                var markdownContent = await Client.GetProjectReaderAgentResponseAsync(_selectedProject);
+                
+                if (!string.IsNullOrEmpty(markdownContent))
+                {
+                    // Convert markdown to HTML using Markdig
+                    var pipeline = Markdig.MarkdownExtensions.UseAdvancedExtensions(new Markdig.MarkdownPipelineBuilder()).Build();
+                    _readerAgentResponseHtml = Markdig.Markdown.ToHtml(markdownContent, pipeline);
+                    Logger.LogInformation("Reader agent response loaded and converted to HTML");
+                }
+            }
+            catch (Exception ex)
+            {
+                Logger.LogError(ex, "Error loading reader agent response for project {Project}", _selectedProject);
+            }
+            finally
+            {
+                _isLoadingReaderAgentResponse = false;
+            }
         }
     }
 

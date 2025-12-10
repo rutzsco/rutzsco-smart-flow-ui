@@ -596,6 +596,42 @@ public sealed class ApiClient(HttpClient httpClient)
         }
     }
 
+    public async Task<string?> GetProjectReaderAgentResponseAsync(string projectName)
+    {
+        try
+        {
+            // The processing files are stored with the project name prefix
+            var fullFilePath = $"{projectName}/reader-agent-response.md";
+            
+            var fileUrl = await GetProjectFileUrlAsync(projectName, fullFilePath, isProcessingFile: true);
+            if (string.IsNullOrEmpty(fileUrl))
+            {
+                Debug.WriteLine($"GetProjectReaderAgentResponseAsync: fileUrl is null or empty for project {projectName}");
+                return null;
+            }
+
+            Debug.WriteLine($"GetProjectReaderAgentResponseAsync: Fetching from URL {fileUrl}");
+            var response = await httpClient.GetAsync(fileUrl);
+            
+            if (response.IsSuccessStatusCode)
+            {
+                var content = await response.Content.ReadAsStringAsync();
+                Debug.WriteLine($"GetProjectReaderAgentResponseAsync: Content length {content.Length}");
+                return content;
+            }
+            else
+            {
+                Debug.WriteLine($"GetProjectReaderAgentResponseAsync: Failed to fetch, status: {response.StatusCode}");
+            }
+            return null;
+        }
+        catch (Exception ex)
+        {
+            Debug.WriteLine($"Error fetching reader agent response: {ex.Message}");
+            return null;
+        }
+    }
+
     public async Task<bool> DeleteProjectWorkflowAsync(string projectName)
     {
         try

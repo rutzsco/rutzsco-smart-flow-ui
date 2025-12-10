@@ -448,7 +448,7 @@
                                 <MudDivider />
 
                                 <!-- Spec Results Section (Equipment Map) -->
-                                @if (_equipmentMapResult != null || _isLoadingEquipmentMap)
+                                @if (_equipmentMapResult != null || _isLoadingEquipmentMap || _readerAgentResponseHtml != null || _isLoadingReaderAgentResponse)
                                 {
                                     <MudStack Spacing="3">
                                         <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
@@ -462,115 +462,136 @@
                                             }
                                         </MudStack>
 
-                                        @if (_isLoadingEquipmentMap)
+                                        @if (_isLoadingEquipmentMap || _isLoadingReaderAgentResponse)
                                         {
                                             <MudStack AlignItems="AlignItems.Center" Class="py-4">
                                                 <MudProgressCircular Indeterminate="true" Size="Size.Small" Color="Color.Primary" />
-                                                <MudText Typo="Typo.caption" Color="Color.Secondary">Loading equipment map...</MudText>
+                                                <MudText Typo="Typo.caption" Color="Color.Secondary">Loading spec results...</MudText>
                                             </MudStack>
                                         }
-                                        else if (_equipmentMapResult != null)
+                                        else
                                         {
-                                            <!-- Summary Card -->
-                                            @if (_equipmentMapResult.Summary != null)
+                                            @if (_equipmentMapResult != null)
                                             {
-                                                <MudPaper Elevation="0" Class="pa-3" Style="background-color: #e8f5e9; border: 1px solid #a5d6a7; border-radius: 8px;">
-                                                    <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="4" Justify="Justify.SpaceBetween">
-                                                        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
-                                                            <MudIcon Icon="@Icons.Material.Filled.Summarize" Size="Size.Small" Color="Color.Success" />
-                                                            <MudText Typo="Typo.body2" Style="font-weight: 600;">
-                                                                @_equipmentMapResult.Summary.TotalSectionsMapped sections mapped
-                                                            </MudText>
-                                                        </MudStack>
-                                                        <MudStack Row="true" Spacing="3">
-                                                            @if (_equipmentMapResult.Summary.AhuPrimarySections > 0 || _equipmentMapResult.Summary.AhuSupportingSections > 0)
-                                                            {
-                                                                <MudText Typo="Typo.caption">
-                                                                    <strong>AHU:</strong> @_equipmentMapResult.Summary.AhuPrimarySections primary, @_equipmentMapResult.Summary.AhuSupportingSections supporting
+                                                <!-- Summary Card -->
+                                                @if (_equipmentMapResult.Summary != null)
+                                                {
+                                                    <MudPaper Elevation="0" Class="pa-3" Style="background-color: #e8f5e9; border: 1px solid #a5d6a7; border-radius: 8px;">
+                                                        <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="4" Justify="Justify.SpaceBetween">
+                                                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                                                                <MudIcon Icon="@Icons.Material.Filled.Summarize" Size="Size.Small" Color="Color.Success" />
+                                                                <MudText Typo="Typo.body2" Style="font-weight: 600;">
+                                                                    @_equipmentMapResult.Summary.TotalSectionsMapped sections mapped
                                                                 </MudText>
-                                                            }
-                                                            @if (_equipmentMapResult.Summary.ChillerPrimarySections > 0 || _equipmentMapResult.Summary.ChillerSupportingSections > 0)
+                                                            </MudStack>
+                                                            <MudStack Row="true" Spacing="3">
+                                                                @if (_equipmentMapResult.Summary.AhuPrimarySections > 0 || _equipmentMapResult.Summary.AhuSupportingSections > 0)
+                                                                {
+                                                                    <MudText Typo="Typo.caption">
+                                                                        <strong>AHU:</strong> @_equipmentMapResult.Summary.AhuPrimarySections primary, @_equipmentMapResult.Summary.AhuSupportingSections supporting
+                                                                    </MudText>
+                                                                }
+                                                                @if (_equipmentMapResult.Summary.ChillerPrimarySections > 0 || _equipmentMapResult.Summary.ChillerSupportingSections > 0)
+                                                                {
+                                                                    <MudText Typo="Typo.caption">
+                                                                        <strong>Chillers:</strong> @_equipmentMapResult.Summary.ChillerPrimarySections primary, @_equipmentMapResult.Summary.ChillerSupportingSections supporting
+                                                                    </MudText>
+                                                                }
+                                                            </MudStack>
+                                                        </MudStack>
+                                                    </MudPaper>
+                                                }
+
+                                                <!-- Equipment Types with Sections -->
+                                                @foreach (var equipmentType in _equipmentMapResult.EquipmentTypes)
+                                                {
+                                                    var sections = _equipmentMapResult.SectionsByEquipment.GetValueOrDefault(equipmentType, new List<EquipmentSection>());
+                                                    
+                                                    <MudPaper Elevation="0" Class="pa-3 mt-2" Style="background-color: #f5f5f5; border: 1px solid #e0e0e0; border-radius: 8px;">
+                                                        <MudStack Spacing="2">
+                                                            <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
+                                                                <MudIcon Icon="@Icons.Material.Filled.Category" Size="Size.Small" Color="Color.Primary" />
+                                                                <MudText Typo="Typo.body2" Style="font-weight: 600;">@equipmentType</MudText>
+                                                                @if (sections.Any())
+                                                                {
+                                                                    <MudChip T="string" Size="Size.Small" Color="Color.Info" Variant="Variant.Outlined">
+                                                                        @sections.Count section(s)
+                                                                    </MudChip>
+                                                                }
+                                                                else
+                                                                {
+                                                                    <MudChip T="string" Size="Size.Small" Color="Color.Warning" Variant="Variant.Outlined">
+                                                                        Not present in spec
+                                                                    </MudChip>
+                                                                }
+                                                            </MudStack>
+                                    
+                                                            @if (sections.Any())
                                                             {
-                                                                <MudText Typo="Typo.caption">
-                                                                    <strong>Chillers:</strong> @_equipmentMapResult.Summary.ChillerPrimarySections primary, @_equipmentMapResult.Summary.ChillerSupportingSections supporting
-                                                                </MudText>
+                                                                <MudSimpleTable Dense="true" Hover="true" Bordered="false" Striped="true" Style="background-color: white;">
+                                                                    <thead>
+                                                                        <tr>
+                                                                            <th style="width: 100px;">Section</th>
+                                                                            <th>Title</th>
+                                                                            <th style="width: 120px;">Type</th>
+                                                                            <th style="width: 100px;">Pages</th>
+                                                                        </tr>
+                                                                    </thead>
+                                                                    <tbody>
+                                                                        @foreach (var specSection in sections.OrderBy(s => s.MatchType == "title" ? 0 : s.MatchType == "supporting_reference" ? 1 : 2))
+                                                                        {
+                                                                            <tr>
+                                                                                <td>
+                                                                                    <MudText Typo="Typo.body2" Style="font-family: monospace; font-weight: 600;">
+                                                                                        @specSection.SectionCode
+                                                                                    </MudText>
+                                                                                </td>
+                                                                                <td>
+                                                                                    <MudText Typo="Typo.body2">@specSection.Title</MudText>
+                                                                                    @if (!string.IsNullOrEmpty(specSection.ReferencedBy))
+                                                                                    {
+                                                                                        <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                                                                            Referenced by: @specSection.ReferencedBy
+                                                                                        </MudText>
+                                                                                    }
+                                                                                </td>
+                                                                                <td>
+                                                                                    <MudChip T="string" 
+                                                                                             Size="Size.Small" 
+                                                                                             Color="@GetMatchTypeColor(specSection.MatchType)"
+                                                                                             Variant="Variant.Filled">
+                                                                                        @GetMatchTypeDisplayName(specSection.MatchType)
+                                                                                    </MudChip>
+                                                                                </td>
+                                                                                <td>
+                                                                                    <MudText Typo="Typo.body2">
+                                                                                        @specSection.StartPage - @specSection.EndPage
+                                                                                    </MudText>
+                                                                                </td>
+                                                                            </tr>
+                                                                        }
+                                                                    </tbody>
+                                                                </MudSimpleTable>
                                                             }
                                                         </MudStack>
-                                                    </MudStack>
-                                                </MudPaper>
+                                                    </MudPaper>
+                                                }
                                             }
 
-                                            <!-- Equipment Types with Sections -->
-                                            @foreach (var equipmentType in _equipmentMapResult.EquipmentTypes)
+                                            <!-- Reader Agent Analysis Card -->
+                                            @if (!string.IsNullOrEmpty(_readerAgentResponseHtml))
                                             {
-                                                var sections = _equipmentMapResult.SectionsByEquipment.GetValueOrDefault(equipmentType, new List<EquipmentSection>());
-                                                
                                                 <MudPaper Elevation="0" Class="pa-3 mt-2" Style="background-color: #f5f5f5; border: 1px solid #e0e0e0; border-radius: 8px;">
                                                     <MudStack Spacing="2">
                                                         <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
-                                                            <MudIcon Icon="@Icons.Material.Filled.Category" Size="Size.Small" Color="Color.Primary" />
-                                                            <MudText Typo="Typo.body2" Style="font-weight: 600;">@equipmentType</MudText>
-                                                            @if (sections.Any())
-                                                            {
-                                                                <MudChip T="string" Size="Size.Small" Color="Color.Info" Variant="Variant.Outlined">
-                                                                    @sections.Count section(s)
-                                                                </MudChip>
-                                                            }
-                                                            else
-                                                            {
-                                                                <MudChip T="string" Size="Size.Small" Color="Color.Warning" Variant="Variant.Outlined">
-                                                                    Not present in spec
-                                                                </MudChip>
-                                                            }
+                                                            <MudIcon Icon="@Icons.Material.Filled.SmartToy" Size="Size.Small" Color="Color.Primary" />
+                                                            <MudText Typo="Typo.body2" Style="font-weight: 600;">Reader Agent Analysis</MudText>
                                                         </MudStack>
-                                
-                                                        @if (sections.Any())
-                                                        {
-                                                            <MudSimpleTable Dense="true" Hover="true" Bordered="false" Striped="true" Style="background-color: white;">
-                                                                <thead>
-                                                                    <tr>
-                                                                        <th style="width: 100px;">Section</th>
-                                                                        <th>Title</th>
-                                                                        <th style="width: 120px;">Type</th>
-                                                                        <th style="width: 100px;">Pages</th>
-                                                                    </tr>
-                                                                </thead>
-                                                                <tbody>
-                                                                    @foreach (var specSection in sections.OrderBy(s => s.MatchType == "title" ? 0 : s.MatchType == "supporting_reference" ? 1 : 2))
-                                                                    {
-                                                                        <tr>
-                                                                            <td>
-                                                                                <MudText Typo="Typo.body2" Style="font-family: monospace; font-weight: 600;">
-                                                                                    @specSection.SectionCode
-                                                                                </MudText>
-                                                                            </td>
-                                                                            <td>
-                                                                                <MudText Typo="Typo.body2">@specSection.Title</MudText>
-                                                                                @if (!string.IsNullOrEmpty(specSection.ReferencedBy))
-                                                                                {
-                                                                                    <MudText Typo="Typo.caption" Color="Color.Secondary">
-                                                                                        Referenced by: @specSection.ReferencedBy
-                                                                                    </MudText>
-                                                                                }
-                                                                            </td>
-                                                                            <td>
-                                                                                <MudChip T="string" 
-                                                                                         Size="Size.Small" 
-                                                                                         Color="@GetMatchTypeColor(specSection.MatchType)"
-                                                                                         Variant="Variant.Filled">
-                                                                                    @GetMatchTypeDisplayName(specSection.MatchType)
-                                                                                </MudChip>
-                                                                            </td>
-                                                                            <td>
-                                                                                <MudText Typo="Typo.body2">
-                                                                                    @specSection.StartPage - @specSection.EndPage
-                                                                                </MudText>
-                                                                            </td>
-                                                                        </tr>
-                                                                    }
-                                                                </tbody>
-                                                            </MudSimpleTable>
-                                                        }
+                                                        <MudPaper Elevation="0" Class="pa-3" Style="background-color: white; border-radius: 4px;">
+                                                            <div class="reader-agent-content">
+                                                                @((MarkupString)_readerAgentResponseHtml)
+                                                            </div>
+                                                        </MudPaper>
                                                     </MudStack>
                                                 </MudPaper>
                                             }
@@ -749,6 +770,106 @@
     
     .gap-2 {
         gap: 8px;
+    }
+    
+    /* Styles for rendered markdown content */
+    .reader-agent-content {
+        font-size: 0.875rem;
+        line-height: 1.6;
+    }
+    
+    .reader-agent-content h1 {
+        font-size: 1.5rem;
+        font-weight: 600;
+        margin-bottom: 0.75rem;
+        margin-top: 1rem;
+        color: var(--mud-palette-text-primary);
+    }
+    
+    .reader-agent-content h2 {
+        font-size: 1.25rem;
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+        margin-top: 1rem;
+        color: var(--mud-palette-text-primary);
+    }
+    
+    .reader-agent-content h3 {
+        font-size: 1.1rem;
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+        margin-top: 0.75rem;
+        color: var(--mud-palette-text-primary);
+    }
+    
+    .reader-agent-content p {
+        margin-bottom: 0.75rem;
+    }
+    
+    .reader-agent-content ul, .reader-agent-content ol {
+        margin-left: 1.5rem;
+        margin-bottom: 0.75rem;
+    }
+    
+    .reader-agent-content li {
+        margin-bottom: 0.25rem;
+    }
+    
+    .reader-agent-content code {
+        background-color: #e8e8e8;
+        padding: 0.125rem 0.375rem;
+        border-radius: 4px;
+        font-family: monospace;
+        font-size: 0.85em;
+    }
+    
+    .reader-agent-content pre {
+        background-color: #2d2d2d;
+        color: #f8f8f2;
+        padding: 1rem;
+        border-radius: 8px;
+        overflow-x: auto;
+        margin-bottom: 0.75rem;
+    }
+    
+    .reader-agent-content pre code {
+        background-color: transparent;
+        padding: 0;
+        color: inherit;
+    }
+    
+    .reader-agent-content table {
+        width: 100%;
+        border-collapse: collapse;
+        margin-bottom: 0.75rem;
+    }
+    
+    .reader-agent-content th, .reader-agent-content td {
+        border: 1px solid #e0e0e0;
+        padding: 0.5rem;
+        text-align: left;
+    }
+    
+    .reader-agent-content th {
+        background-color: #f5f5f5;
+        font-weight: 600;
+    }
+    
+    .reader-agent-content blockquote {
+        border-left: 4px solid var(--mud-palette-primary);
+        padding-left: 1rem;
+        margin-left: 0;
+        margin-bottom: 0.75rem;
+        color: var(--mud-palette-text-secondary);
+    }
+    
+    .reader-agent-content a {
+        color: var(--mud-palette-primary);
+        text-decoration: none;
+    }
+    
+    .reader-agent-content a:hover {
+        text-decoration: underline;
     }
 </style>
 
