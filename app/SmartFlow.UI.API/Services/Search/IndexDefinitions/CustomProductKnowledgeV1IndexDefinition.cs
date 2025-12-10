@@ -18,21 +18,21 @@ public class CustomProductKnowledgeV1IndexDefinition : IKnowledgeSource
 
     public required string file_name { get; set; }
 
-    public required string content_type { get; set; }
+    public string? content_type { get; set; }
 
-    public required string equipment_category { get; set; }
+    public string? equipment_category { get; set; }
 
-    public required string equipment_subcategory { get; set; }
+    public string? equipment_subcategory { get; set; }
 
-    public required string equipment_part { get; set; }
+    public string? equipment_part { get; set; }
+    
+    public string? equipment_part_subcategory { get; set; }
 
-    public required string equipment_part_subcategory { get; set; }
+    public string? product { get; set; }
 
-    public required string product { get; set; }
+    public string? manufacturer { get; set; }
 
-    public required string manufacturer { get; set; }
-
-    public string document_type { get; set; }
+    public string? document_type { get; set; }
 
     public bool is_required_for_cde { get; set; }
     
