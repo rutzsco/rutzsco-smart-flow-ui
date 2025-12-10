@@ -2,10 +2,6 @@
 
 var builder = WebAssemblyHostBuilder.CreateDefault(args);
 
-// Register the root component
-builder.RootComponents.Add<App>("#app");
-builder.RootComponents.Add<HeadOutlet>("head::after");
-
 builder.Configuration.AddJsonFile($"appsettings.json", optional: true, reloadOnChange: true);
 
 builder.Services.Configure<AppSettings>(
@@ -25,8 +21,15 @@ builder.Services.AddScoped<UIConfigurationService>();
 
 AppConfiguration.Load(builder.Configuration);
 
-await JSHost.ImportAsync(
-    moduleName: nameof(JavaScriptModule),
-    moduleUrl: $"../js/iframe.js?{Guid.NewGuid()}" /* cache bust */);
+try
+{
+    await JSHost.ImportAsync(
+        moduleName: nameof(JavaScriptModule),
+        moduleUrl: $"/js/iframe.js?{Guid.NewGuid()}" /* cache bust */);
+}
+catch (Exception ex)
+{
+    Console.WriteLine($"Failed to import JavaScript module: {ex.Message}");
+}
 
 await builder.Build().RunAsync();

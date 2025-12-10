@@ -300,17 +300,17 @@ public class ProjectService
             {
                 metadata = new FileMetadata
                 {
-                    FileName = blobItem.Metadata.TryGetValue("filename", out var fn) ? fn : Path.GetFileName(blobItem.Name),
-                    BlobPath = blobItem.Metadata.TryGetValue("blobpath", out var bp) ? bp : blobItem.Name,
-                    EquipmentCategory = blobItem.Metadata.TryGetValue("equipmentcategory", out var ec) ? ec : "",
-                    EquipmentSubcategory = blobItem.Metadata.TryGetValue("equipmentsubcategory", out var es) ? es : "",
-                    EquipmentPart = blobItem.Metadata.TryGetValue("equipmentpart", out var ep) ? ep : "",
-                    EquipmentPartSubcategory = blobItem.Metadata.TryGetValue("equipmentpartsubcategory", out var eps) ? eps : "",
+                    FileName = blobItem.Metadata.TryGetValue("file_name", out var fn) ? fn : Path.GetFileName(blobItem.Name),
+                    BlobPath = blobItem.Metadata.TryGetValue("blob_path", out var bp) ? bp : blobItem.Name,
+                    EquipmentCategory = blobItem.Metadata.TryGetValue("equipment_category", out var ec) ? ec : "",
+                    EquipmentSubcategory = blobItem.Metadata.TryGetValue("equipment_subcategory", out var es) ? es : "",
+                    EquipmentPart = blobItem.Metadata.TryGetValue("equipment_part", out var ep) ? ep : "",
+                    EquipmentPartSubcategory = blobItem.Metadata.TryGetValue("equipment_part_subcategory", out var eps) ? eps : "",
                     Product = blobItem.Metadata.TryGetValue("product", out var p) ? p : "",
                     Manufacturer = blobItem.Metadata.TryGetValue("manufacturer", out var m) ? m : "",
-                    DocumentType = blobItem.Metadata.TryGetValue("documenttype", out var dt) ? dt : "",
-                    IsRequiredForCde = blobItem.Metadata.TryGetValue("isrequiredforcde", out var irc) ? irc : "No",
-                    AddedToIndex = blobItem.Metadata.TryGetValue("addedtoindex", out var ati) ? ati : "No"
+                    DocumentType = blobItem.Metadata.TryGetValue("document_type", out var dt) ? dt : "",
+                    IsRequiredForCde = blobItem.Metadata.TryGetValue("is_required_for_cde", out var irc) ? irc : "No",
+                    AddedToIndex = blobItem.Metadata.TryGetValue("added_to_index", out var ati) ? ati : "No"
                 };
             }
 
