@@ -25,15 +25,17 @@
 
 <body>
     <div id="app">
-        <svg class="loading-progress">
-            <circle r="40%" cx="50%" cy="50%" />
-            <circle r="40%" cx="50%" cy="50%" />
-        </svg>
-        <div class="loading-progress-text"></div>
+        <div id="loading">
+            <svg class="loading-progress">
+                <circle r="40%" cx="50%" cy="50%" />
+                <circle r="40%" cx="50%" cy="50%" />
+            </svg>
+            <div class="loading-progress-text"></div>
+        </div>
+
+        <SmartFlow.UI.Client.Routes @rendermode="new InteractiveWebAssemblyRenderMode(prerender: false)" />
     </div>
     
-    <SmartFlow.UI.Client.Routes @rendermode="new InteractiveWebAssemblyRenderMode(prerender: false)" />
-
     <div id="blazor-error-ui">
         An unhandled error has occurred.
         <a href="" class="reload">Reload</a>
@@ -143,12 +145,37 @@
         });
         
         // Hide loading indicator when Blazor is ready
-        document.addEventListener('blazor:started', () => {
-            const loadingElement = document.getElementById('app');
+        // Use multiple event listeners for compatibility with different Blazor versions
+        function hideLoadingIndicator() {
+            const loadingElement = document.getElementById('loading');
             if (loadingElement) {
                 loadingElement.style.display = 'none';
             }
+        }
+        
+        // Listen for Blazor events
+        document.addEventListener('blazor:started', hideLoadingIndicator);
+        
+        // For Blazor Web App (.NET 8+) - register after Blazor is available
+        if (typeof Blazor !== 'undefined' && Blazor.addEventListener) {
+            Blazor.addEventListener('enhancedload', hideLoadingIndicator);
+        }
+        
+        // Fallback: Use MutationObserver to detect when Blazor renders content
+        const observer = new MutationObserver((mutations, obs) => {
+            const appElement = document.getElementById('app');
+            // Check if Blazor has rendered content (look for MudBlazor layout elements)
+            if (appElement && appElement.querySelector('.mud-layout')) {
+                hideLoadingIndicator();
+                obs.disconnect(); // Stop observing once content is loaded
+            }
         });
+        
+        // Start observing the app element for child changes
+        const appElement = document.getElementById('app');
+        if (appElement) {
+            observer.observe(appElement, { childList: true, subtree: true });
+        }
     </script>
 </body>
 

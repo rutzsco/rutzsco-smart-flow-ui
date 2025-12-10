@@ -381,9 +381,13 @@
                                                                 </MudText>
                                                                 @if (!string.IsNullOrWhiteSpace(file.Description))
                                                                 {
-                                                                    <MudText Typo="Typo.caption" Color="Color.Secondary" Class="file-description">
-                                                                        — @file.Description
-                                                                    </MudText>
+                                                                    <MudChip T="string" 
+                                                                             Size="Size.Small" 
+                                                                             Color="Color.Default" 
+                                                                             Variant="Variant.Outlined"
+                                                                             Class="file-description-chip">
+                                                                        @file.Description
+                                                                    </MudChip>
                                                                 }
                                                             </MudStack>
                                                 
@@ -764,7 +768,12 @@
         text-overflow: ellipsis;
     }
     
-    .file-description {
+    .file-description-chip {
+        max-width: 250px;
+        flex-shrink: 1;
+    }
+    
+    .file-description-chip .mud-chip-content {
         white-space: nowrap;
         overflow: hidden;
         text-overflow: ellipsis;
