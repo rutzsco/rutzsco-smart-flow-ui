@@ -20,10 +20,6 @@ public class CustomProductKnowledgeV1IndexDefinition : IKnowledgeSource
 
     public required string content_type { get; set; }
 
-    public required DateTime created_on { get; set; }
-
-    public required DateTime blob_last_modified { get; set; }
-
     public required string equipment_category { get; set; }
 
     public required string equipment_subcategory { get; set; }
@@ -40,8 +36,6 @@ public class CustomProductKnowledgeV1IndexDefinition : IKnowledgeSource
 
     public required bool is_required_for_cde { get; set; }
     
-    public required bool last_indexed { get; set; }
-
     public KnowledgeSource GetSource(bool useSourcepage = false)
     {
         return new KnowledgeSource(GetFilepath(useSourcepage), content);
@@ -54,6 +48,6 @@ public class CustomProductKnowledgeV1IndexDefinition : IKnowledgeSource
     }
 
     public static string EmbeddingsFieldName = "content_vector";
-    public static List<string> SelectFieldNames = new List<string> { "chunk_id", "content", "blob_path", "file_name", "content_type", "created_on", "blob_last_modified", "equipment_category", "equipment_subcategory", "equipment_part", "equipment_part_subcategory", "product", "manufacturer", "document_type", "is_required_for_cde", "last_indexed" };
+    public static List<string> SelectFieldNames = new List<string> { "chunk_id", "content", "blob_path", "file_name", "content_type", "equipment_category", "equipment_subcategory", "equipment_part", "equipment_part_subcategory", "product", "manufacturer", "document_type", "is_required_for_cde" };
     public static string Name = "CustomProductKnowledgeV1";
 }
