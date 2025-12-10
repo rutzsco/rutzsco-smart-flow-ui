@@ -18,23 +18,23 @@ public class CustomProductKnowledgeV1IndexDefinition : IKnowledgeSource
 
     public required string file_name { get; set; }
 
-    public required string content_type { get; set; }
+    public string? content_type { get; set; }
 
-    public required string equipment_category { get; set; }
+    public string? equipment_category { get; set; }
 
-    public required string equipment_subcategory { get; set; }
+    public string? equipment_subcategory { get; set; }
 
-    public required string equipment_part { get; set; }
+    public string? equipment_part { get; set; }
+    
+    public string? equipment_part_subcategory { get; set; }
 
-    public required string equipment_part_subcategory { get; set; }
+    public string? product { get; set; }
 
-    public required string product { get; set; }
+    public string? manufacturer { get; set; }
 
-    public required string manufacturer { get; set; }
+    public string? document_type { get; set; }
 
-    public required string document_type { get; set; }
-
-    public required bool is_required_for_cde { get; set; }
+    public bool is_required_for_cde { get; set; }
     
     public KnowledgeSource GetSource(bool useSourcepage = false)
     {
@@ -48,6 +48,6 @@ public class CustomProductKnowledgeV1IndexDefinition : IKnowledgeSource
     }
 
     public static string EmbeddingsFieldName = "content_vector";
-    public static List<string> SelectFieldNames = new List<string> { "chunk_id", "content", "blob_path", "file_name", "content_type", "equipment_category", "equipment_subcategory", "equipment_part", "equipment_part_subcategory", "product", "manufacturer", "document_type", "is_required_for_cde" };
+    public static List<string> SelectFieldNames = new List<string> { "chunk_id", "parent_id", "chunk_index", "title", "content", "blob_path", "file_name", "content_type", "equipment_category", "equipment_subcategory", "equipment_part", "equipment_part_subcategory", "product", "manufacturer", "document_type", "is_required_for_cde" };
     public static string Name = "CustomProductKnowledgeV1";
 }
