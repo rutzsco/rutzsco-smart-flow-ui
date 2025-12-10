@@ -603,9 +603,9 @@
                                                     <MudStack Spacing="2">
                                                         <MudStack Row="true" AlignItems="AlignItems.Center" Spacing="2">
                                                             <MudIcon Icon="@Icons.Material.Filled.SmartToy" Size="Size.Small" Color="Color.Primary" />
-                                                            <MudText Typo="Typo.body2" Style="font-weight: 600;">Reader Agent Analysis</MudText>
+                                                            <MudText Typo="Typo.body2" Style="font-weight: 600;">Agent Analysis</MudText>
                                                         </MudStack>
-                                                        <MudPaper Elevation="0" Class="pa-3" Style="background-color: white; border-radius: 4px;">
+                                                        <MudPaper Elevation="0" Class="pa-3 reader-agent-container" Style="background-color: white; border-radius: 4px;">
                                                             <div class="reader-agent-content">
                                                                 @((MarkupString)_readerAgentResponseHtml)
                                                             </div>
@@ -789,6 +789,28 @@
         background-color: var(--mud-palette-background-gray);
         border-radius: 8px;
         border: 1px dashed var(--mud-palette-lines-default);
+    }
+    
+    .reader-agent-container {
+        max-height: 400px;
+        overflow-y: auto;
+    }
+    
+    .reader-agent-container::-webkit-scrollbar {
+        width: 6px;
+    }
+    
+    .reader-agent-container::-webkit-scrollbar-track {
+        background: transparent;
+    }
+    
+    .reader-agent-container::-webkit-scrollbar-thumb {
+        background: var(--mud-palette-gray-light);
+        border-radius: 3px;
+    }
+    
+    .reader-agent-container::-webkit-scrollbar-thumb:hover {
+        background: var(--mud-palette-gray-default);
     }
     
     .gap-2 {
