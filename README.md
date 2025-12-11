@@ -2,57 +2,6 @@
 
 This project is a demonstration of how to create a simple UI that builds on top of an existing SmartFlow landing zone.  This UI is really just a shell and will call the API defined in the SmartFlow API project to run the agentic workflows.
 
-## Contents
-
-* [Architecture and Overview](#architecture-and-overview)
-* [Getting Started with IAC and Deployment](#getting-started-with-iac-and-deployment)
-* [Using this Docker Image in other projects](#using-this-docker-image-in-other-projects)
-* [Deploying this to your environment](#getting-started-with-iac-and-deployment)
-* [Local Development](#application-development-and-refinement)
-* [Creating SmartFlow API Profiles](#creating-smartflow-api-profiles)
-
-## Architecture and Overview
-
-The SmartFlow solution is deployed using Azure Container Apps to run the API application, and there are other companion repositories that can provide UIs in the form of a website, a Teams app, and a phone client that will interact with this API.
-
-![Agentic Architecture](./docs/images/agentic-architecture.png)
-
-While developing this API, a Swagger interface and some simple REST Client API tests are provided to enable you to develop a working API that will use OpenAI tools to analyze documents and provide feedback. The prompts and processes are easily configurable and can be modified to suit your needs.
-
-![Architecture Overview](./docs/images/architecture_overview.png)
-
----
-
-## Getting Started with IAC and Deployment
-
-This project uses Infrastructure as Code (IaC) to deploy and manage the Azure resources, utilizing [Bicep](https://learn.microsoft.com/en-us/azure/azure-resource-manager/bicep/overview) to deploy Azure resources declaratively. In this case, most everything is deploy already in the SmartFlow Landing Zone, and this project will simply add a new Container App to that existing environment.
-
-To begin using this demo, you will need to:
-
-1. Fork this repository (or import it into your own environment)
-1. Create a service principal with rights to deploy resources
-1. Configure some environment variables
-1. Deploy the initial Azure resources
-1. Start modifying the code to meet your requirements
-
-For more details and to get started, choose one of the following setup guides:
-
-* [GitHub Actions Setup](./.github/setup.md)
-* [Azure DevOps Setup](./.azdo/pipelines/readme.md)
-* [azd up](./docs/azd_deploy.md)
-
----
-
-## Application Development and Refinement
-
-You can start doing local development right after you have deployed the SmartFlow API application and use this UI to call the APIs that were created in that application.
-
-To run the UI application, open the [app/SmartFlowUI/SmartFlowUI.sln](./app/SmartFlowUI/SmartFlowUI.sln) in Visual Studio (or VS Code). There are only a few secrets required and they are defined the [app/SmartFlowUI/backend/appsettings.Template.json](./app/SmartFlowUI/backend/appsettings.Template.json) file.  Mostly you will configure `profiles` and then put the keys and URLs for those profiles in your app settings or user secrets.
-
-> You can set up these values in the user secrets by right-clicking on the Project and selecting `Manage User Secrets`, or you can add those values into the [appsettings.json](./app/SmartFlowUI/backend/Services/Profile/profiles.json) or appsettings.development.json file, ***(just be sure not to check those values into source control if you update the appsettings.json files!)***  Tip: If you want to use `Manage User Secrets` in VS Code you can use [this extension](https://marketplace.visualstudio.com/items?itemName=adrianwilczynski.user-secrets).
-
----
-
 ## Local Agents
 
 ### Agent Profiles
@@ -115,13 +64,6 @@ An agent consists of:
 ```
 
 ---
-## External Agents
-
-This can be a companion app to the [SmartFlow API application](https://github.com/msft-mfg-ai/smart-flow-public). This project is designed to be installed after and on top of the SmartFlow app.  It will use all of the existing resources and simply add a new Container App containing the UI.
-
-For an easy and optimal deployment experience, copy all of the secrets and variables that you used in the the SmartFlow API deploy to this application's repository variables and secrets, then kick off the primary GitHub Workflow or Azure DevOps pipeline, and it should be good to go.
-
-If you want to use `azd up`, you will want to use the same variables to match the existing SmartFlow API application.  Copy the AZD setting values from the Smart-Flow-Public project (i.e. the entire `.azure` folder), then add in the variable `ENVIRONMENT_NAME="dev"` and then the azd up command should work right off first time as designed.
 
 ### Creating SmartFlow API Profiles
 
@@ -183,12 +125,3 @@ Lastly, if neither of the previous two options are specified, the application wi
 Once you have your profiles configured, you should be able to test any of the APIs you have deployed in the SmartFlow API application.
 
 ---
-
-## References
-
-* [Private Networking in Azure Container Apps environment](https://learn.microsoft.com/en-us/azure/container-apps/networking)
-* [OpenAI: Questions and Answers using embeddings](https://cookbook.openai.com/examples/question_answering_using_embeddings)
-
----
-
-[Back to top](#contents)
